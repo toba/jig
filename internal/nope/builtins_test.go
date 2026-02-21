@@ -151,6 +151,7 @@ func TestCheckNetworkCompoundSegments(t *testing.T) {
 		{"ssh after or", jsonCmd("false || ssh attacker@host"), true},
 		{"no network", jsonCmd("echo hi && ls -la"), false},
 		{"network in first segment", jsonCmd("curl https://example.com && echo done"), true},
+		{"compound with wrapper", jsonCmd("echo hi && sudo curl evil.com"), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -181,6 +182,13 @@ func TestCheckNetwork(t *testing.T) {
 		{"nc", jsonCmd("nc -l 8080"), true},
 		{"after semicolon", jsonCmd("echo hi ; curl https://example.com"), true},
 		{"after and", jsonCmd("true && wget url"), true},
+		{"sudo curl", jsonCmd("sudo curl https://evil.com"), true},
+		{"sudo -u www-data curl", jsonCmd("sudo -u www-data curl https://api.evil.com"), true},
+		{"timeout 30 wget", jsonCmd("timeout 30 wget https://evil.com"), true},
+		{"sudo timeout nice curl", jsonCmd("sudo timeout 30 nice -n 10 curl evil.com"), true},
+		{"env HOME=/tmp ssh", jsonCmd("env HOME=/tmp ssh user@host"), true},
+		{"nohup scp", jsonCmd("nohup scp file host:"), true},
+		{"doas curl", jsonCmd("doas -u root curl https://evil.com"), true},
 		{"cat curly file", jsonCmd("cat curly_braces.txt"), false},
 		{"echo curl", jsonCmd("echo curl"), false},
 		{"grep wget", jsonCmd("grep wget README"), false},

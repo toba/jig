@@ -1,11 +1,11 @@
 ---
 # bw7-1ks
 title: Rename cite check → cite review; add cite add command
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-21T19:21:01Z
-updated_at: 2026-02-21T19:21:17Z
+updated_at: 2026-02-21T20:04:29Z
 ---
 
 Two improvements to the cite subcommand:

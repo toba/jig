@@ -1,6 +1,9 @@
 package nope
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // SplitSegments splits a command string on chain operators (&&, ||, ;)
 // into independent command segments. Pipe (|) is NOT a split point since
@@ -32,6 +35,90 @@ func SplitSegments(cmd string) []string {
 		segments = append(segments, strings.Join(cur, " "))
 	}
 	return segments
+}
+
+// wrapperDef describes a command wrapper that precedes the real command.
+type wrapperDef struct {
+	argFlags       map[string]bool // flags that consume the next token (e.g. -u)
+	positionalArgs int             // non-flag args before the real command (e.g. timeout takes 1 for duration)
+	skipEnvVars    bool            // skip VAR=val tokens (for env command)
+}
+
+// wrappers maps command basenames to their wrapper definitions.
+var wrappers = map[string]wrapperDef{
+	"sudo":       {argFlags: map[string]bool{"-u": true, "-g": true, "-C": true, "-D": true, "-R": true, "-T": true}},
+	"doas":       {argFlags: map[string]bool{"-u": true}},
+	"timeout":    {positionalArgs: 1},
+	"env":        {skipEnvVars: true},
+	"nice":       {argFlags: map[string]bool{"-n": true}},
+	"nohup":      {},
+	"time":       {},
+	"watch":      {argFlags: map[string]bool{"-n": true, "-d": true, "-t": true}},
+	"caffeinate": {argFlags: map[string]bool{"-w": true}},
+	"ionice":     {argFlags: map[string]bool{"-c": true, "-n": true, "-p": true}},
+	"strace":     {argFlags: map[string]bool{"-e": true, "-o": true, "-p": true, "-s": true, "-P": true}},
+	"xargs":      {argFlags: map[string]bool{"-I": true, "-L": true, "-n": true, "-P": true, "-s": true}},
+}
+
+// SkipWrappers strips wrapper command tokens and their flags/args from the
+// front of a token slice, returning tokens starting at the real command.
+// It recurses to handle chained wrappers like "sudo timeout 30 curl".
+func SkipWrappers(tokens []Token) []Token {
+	// Skip leading operators (defensive)
+	for len(tokens) > 0 && tokens[0].Operator {
+		tokens = tokens[1:]
+	}
+
+	// Skip env var assignments (FOO=bar)
+	for len(tokens) > 0 && !tokens[0].Operator && !tokens[0].Quoted && strings.Contains(tokens[0].Value, "=") {
+		tokens = tokens[1:]
+	}
+
+	if len(tokens) == 0 {
+		return tokens
+	}
+
+	base := filepath.Base(tokens[0].Value)
+	w, ok := wrappers[base]
+	if !ok {
+		return tokens
+	}
+
+	// Consume the wrapper command itself
+	tokens = tokens[1:]
+
+	// Consume wrapper flags and their arguments
+	for len(tokens) > 0 && !tokens[0].Operator {
+		v := tokens[0].Value
+		if !strings.HasPrefix(v, "-") {
+			break
+		}
+		if w.argFlags[v] {
+			// Flag consumes the next token
+			tokens = tokens[1:]
+			if len(tokens) > 0 && !tokens[0].Operator {
+				tokens = tokens[1:]
+			}
+		} else {
+			// Simple flag (no argument)
+			tokens = tokens[1:]
+		}
+	}
+
+	// Consume positional args (e.g. duration for timeout)
+	for i := 0; i < w.positionalArgs && len(tokens) > 0 && !tokens[0].Operator; i++ {
+		tokens = tokens[1:]
+	}
+
+	// Skip env vars for env command
+	if w.skipEnvVars {
+		for len(tokens) > 0 && !tokens[0].Operator && !tokens[0].Quoted && strings.Contains(tokens[0].Value, "=") {
+			tokens = tokens[1:]
+		}
+	}
+
+	// Recurse to handle chained wrappers
+	return SkipWrappers(tokens)
 }
 
 // Token represents a shell token with quoting and operator metadata.

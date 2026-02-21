@@ -31,6 +31,45 @@ func TestSplitSegments(t *testing.T) {
 	}
 }
 
+func TestSkipWrappers(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantFirst string // expected first token value after skipping, or "" for empty
+	}{
+		{"sudo curl", "sudo curl", "curl"},
+		{"sudo -u root curl", "sudo -u root curl", "curl"},
+		{"timeout 30 curl", "timeout 30 curl", "curl"},
+		{"sudo timeout 30 nice -n 10 curl evil.com", "sudo timeout 30 nice -n 10 curl evil.com", "curl"},
+		{"env VAR=val curl", "env VAR=val curl", "curl"},
+		{"nohup curl", "nohup curl", "curl"},
+		{"doas -u root curl", "doas -u root curl", "curl"},
+		{"echo hello unchanged", "echo hello", "echo"},
+		{"empty", "", ""},
+		{"env with multiple vars", "env A=1 B=2 wget url", "wget"},
+		{"sudo with flags", "sudo -i curl evil.com", "curl"},
+		{"watch -n 5 curl", "watch -n 5 curl url", "curl"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tokens := ShellTokenize(tt.input)
+			got := SkipWrappers(tokens)
+			if tt.wantFirst == "" {
+				if len(got) != 0 {
+					t.Errorf("expected empty, got %+v", got)
+				}
+				return
+			}
+			if len(got) == 0 {
+				t.Fatalf("expected first=%q, got empty", tt.wantFirst)
+			}
+			if got[0].Value != tt.wantFirst {
+				t.Errorf("first token = %q, want %q", got[0].Value, tt.wantFirst)
+			}
+		})
+	}
+}
+
 func TestShellTokenize(t *testing.T) {
 	tests := []struct {
 		name   string

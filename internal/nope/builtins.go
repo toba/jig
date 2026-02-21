@@ -130,32 +130,36 @@ var networkTools = map[string]bool{
 
 // CheckNetwork returns true if a network tool is found in command position.
 // Command position is the first token or the first token after a pipe/chain operator,
-// skipping env var assignments (tokens containing '=').
+// after stripping wrapper commands (sudo, timeout, etc.) and env var assignments.
 func CheckNetwork(input string) bool {
 	cmd := ExtractCommand(input)
 	if cmd == "" {
 		return false
 	}
 	tokens := ShellTokenize(cmd)
-	cmdPos := true // start in command position
-	for _, t := range tokens {
-		if t.Operator {
-			if t.Value == "|" || t.Value == "&&" || t.Value == "||" || t.Value == ";" {
-				cmdPos = true
-			}
-			continue
-		}
-		if cmdPos {
-			// Skip env var assignments like FOO=bar
-			if strings.Contains(t.Value, "=") && !t.Quoted {
-				continue
-			}
-			base := filepath.Base(t.Value)
+
+	// Split into segments at pipe/chain operators and check each segment.
+	var segment []Token
+	check := func() bool {
+		unwrapped := SkipWrappers(segment)
+		if len(unwrapped) > 0 && !unwrapped[0].Operator {
+			base := filepath.Base(unwrapped[0].Value)
 			if networkTools[base] {
 				return true
 			}
-			cmdPos = false
 		}
+		return false
 	}
-	return false
+
+	for _, t := range tokens {
+		if t.Operator && (t.Value == "|" || t.Value == "&&" || t.Value == "||" || t.Value == ";") {
+			if check() {
+				return true
+			}
+			segment = segment[:0]
+			continue
+		}
+		segment = append(segment, t)
+	}
+	return check()
 }

@@ -1,11 +1,11 @@
 ---
 # ax1-kx0
 title: Implement skill brew update command
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-21T02:54:41Z
-updated_at: 2026-02-21T02:54:41Z
+updated_at: 2026-02-21T20:04:21Z
 sync:
     github:
         issue_number: "1"
