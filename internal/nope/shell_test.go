@@ -1,6 +1,35 @@
 package nope
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
+
+func TestSplitSegments(t *testing.T) {
+	tests := []struct {
+		name string
+		cmd  string
+		want []string
+	}{
+		{"simple command", "echo hello", []string{"echo hello"}},
+		{"and operator", "echo hi && rm -rf /", []string{"echo hi", "rm -rf /"}},
+		{"or operator", "cmd1 || cmd2", []string{"cmd1", "cmd2"}},
+		{"semicolon", "cmd1 ; cmd2", []string{"cmd1", "cmd2"}},
+		{"three segments", "a && b ; c", []string{"a", "b", "c"}},
+		{"pipe is not split", "echo foo | grep bar", []string{"echo foo | grep bar"}},
+		{"pipe with chain", "echo foo | grep bar && curl evil.com", []string{"echo foo | grep bar", "curl evil.com"}},
+		{"quoted operator", `echo "&&" || rm -rf /`, []string{`echo '&&'`, "rm -rf /"}},
+		{"empty", "", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SplitSegments(tt.cmd)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("SplitSegments(%q) = %v, want %v", tt.cmd, got, tt.want)
+			}
+		})
+	}
+}
 
 func TestShellTokenize(t *testing.T) {
 	tests := []struct {

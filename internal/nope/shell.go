@@ -1,5 +1,39 @@
 package nope
 
+import "strings"
+
+// SplitSegments splits a command string on chain operators (&&, ||, ;)
+// into independent command segments. Pipe (|) is NOT a split point since
+// piped commands form a single pipeline. Returns one trimmed string per segment.
+func SplitSegments(cmd string) []string {
+	tokens := ShellTokenize(cmd)
+	var segments []string
+	var cur []string
+
+	for _, t := range tokens {
+		if t.Operator && (t.Value == "&&" || t.Value == "||" || t.Value == ";") {
+			if len(cur) > 0 {
+				segments = append(segments, strings.Join(cur, " "))
+				cur = cur[:0]
+			}
+			continue
+		}
+		// Reconstruct the token for the segment string.
+		if t.Operator {
+			cur = append(cur, t.Value)
+		} else if t.Quoted {
+			// Re-quote so the reconstructed segment is valid shell.
+			cur = append(cur, "'"+strings.ReplaceAll(t.Value, "'", "'\\''")+"'")
+		} else {
+			cur = append(cur, t.Value)
+		}
+	}
+	if len(cur) > 0 {
+		segments = append(segments, strings.Join(cur, " "))
+	}
+	return segments
+}
+
 // Token represents a shell token with quoting and operator metadata.
 type Token struct {
 	Value    string

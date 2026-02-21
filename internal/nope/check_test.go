@@ -336,6 +336,50 @@ func TestCheckRulesMultilinePatternMatch(t *testing.T) {
 	}
 }
 
+func TestCheckRulesSegmentPatternMatch(t *testing.T) {
+	// Pattern rules should catch dangerous commands in individual segments
+	// of compound commands, even when the full input doesn't match.
+	rules, err := CompileRules([]RuleDef{
+		{Name: "no-dropdb", Pattern: `^{"command":"dropdb\b`, Message: "dropdb blocked"},
+	})
+	if err != nil {
+		t.Fatalf("CompileRules: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		wantHit bool
+	}{
+		{
+			name:    "dropdb alone",
+			input:   `{"command":"dropdb mydb"}`,
+			wantHit: true,
+		},
+		{
+			name:    "dropdb after echo",
+			input:   `{"command":"echo starting && dropdb mydb"}`,
+			wantHit: true,
+		},
+		{
+			name:    "no dropdb",
+			input:   `{"command":"echo starting && echo done"}`,
+			wantHit: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := CheckRules(rules, "Bash", tt.input, nil)
+			if tt.wantHit && msg == "" {
+				t.Error("expected block, got allow")
+			}
+			if !tt.wantHit && msg != "" {
+				t.Errorf("expected allow, got block: %s", msg)
+			}
+		})
+	}
+}
+
 func TestCheckRulesNonBashToolFromTestdata(t *testing.T) {
 	rules := loadTestRules(t)
 

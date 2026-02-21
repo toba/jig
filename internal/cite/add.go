@@ -278,28 +278,27 @@ func FormatSourceYAML(src *config.Source) (string, error) {
 	}
 	b.WriteString("  paths:\n")
 	if len(src.Paths.High) > 0 {
-		b.WriteString("    high:\n")
-		for _, p := range src.Paths.High {
-			b.WriteString("      - " + quote(p) + "\n")
-		}
+		b.WriteString("    high: " + flowSeq(src.Paths.High) + "\n")
 	}
 	if len(src.Paths.Medium) > 0 {
-		b.WriteString("    medium:\n")
-		for _, p := range src.Paths.Medium {
-			b.WriteString("      - " + quote(p) + "\n")
-		}
+		b.WriteString("    medium: " + flowSeq(src.Paths.Medium) + "\n")
 	}
 	if len(src.Paths.Low) > 0 {
-		b.WriteString("    low:\n")
-		for _, p := range src.Paths.Low {
-			b.WriteString("      - " + quote(p) + "\n")
-		}
+		b.WriteString("    low: " + flowSeq(src.Paths.Low) + "\n")
 	}
 	return b.String(), nil
 }
 
+func flowSeq(items []string) string {
+	quoted := make([]string, len(items))
+	for i, s := range items {
+		quoted[i] = quote(s)
+	}
+	return "[" + strings.Join(quoted, ", ") + "]"
+}
+
 func quote(s string) string {
-	if strings.ContainsAny(s, `"'*{}[]!&|>#%@` + "`") || strings.Contains(s, ": ") {
+	if strings.ContainsAny(s, `"'*{}[]!&|>#%@`+"`") || strings.Contains(s, ": ") {
 		return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
 	}
 	return s

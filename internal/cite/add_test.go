@@ -122,6 +122,10 @@ func TestFormatSourceYAML(t *testing.T) {
 	if got == "" {
 		t.Fatal("expected non-empty output")
 	}
+	// Verify flow sequence format.
+	if !contains(got, `["**/*.go"]`) {
+		t.Errorf("expected flow sequence for high paths, got:\n%s", got)
+	}
 	for _, want := range []string{"repo: toba/jig", "branch: main", "notes: Multi-tool CLI", `"**/*.go"`, "go.mod"} {
 		if !contains(got, want) {
 			t.Errorf("output missing %q:\n%s", want, got)

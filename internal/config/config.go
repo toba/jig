@@ -190,6 +190,7 @@ func AppendSource(doc *Document, src Source) error {
 	if err := srcNode.Encode(&src); err != nil {
 		return fmt.Errorf("encoding source: %w", err)
 	}
+	setFlowPaths(&srcNode)
 	citationsNode.Content = append(citationsNode.Content, &srcNode)
 
 	data, err := marshalNode(doc.Root)
@@ -198,6 +199,28 @@ func AppendSource(doc *Document, src Source) error {
 	}
 
 	return os.WriteFile(doc.Path, data, 0o644)
+}
+
+// setFlowPaths finds the "paths" mapping inside a source node and sets
+// its sequence children (high, medium, low) to flow style (e.g. [a, b]).
+func setFlowPaths(node *yaml.Node) {
+	if node.Kind != yaml.MappingNode {
+		return
+	}
+	for i := 0; i < len(node.Content)-1; i += 2 {
+		if node.Content[i].Value == "paths" {
+			paths := node.Content[i+1]
+			if paths.Kind != yaml.MappingNode {
+				return
+			}
+			for j := 0; j < len(paths.Content)-1; j += 2 {
+				if paths.Content[j+1].Kind == yaml.SequenceNode {
+					paths.Content[j+1].Style = yaml.FlowStyle
+				}
+			}
+			return
+		}
+	}
 }
 
 // marshalNode marshals a yaml.Node back to bytes.
