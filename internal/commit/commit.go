@@ -89,11 +89,15 @@ func LogSinceTag(tag string) (string, error) {
 }
 
 // Commit creates a git commit with the given message.
+// Stderr is captured and included in the error so hook failures are visible.
 func Commit(message string) error {
 	cmd := exec.Command("git", "commit", "-m", message)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	if err := cmd.Run(); err != nil {
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		detail := strings.TrimSpace(string(out))
+		if detail != "" {
+			return fmt.Errorf("git commit: %w\n%s", err, detail)
+		}
 		return fmt.Errorf("git commit: %w", err)
 	}
 	return nil

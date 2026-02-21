@@ -31,8 +31,13 @@ func RunDoctor(opts DoctorOpts) int {
 	}
 	fmt.Fprintf(os.Stderr, "OK:   companions.brew configured: %s\n", opts.Tap)
 
-	// 2. .goreleaser.yaml exists and is configured correctly
-	ok = checkGoreleaser(opts.Tool) && ok
+	lang := DetectLanguage()
+	fmt.Fprintf(os.Stderr, "OK:   detected language: %s\n", lang.Name)
+
+	// 2. .goreleaser.yaml exists and is configured correctly (Go only)
+	if lang.HasBuildToolCheck() {
+		ok = checkGoreleaser(opts.Tool) && ok
+	}
 
 	// 3. tap repo exists on GitHub
 	cmd := exec.Command("gh", "repo", "view", opts.Tap)
@@ -70,7 +75,7 @@ func RunDoctor(opts DoctorOpts) int {
 	}
 
 	// 6. latest release has darwin arm64 asset
-	expectedAsset := opts.Tool + "_darwin_arm64.tar.gz"
+	expectedAsset := lang.AssetName(opts.Tool, tag)
 	if tag != "" {
 		cmd = exec.Command("gh", "release", "view", tag, "--repo", opts.Repo, "--json", "assets")
 		if out, err := cmd.Output(); err != nil {
@@ -86,28 +91,43 @@ func RunDoctor(opts DoctorOpts) int {
 				fmt.Fprintf(os.Stderr, "FAIL: could not parse release assets: %v\n", err)
 				ok = false
 			} else {
-				found := false
+				foundAsset := false
 				hasChecksums := false
+				hasSidecar := false
+				sidecarName := expectedAsset + ".sha256"
 				for _, a := range release.Assets {
 					if a.Name == expectedAsset {
-						found = true
+						foundAsset = true
 					}
 					if a.Name == "checksums.txt" {
 						hasChecksums = true
 					}
+					if a.Name == sidecarName {
+						hasSidecar = true
+					}
 				}
-				if !found {
+				if !foundAsset {
 					fmt.Fprintf(os.Stderr, "FAIL: release %s missing asset %s\n", tag, expectedAsset)
 					ok = false
 				} else {
 					fmt.Fprintf(os.Stderr, "OK:   release has asset: %s\n", expectedAsset)
 				}
-				// 7. checksums.txt present in release
-				if !hasChecksums {
-					fmt.Fprintf(os.Stderr, "FAIL: release %s missing checksums.txt (goreleaser checksum output)\n", tag)
-					ok = false
-				} else {
-					fmt.Fprintf(os.Stderr, "OK:   release has checksums.txt\n")
+				// 7. checksum verification
+				switch lang.ChecksumMode() {
+				case "checksums.txt":
+					if !hasChecksums {
+						fmt.Fprintf(os.Stderr, "FAIL: release %s missing checksums.txt (goreleaser checksum output)\n", tag)
+						ok = false
+					} else {
+						fmt.Fprintf(os.Stderr, "OK:   release has checksums.txt\n")
+					}
+				case "sidecar":
+					if !hasSidecar {
+						fmt.Fprintf(os.Stderr, "FAIL: release %s missing %s\n", tag, sidecarName)
+						ok = false
+					} else {
+						fmt.Fprintf(os.Stderr, "OK:   release has %s\n", sidecarName)
+					}
 				}
 			}
 		}
@@ -124,12 +144,19 @@ func RunDoctor(opts DoctorOpts) int {
 
 		workflowStr := string(content)
 
-		// 9. workflow uses goreleaser action
-		if !strings.Contains(workflowStr, "goreleaser/goreleaser-action") {
-			fmt.Fprintf(os.Stderr, "FAIL: workflow missing goreleaser/goreleaser-action step\n")
+		// 9. workflow uses expected build tool
+		buildFound := false
+		for _, marker := range lang.WorkflowBuildMarkers() {
+			if strings.Contains(workflowStr, marker) {
+				buildFound = true
+				break
+			}
+		}
+		if !buildFound {
+			fmt.Fprintf(os.Stderr, "FAIL: workflow missing %s\n", lang.WorkflowBuildLabel())
 			ok = false
 		} else {
-			fmt.Fprintf(os.Stderr, "OK:   workflow uses goreleaser-action\n")
+			fmt.Fprintf(os.Stderr, "OK:   workflow uses %s\n", lang.WorkflowBuildLabel())
 		}
 
 		// 10. workflow has update-homebrew job

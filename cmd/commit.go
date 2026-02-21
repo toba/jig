@@ -106,11 +106,18 @@ var applyCmd = &cobra.Command{
 and pushes to the remote.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		todoSync := hasTodoSync(configPath())
+
 		// 1. Commit.
 		if err := commitpkg.Commit(applyMessage); err != nil {
 			return err
 		}
 		fmt.Println("Committed.")
+
+		// Sync todo issues after commit (if configured).
+		if todoSync {
+			commitpkg.TodoSync()
+		}
 
 		// 2. Tag if version provided.
 		if applyVersion != "" {
@@ -127,8 +134,8 @@ and pushes to the remote.`,
 			}
 			fmt.Println("Pushed.")
 
-			// Todo sync after push if configured.
-			if hasTodoSync(configPath()) {
+			// Sync again after push so remote state is reflected.
+			if todoSync {
 				commitpkg.TodoSync()
 			}
 		}
