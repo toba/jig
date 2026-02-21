@@ -45,6 +45,8 @@ BUILTINS
   credential-read   Block reading sensitive files (.env, .pem, .key, SSH keys, etc.).
   network           Block network tools (curl, wget, ssh, etc.) in command position.
   exfiltration      Block uploading sensitive files over the network (curl -d @.env, scp keys, /dev/tcp).
+  env-hijack        Block dangerous environment variable assignments (LD_PRELOAD, DYLD_INSERT_LIBRARIES, NODE_OPTIONS, etc.).
+  inline-secrets    Block commands containing inline secrets (AWS keys, GitHub tokens, API keys, passwords).
 
 TOOL SCOPING
   By default, rules only match the Bash tool. Use the tools field to guard

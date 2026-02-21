@@ -246,6 +246,171 @@ func TestCheckExfiltrationCompoundSegments(t *testing.T) {
 	}
 }
 
+func TestCheckInlineSecrets(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		// AWS access key IDs
+		{"AWS key ID", jsonCmd("echo AKIAIOSFODNN7EXAMPLE"), true},
+		{"AWS key in env var", jsonCmd("AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE cmd"), true},
+
+		// AWS secret access keys
+		{"AWS secret key", jsonCmd("aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"), true},
+		{"AWS secret key colon", jsonCmd("aws-secret-access-key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"), true},
+
+		// GitHub tokens
+		{"GitHub PAT ghp_", jsonCmd("echo ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl"), true},
+		{"GitHub PAT ghs_", jsonCmd("GH_TOKEN=ghs_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl"), true},
+		{"GitHub fine-grained PAT", jsonCmd("echo github_pat_ABCDEFGHIJKLMNOPQRSTUV"), true},
+
+		// Generic API key / secret key / access token
+		{"api_key assignment", jsonCmd("api_key=sk_live_1234567890abcdef cmd"), true},
+		{"API-KEY colon", jsonCmd("echo API-KEY: sk_live_1234567890abcdef"), true},
+		{"secret_key assignment", jsonCmd("secret_key=abcdef1234567890abcdef"), true},
+		{"access_token assignment", jsonCmd("access_token=eyJhbGciOiJIUzI1NiI cmd"), true},
+
+		// Passwords
+		{"password single quotes", jsonCmd(`echo password='s3cret_value'`), true},
+		{"passwd double quotes", jsonCmd(`echo passwd="hunter2_extended"`), true},
+		{"pwd assignment", jsonCmd(`pwd="my_super_secret"`), true},
+
+		// Placeholders — should NOT trigger
+		{"placeholder YOUR_API_KEY", jsonCmd("api_key=YOUR_API_KEY_HERE cmd"), false},
+		{"placeholder xxx", jsonCmd("api_key=xxxxxxxxxxxxxxxx cmd"), false},
+		{"placeholder changeme", jsonCmd("secret_key=changeme_placeholder_val"), false},
+		{"placeholder example", jsonCmd("api_key=example_key_value_here"), false},
+		{"placeholder test_key", jsonCmd("api_key=test_key_placeholder_"), false},
+		{"placeholder dummy", jsonCmd("secret_key=dummy_value_for_test"), false},
+		{"placeholder sample", jsonCmd("access_token=sample_token_for_dev"), false},
+
+		// Negatives — no secrets
+		{"echo hello", jsonCmd("echo hello"), false},
+		{"ls -la", jsonCmd("ls -la"), false},
+		{"empty", "", false},
+		{"no command", `{"file_path":"foo"}`, false},
+		{"short value not matched", jsonCmd("api_key=short"), false},
+		{"password empty quotes", jsonCmd(`password=""`), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CheckInlineSecrets(tt.input); got != tt.want {
+				t.Errorf("CheckInlineSecrets = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCheckInlineSecretsIntegration(t *testing.T) {
+	rules, err := CompileRules([]RuleDef{
+		{Name: "inline-secrets", Builtin: "inline-secrets", Message: "inline secret blocked"},
+	})
+	if err != nil {
+		t.Fatalf("CompileRules: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		wantHit bool
+	}{
+		{"AWS key in echo", jsonCmd("echo AKIAIOSFODNN7EXAMPLE"), true},
+		{"placeholder not blocked", jsonCmd("api_key=YOUR_API_KEY_HERE cmd"), false},
+		{"no secret", jsonCmd("echo hello world"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := CheckRules(rules, "Bash", tt.input, nil)
+			if tt.wantHit && msg == "" {
+				t.Error("expected block, got allow")
+			}
+			if !tt.wantHit && msg != "" {
+				t.Errorf("expected allow, got block: %s", msg)
+			}
+		})
+	}
+}
+
+func TestCheckEnvHijack(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		// Library injection
+		{"LD_PRELOAD", jsonCmd("LD_PRELOAD=/evil.so cmd"), true},
+		{"LD_LIBRARY_PATH", jsonCmd("LD_LIBRARY_PATH=/tmp cmd"), true},
+		{"DYLD_INSERT_LIBRARIES", jsonCmd("DYLD_INSERT_LIBRARIES=/evil.dylib cmd"), true},
+		{"DYLD_LIBRARY_PATH", jsonCmd("DYLD_LIBRARY_PATH=/evil cmd"), true},
+
+		// Runtime hijack
+		{"NODE_OPTIONS", jsonCmd("NODE_OPTIONS=--require=/evil.js node app.js"), true},
+		{"PYTHONPATH", jsonCmd("PYTHONPATH=/evil python script.py"), true},
+		{"PYTHONSTARTUP", jsonCmd("PYTHONSTARTUP=/evil.py python"), true},
+		{"PERL5OPT", jsonCmd("PERL5OPT=-e'system(...)' perl"), true},
+		{"PERL5LIB", jsonCmd("PERL5LIB=/evil perl"), true},
+		{"RUBYOPT", jsonCmd("RUBYOPT=-e'system(...)' ruby"), true},
+		{"RUBYLIB", jsonCmd("RUBYLIB=/evil ruby"), true},
+
+		// Via env command
+		{"env LD_PRELOAD", jsonCmd("env LD_PRELOAD=/evil.so cmd"), true},
+
+		// Via export
+		{"export LD_PRELOAD", jsonCmd("export LD_PRELOAD=/evil.so"), true},
+
+		// Negatives — safe env vars
+		{"PATH is safe", jsonCmd("PATH=/usr/bin cmd"), false},
+		{"HOME is safe", jsonCmd("HOME=/tmp cmd"), false},
+
+		// Not an assignment
+		{"echo LD_PRELOAD", jsonCmd("echo LD_PRELOAD"), false},
+
+		// Plain command
+		{"echo hello", jsonCmd("echo hello"), false},
+
+		// Empty / no command
+		{"empty", "", false},
+		{"no command", `{"file_path":"foo"}`, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CheckEnvHijack(tt.input); got != tt.want {
+				t.Errorf("CheckEnvHijack = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCheckEnvHijackCompoundSegments(t *testing.T) {
+	rules, err := CompileRules([]RuleDef{
+		{Name: "env-hijack", Builtin: "env-hijack", Message: "env hijack blocked"},
+	})
+	if err != nil {
+		t.Fatalf("CompileRules: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		wantHit bool
+	}{
+		{"LD_PRELOAD after echo", jsonCmd("echo hi && LD_PRELOAD=/evil.so cmd"), true},
+		{"safe env after echo", jsonCmd("echo hi && PATH=/usr/bin cmd"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := CheckRules(rules, "Bash", tt.input, nil)
+			if tt.wantHit && msg == "" {
+				t.Error("expected block, got allow")
+			}
+			if !tt.wantHit && msg != "" {
+				t.Errorf("expected allow, got block: %s", msg)
+			}
+		})
+	}
+}
+
 func TestCheckNetwork(t *testing.T) {
 	tests := []struct {
 		name  string

@@ -19,6 +19,8 @@ const (
 	BuiltinCredentialRead = "credential-read"
 	BuiltinNetwork        = "network"
 	BuiltinExfiltration   = "exfiltration"
+	BuiltinEnvHijack      = "env-hijack"
+	BuiltinInlineSecrets  = "inline-secrets"
 )
 
 // NopeConfig is the nope section of .jig.yaml.
@@ -173,6 +175,10 @@ func CompileRules(defs []RuleDef) ([]CompiledRule, error) {
 				check = CheckNetwork
 			case BuiltinExfiltration:
 				check = CheckExfiltration
+			case BuiltinEnvHijack:
+				check = CheckEnvHijack
+			case BuiltinInlineSecrets:
+				check = CheckInlineSecrets
 			default:
 				return nil, fmt.Errorf("rule %q: unknown builtin %q", d.Name, d.Builtin)
 			}

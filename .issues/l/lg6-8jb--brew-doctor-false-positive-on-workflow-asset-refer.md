@@ -1,10 +1,11 @@
 ---
 # lg6-8jb
 title: 'brew doctor: false positive on workflow asset reference check'
-status: ready
+status: completed
 type: bug
+priority: normal
 created_at: 2026-02-21T20:20:19Z
-updated_at: 2026-02-21T20:20:19Z
+updated_at: 2026-02-21T20:25:11Z
 ---
 
 ## Description
@@ -40,5 +41,5 @@ Replace the literal asset name check with a pattern match that substitutes the t
 
 ## Tasks
 
-- [ ] Update asset reference check to match template pattern instead of literal tag
+- [x] Update asset reference check to match template pattern instead of literal tag
 - [ ] Add test case for workflow with variable-based asset names

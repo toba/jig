@@ -69,6 +69,18 @@ var StarterConfig = `nope:
         data exfiltration detected — uploading sensitive files
         (credentials, keys, .env) over the network is not allowed.
 
+    - name: env-hijack
+      builtin: env-hijack
+      message: >-
+        environment variable hijack detected — setting dangerous env vars
+        (LD_PRELOAD, DYLD_INSERT_LIBRARIES, NODE_OPTIONS, etc.) is not allowed.
+
+    - name: inline-secrets
+      builtin: inline-secrets
+      message: >-
+        inline secret detected — command contains what appears to be an API key,
+        token, or password. Do not embed secrets in commands.
+
     # Non-Bash tool rules
     - name: no-write-env
       pattern: '"file_path"\s*:\s*"[^"]*\.env"'

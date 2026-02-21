@@ -176,12 +176,13 @@ func RunDoctor(opts DoctorOpts) int {
 			fmt.Fprintf(os.Stderr, "OK:   workflow references %s\n", tapRepo)
 		}
 
-		// 12. workflow references expected asset name
-		if !strings.Contains(workflowStr, expectedAsset) {
+		// 12. workflow references expected asset name (literal or template)
+		assetTemplate := lang.AssetNameTemplate(opts.Tool)
+		if strings.Contains(workflowStr, expectedAsset) || strings.Contains(workflowStr, assetTemplate) {
+			fmt.Fprintf(os.Stderr, "OK:   workflow references asset %s\n", expectedAsset)
+		} else {
 			fmt.Fprintf(os.Stderr, "FAIL: workflow does not reference asset %s\n", expectedAsset)
 			ok = false
-		} else {
-			fmt.Fprintf(os.Stderr, "OK:   workflow references asset %s\n", expectedAsset)
 		}
 	}
 

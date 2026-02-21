@@ -1,10 +1,11 @@
 ---
 # vdt-69n
 title: Add safety level tiers for nope starter rules
-status: ready
+status: scrapped
 type: feature
+priority: normal
 created_at: 2026-02-21T19:50:02Z
-updated_at: 2026-02-21T19:50:02Z
+updated_at: 2026-02-21T20:29:11Z
 ---
 
 nope currently has a flat list of starter rules. Add tiered presets so `jig nope init --level <tier>` generates appropriate rule sets:

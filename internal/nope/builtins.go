@@ -2,6 +2,7 @@ package nope
 
 import (
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -320,6 +321,159 @@ func checkScpExfil(args []Token) bool {
 		return false
 	}
 	return slices.ContainsFunc(sources[:len(sources)-1], isSensitiveFile)
+}
+
+// dangerousEnvVars are environment variable names that can hijack process or
+// runtime behavior (library injection, interpreter options, etc.).
+var dangerousEnvVars = map[string]bool{
+	// Library injection
+	"LD_PRELOAD":            true,
+	"LD_LIBRARY_PATH":       true,
+	"DYLD_INSERT_LIBRARIES": true,
+	"DYLD_LIBRARY_PATH":     true,
+	// Runtime hijack
+	"NODE_OPTIONS":  true,
+	"PYTHONPATH":    true,
+	"PYTHONSTARTUP": true,
+	"PERL5OPT":     true,
+	"PERL5LIB":     true,
+	"RUBYOPT":      true,
+	"RUBYLIB":      true,
+}
+
+// CheckEnvHijack returns true if the command sets a dangerous environment
+// variable in command position (e.g. LD_PRELOAD=/evil.so cmd), via env, or
+// via export.
+func CheckEnvHijack(input string) bool {
+	cmd := ExtractCommand(input)
+	if cmd == "" {
+		return false
+	}
+	tokens := ShellTokenize(cmd)
+
+	// Split into segments at pipe/chain operators and check each.
+	var segment []Token
+	check := func() bool {
+		unwrapped := SkipWrappers(segment)
+		if len(unwrapped) == 0 {
+			return false
+		}
+		base := filepath.Base(unwrapped[0].Value)
+
+		// Case 1: "export VAR=value"
+		if base == "export" {
+			for _, t := range unwrapped[1:] {
+				if t.Operator {
+					continue
+				}
+				if k, _, ok := strings.Cut(t.Value, "="); ok && dangerousEnvVars[k] {
+					return true
+				}
+			}
+			return false
+		}
+
+		// Case 2: "env VAR=value cmd" — env is already stripped by SkipWrappers,
+		// but the env var assignments before the command are also stripped.
+		// We need to check the original segment tokens for assignments.
+
+		// Case 3 (general): scan tokens before the command for KEY=value assignments.
+		// SkipWrappers strips env var assignments, so we look at the raw segment
+		// tokens for assignments that precede the actual command.
+		for _, t := range segment {
+			if t.Operator {
+				continue
+			}
+			// Tokens containing "=" are env var assignments (KEY=value).
+			// The Quoted flag may be set if the value part contains quotes
+			// (e.g., PERL5OPT=-e'system(...)'), but it's still an assignment.
+			if strings.Contains(t.Value, "=") {
+				if k, _, ok := strings.Cut(t.Value, "="); ok && dangerousEnvVars[k] {
+					return true
+				}
+				continue
+			}
+			// Non-assignment tokens: skip wrappers (env, sudo, etc.) and flags
+			b := filepath.Base(t.Value)
+			if b == "env" {
+				continue
+			}
+			if strings.HasPrefix(t.Value, "-") {
+				continue
+			}
+			// This is the actual command — stop scanning
+			break
+		}
+		return false
+	}
+
+	for _, t := range tokens {
+		if t.Operator && (t.Value == "|" || t.Value == "&&" || t.Value == "||" || t.Value == ";") {
+			if check() {
+				return true
+			}
+			segment = segment[:0]
+			continue
+		}
+		segment = append(segment, t)
+	}
+	return check()
+}
+
+// inlineSecretPatterns are compiled regexes that detect secrets embedded in
+// command text. Placeholder values (xxx, changeme, your_*, example, etc.) are
+// excluded to reduce false positives.
+var inlineSecretPatterns = func() []*regexp.Regexp {
+	raw := []string{
+		// AWS access key IDs (always 20 uppercase alphanumeric chars after AKIA)
+		`AKIA[0-9A-Z]{16}`,
+		// AWS secret access key assignments
+		`(?i)aws[_-]?secret[_-]?access[_-]?key\s*[=:]\s*['"]?[0-9a-zA-Z/+]{20,}`,
+		// GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_)
+		`gh[pousr]_[A-Za-z0-9_]{36,}`,
+		// GitHub fine-grained PATs
+		`github_pat_[A-Za-z0-9_]{22,}`,
+		// Generic api_key / secret_key / access_token assignments with real values
+		`(?i)(api[_-]?key|secret[_-]?key|access[_-]?token)\s*[=:]\s*['"]?[a-zA-Z0-9_/+\-]{16,}`,
+		// Password assignments with quoted values
+		`(?i)(password|passwd|pwd)\s*[=:]\s*['"][^'"]{2,}['"]`,
+	}
+	patterns := make([]*regexp.Regexp, len(raw))
+	for i, r := range raw {
+		patterns[i] = regexp.MustCompile(r)
+	}
+	return patterns
+}()
+
+// placeholderPattern matches common placeholder values that should not trigger
+// secret detection (e.g., YOUR_API_KEY, xxx, changeme, EXAMPLE).
+var placeholderPattern = regexp.MustCompile(
+	`(?i)^(x{3,}|your[_-]|example|changeme|replace[_-]?me|todo|fixme|insert[_-]|placeholder|test[_-]?key|dummy|sample|fake)`,
+)
+
+// CheckInlineSecrets returns true if the input contains what appears to be a
+// real secret value (API key, token, password) embedded in the command text.
+func CheckInlineSecrets(input string) bool {
+	cmd := ExtractCommand(input)
+	if cmd == "" {
+		return false
+	}
+	for _, re := range inlineSecretPatterns {
+		m := re.FindString(cmd)
+		if m == "" {
+			continue
+		}
+		// Extract the value portion (after = or : delimiter) to check for placeholders.
+		val := m
+		if idx := strings.IndexAny(m, "=:"); idx >= 0 {
+			val = strings.TrimLeft(m[idx+1:], " '\"")
+		}
+		if placeholderPattern.MatchString(val) {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 // CheckNetwork returns true if a network tool is found in command position.
