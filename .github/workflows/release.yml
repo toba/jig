@@ -52,7 +52,7 @@ jobs:
 
           cat > Formula/skill.rb << FORMULA
           class Skill < Formula
-            desc "Monitor upstream repositories for changes"
+            desc "Multi-tool CLI for upstream repo monitoring and Claude Code security guard"
             homepage "https://github.com/toba/skill"
             url "https://github.com/toba/skill/releases/download/${TAG}/skill_darwin_arm64.tar.gz"
             version "${VERSION}"

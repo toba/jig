@@ -30,17 +30,19 @@ Ask the user whether to:
    - Include affected issue IDs
 3. Run `git status` to confirm the commit succeeded
 4. If output contains "PUSH_AFTER_COMMIT":
-   a. Tag a version bump using `mise release:<level>` (see Version Bumps below)
+   a. Tag a version bump (see Version Bumps below)
    b. Run `git push && git push --tags`
    c. Run `todo sync` to sync issues to GitHub
 
 ## Version Bumps
 
-Every push includes a version bump. Choose the level based on the commit(s) being pushed:
+Every push includes a version bump. Determine the new tag by reading the latest `v*` tag with `git tag -l 'v*' | sort -V | tail -1`, then increment accordingly:
 
-- **patch** (`mise release:patch`): Bug fixes, docs, refactors, tests — no behavior change
-- **minor** (`mise release:minor`): New features, non-breaking additions, breaking changes while pre-1.0
-- **major** (`mise release:major`): Breaking changes (post-1.0 only)
+- **patch**: Bug fixes, docs, refactors, tests — no behavior change
+- **minor**: New features, non-breaking additions, breaking changes while pre-1.0
+- **major**: Breaking changes (post-1.0 only)
+
+Tag with `git tag v<new_version>`.
 
 Look at the conventional commit prefixes to decide:
 - `fix:`, `docs:`, `chore:`, `refactor:`, `test:` → **patch**
