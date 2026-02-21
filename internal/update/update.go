@@ -12,7 +12,7 @@ type migration struct {
 }
 
 var migrations = []migration{
-	{sectionKey: "nope", candidates: []string{".claude/.nope.yml", ".claude/.nope.yaml"}},
+	{sectionKey: "nope", candidates: []string{".claude/nope.yml", ".claude/nope.yaml"}},
 	{sectionKey: "todo", candidates: []string{".todo.yml", ".todo.yaml"}},
 }
 
@@ -52,7 +52,13 @@ func Run(tobaPath string) error {
 		return fmt.Errorf("commit command migration: %w", err)
 	}
 
-	if len(hits) == 0 && !upMigrated && !commitMigrated {
+	// Migrate legacy todo config (issues: + sync: → todo:).
+	todoMigrated, err := migrateTodoConfig(tobaPath)
+	if err != nil {
+		return fmt.Errorf("todo config migration: %w", err)
+	}
+
+	if len(hits) == 0 && !upMigrated && !commitMigrated && !todoMigrated {
 		fmt.Fprintln(os.Stderr, "update: no legacy config files found")
 		return nil
 	}

@@ -16,11 +16,11 @@ func TestRun(t *testing.T) {
 		wantStderr string // substring expected in stderr output
 	}{
 		{
-			name: "migrates .claude/.nope.yml into .toba.yaml and deletes legacy file",
+			name: "migrates .claude/nope.yml into .toba.yaml and deletes legacy file",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 				mkdir(t, filepath.Join(dir, ".claude"))
-				writeFile(t, filepath.Join(dir, ".claude/.nope.yml"), "nope:\n  rules:\n    - name: test\n")
+				writeFile(t, filepath.Join(dir, ".claude/nope.yml"), "nope:\n  rules:\n    - name: test\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
@@ -31,7 +31,7 @@ func TestRun(t *testing.T) {
 				if !strings.Contains(data, "- name: test") {
 					t.Error(".toba.yaml missing rule content")
 				}
-				assertRemoved(t, filepath.Join(dir, ".claude/.nope.yml"))
+				assertRemoved(t, filepath.Join(dir, ".claude/nope.yml"))
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestRun(t *testing.T) {
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 				mkdir(t, filepath.Join(dir, ".claude"))
-				writeFile(t, filepath.Join(dir, ".claude/.nope.yml"), "nope:\n  rules: []\n")
+				writeFile(t, filepath.Join(dir, ".claude/nope.yml"), "nope:\n  rules: []\n")
 				writeFile(t, filepath.Join(dir, ".todo.yml"), "todo:\n  sync: github\n")
 			},
 			check: func(t *testing.T, dir string) {
@@ -66,7 +66,7 @@ func TestRun(t *testing.T) {
 				if !strings.Contains(data, "todo:") {
 					t.Error(".toba.yaml missing todo section")
 				}
-				assertRemoved(t, filepath.Join(dir, ".claude/.nope.yml"))
+				assertRemoved(t, filepath.Join(dir, ".claude/nope.yml"))
 				assertRemoved(t, filepath.Join(dir, ".todo.yml"))
 			},
 		},
@@ -76,7 +76,7 @@ func TestRun(t *testing.T) {
 				t.Helper()
 				writeFile(t, filepath.Join(dir, ".toba.yaml"), "nope:\n  rules:\n    - name: existing\n")
 				mkdir(t, filepath.Join(dir, ".claude"))
-				writeFile(t, filepath.Join(dir, ".claude/.nope.yml"), "nope:\n  rules:\n    - name: legacy\n")
+				writeFile(t, filepath.Join(dir, ".claude/nope.yml"), "nope:\n  rules:\n    - name: legacy\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
@@ -85,8 +85,8 @@ func TestRun(t *testing.T) {
 					t.Error("legacy content should not have been merged")
 				}
 				// Legacy file should be preserved when skipped.
-				if _, err := os.Stat(filepath.Join(dir, ".claude/.nope.yml")); err != nil {
-					t.Error(".claude/.nope.yml should still exist when skipped")
+				if _, err := os.Stat(filepath.Join(dir, ".claude/nope.yml")); err != nil {
+					t.Error(".claude/nope.yml should still exist when skipped")
 				}
 			},
 		},
