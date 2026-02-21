@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T03:40:32Z
 updated_at: 2026-02-21T03:42:00Z
+sync:
+    github:
+        issue_number: "2"
+        synced_at: "2026-02-21T03:47:20Z"
 ---
 
 - [x] Create internal/commit/patterns.go with gitignore candidate patterns

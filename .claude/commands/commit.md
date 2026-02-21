@@ -11,7 +11,7 @@ This is an active codebase with multiple agents and people making changes concur
 
 ## Stage and Commit
 
-Run `./scripts/commit.sh $ARGUMENTS`
+Run `skill commit $ARGUMENTS`
 
 ### If script exits with code 2 (gitignore candidates found)
 
@@ -43,9 +43,3 @@ Every push includes a version bump. Determine the new tag by reading the latest 
 - **major**: Breaking changes (post-1.0 only)
 
 Tag with `git tag v<new_version>`.
-
-Look at the conventional commit prefixes to decide:
-- `fix:`, `docs:`, `chore:`, `refactor:`, `test:` → **patch**
-- `feat:` → **minor**
-- `feat!:` or any `!:` → **minor** (pre-1.0) / **major** (post-1.0)
-
