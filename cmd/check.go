@@ -14,16 +14,17 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var checkCmd = &cobra.Command{
-	Use:   "check [source]",
-	Short: "Fetch and display changes grouped by relevance",
-	Long:  "Check upstream repositories for changes since last review. Optionally filter to a specific source.",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runCheck,
+var reviewCmd = &cobra.Command{
+	Use:     "review [source]",
+	Aliases: []string{"check"},
+	Short:   "Review cited repositories for changes grouped by relevance",
+	Long:    "Review cited repositories for changes since last check. Optionally filter to a specific source.",
+	Args:    cobra.MaximumNArgs(1),
+	RunE:    runCheck,
 }
 
 func init() {
-	upstreamCmd.AddCommand(checkCmd)
+	citeCmd.AddCommand(reviewCmd)
 }
 
 type checkResult struct {
@@ -32,7 +33,7 @@ type checkResult struct {
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {
-	sources := cfg.Sources
+	sources := *cfg
 	if len(args) > 0 {
 		src := config.FindSource(cfg, args[0])
 		if src == nil {

@@ -11,24 +11,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// skillCandidates are paths to look for the PROJECT upstream skill.
+// skillCandidates are paths to look for the legacy PROJECT upstream skill.
 var skillCandidates = []string{
 	".claude/skills/upstream/SKILL.md",
 }
 
-// upstreamConfig mirrors config.Config for YAML generation.
-type upstreamConfig struct {
-	Sources []upstreamSource `yaml:"sources"`
-}
+// citationConfig mirrors config.Config for YAML generation during migration.
+type citationConfig = []citationSource
 
-type upstreamSource struct {
+type citationSource struct {
 	Repo            string       `yaml:"repo"`
 	Branch          string       `yaml:"branch"`
-	Relationship    string       `yaml:"relationship"`
 	Notes           string       `yaml:"notes,omitempty"`
 	LastCheckedSHA  string       `yaml:"last_checked_sha,omitempty"`
 	LastCheckedDate string       `yaml:"last_checked_date,omitempty"`
-	Paths           upstreamPath `yaml:"paths"`
+	Paths           citationPath `yaml:"paths"`
 }
 
 // markerEntry represents one repo's entry in last-checked.json.
@@ -37,16 +34,16 @@ type markerEntry struct {
 	LastCheckedDate string `json:"last_checked_date"`
 }
 
-type upstreamPath struct {
+type citationPath struct {
 	High   []string `yaml:"high,omitempty"`
 	Medium []string `yaml:"medium,omitempty"`
 	Low    []string `yaml:"low,omitempty"`
 }
 
-// migrateUpstreamSkill looks for a PROJECT upstream skill file, parses it,
-// and generates the upstream: section in .jig.yaml.
+// migrateCiteSkill looks for a legacy PROJECT upstream skill file, parses it,
+// and generates the citations: section in .jig.yaml.
 // Returns (migrated bool, source path, error).
-func migrateUpstreamSkill(jigPath string) (bool, string, error) {
+func migrateCiteSkill(jigPath string) (bool, string, error) {
 	// Find the skill file.
 	var skillPath string
 	var skillData []byte
@@ -63,15 +60,15 @@ func migrateUpstreamSkill(jigPath string) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if upstream: already exists in .jig.yaml.
+	// Check if citations: already exists in .jig.yaml.
 	existing, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
 	if err != nil && !os.IsNotExist(err) {
 		return false, "", fmt.Errorf("reading %s: %w", jigPath, err)
 	}
-	if sectionExists(splitLines(string(existing)), "upstream") {
+	if sectionExists(splitLines(string(existing)), "citations") {
 		// Section already exists, but still clean up the legacy skill directory.
 		cleanupSkillDir(skillPath)
-		fmt.Fprintf(os.Stderr, "update: skipped upstream — section already exists in %s\n", jigPath)
+		fmt.Fprintf(os.Stderr, "update: skipped citations — section already exists in %s\n", jigPath)
 		return false, skillPath, nil
 	}
 
@@ -100,10 +97,9 @@ func migrateUpstreamSkill(jigPath string) (bool, string, error) {
 	}
 
 	// Generate YAML.
-	cfg := upstreamConfig{Sources: sources}
-	yamlBytes, err := yaml.Marshal(map[string]upstreamConfig{"upstream": cfg})
+	yamlBytes, err := yaml.Marshal(map[string]citationConfig{"citations": sources})
 	if err != nil {
-		return false, skillPath, fmt.Errorf("generating upstream YAML: %w", err)
+		return false, skillPath, fmt.Errorf("generating citations YAML: %w", err)
 	}
 
 	// Append to .jig.yaml.
@@ -137,8 +133,8 @@ func cleanupSkillDir(skillPath string) {
 	}
 }
 
-// parseSkill extracts upstream source definitions from a SKILL.md file.
-func parseSkill(content string) ([]upstreamSource, error) {
+// parseSkill extracts citation source definitions from a legacy SKILL.md file.
+func parseSkill(content string) ([]citationSource, error) {
 	repos := parseRepoTable(content)
 	if len(repos) == 0 {
 		return nil, nil
@@ -146,13 +142,12 @@ func parseSkill(content string) ([]upstreamSource, error) {
 
 	pathsByRepo := parsePathTables(content)
 
-	var sources []upstreamSource
+	var sources []citationSource
 	for _, r := range repos {
-		s := upstreamSource{
-			Repo:         r.repo,
-			Branch:       r.branch,
-			Relationship: normalizeRelationship(r.relationship),
-			Notes:        r.notes,
+		s := citationSource{
+			Repo:   r.repo,
+			Branch: r.branch,
+			Notes:  r.notes,
 		}
 		if p, ok := pathsByRepo[r.repo]; ok {
 			s.Paths = p
@@ -163,10 +158,9 @@ func parseSkill(content string) ([]upstreamSource, error) {
 }
 
 type repoEntry struct {
-	repo         string
-	branch       string
-	relationship string
-	notes        string
+	repo   string
+	branch string
+	notes  string
 }
 
 var backtickRe = regexp.MustCompile("`([^`]+)`")
@@ -215,8 +209,6 @@ func parseRepoTable(content string) []repoEntry {
 			branch = b
 		}
 
-		relationship := strings.TrimSpace(cells[2])
-
 		var notes string
 		if len(cells) >= 4 {
 			notes = strings.TrimSpace(cells[3])
@@ -225,10 +217,9 @@ func parseRepoTable(content string) []repoEntry {
 		}
 
 		entries = append(entries, repoEntry{
-			repo:         repo,
-			branch:       branch,
-			relationship: relationship,
-			notes:        notes,
+			repo:   repo,
+			branch: branch,
+			notes:  notes,
 		})
 	}
 	return entries
@@ -236,8 +227,8 @@ func parseRepoTable(content string) []repoEntry {
 
 // parsePathTables parses per-repo path classification tables.
 // They appear under headings like "#### owner/repo" or "#### owner/repo (description)".
-func parsePathTables(content string) map[string]upstreamPath {
-	result := make(map[string]upstreamPath)
+func parsePathTables(content string) map[string]citationPath {
+	result := make(map[string]citationPath)
 	lines := strings.Split(content, "\n")
 
 	for i := range len(lines) {
@@ -257,7 +248,7 @@ func parsePathTables(content string) map[string]upstreamPath {
 		}
 
 		// Find the path table following this heading.
-		var paths upstreamPath
+		var paths citationPath
 		foundTable := false
 		for j := i + 1; j < len(lines); j++ {
 			tl := strings.TrimSpace(lines[j])
@@ -355,17 +346,3 @@ func extractRepoFromHeading(heading string) string {
 	return m
 }
 
-// normalizeRelationship maps human-readable relationship labels to short keys.
-func normalizeRelationship(rel string) string {
-	lower := strings.ToLower(rel)
-	switch {
-	case strings.Contains(lower, "derived"):
-		return "derived"
-	case strings.Contains(lower, "dependency"):
-		return "dependency"
-	case strings.Contains(lower, "watch"):
-		return "watch"
-	default:
-		return strings.ToLower(strings.TrimSpace(rel))
-	}
-}

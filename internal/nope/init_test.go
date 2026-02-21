@@ -89,7 +89,7 @@ func TestRunInit(t *testing.T) {
 		{
 			name: "appends nope section to existing .jig.yaml",
 			setup: func(t *testing.T, dir string) {
-				if err := os.WriteFile(filepath.Join(dir, ".jig.yaml"), []byte("upstream:\n  sources: []\n"), 0o644); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, ".jig.yaml"), []byte("citations:\n  sources: []\n"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -100,8 +100,8 @@ func TestRunInit(t *testing.T) {
 					t.Fatal(err)
 				}
 				content := string(data)
-				if !strings.Contains(content, "upstream:") {
-					t.Error("existing upstream section was lost")
+				if !strings.Contains(content, "citations:") {
+					t.Error("existing citations section was lost")
 				}
 				if !strings.Contains(content, "nope:") {
 					t.Error("nope section not appended")

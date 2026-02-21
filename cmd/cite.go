@@ -7,13 +7,13 @@ import (
 	"github.com/toba/jig/internal/config"
 )
 
-var upstreamCmd = &cobra.Command{
-	Use:   "upstream",
-	Short: "Monitor upstream repositories for changes",
-	Long:  "Commands for checking upstream repos, classifying changes by relevance, and tracking what you've reviewed.",
+var citeCmd = &cobra.Command{
+	Use:   "cite",
+	Short: "Monitor cited repositories for changes",
+	Long:  "Commands for checking cited repos, classifying changes by relevance, and tracking what you've reviewed.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// init doesn't need config loaded.
-		if cmd.Name() == "init" {
+		if cmd.Name() == "init" || cmd.Name() == "add" {
 			return nil
 		}
 		path := configPath()
@@ -28,5 +28,5 @@ var upstreamCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(upstreamCmd)
+	rootCmd.AddCommand(citeCmd)
 }

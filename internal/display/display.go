@@ -14,7 +14,6 @@ import (
 var (
 	repoStyle    = lipgloss.NewStyle().Bold(true)
 	branchStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))   // cyan
-	relStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))   // gray
 	highStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true) // red
 	mediumStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true) // yellow
 	lowStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))   // gray
@@ -27,7 +26,7 @@ var (
 	sepStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
-// SourceResult holds the check results for a single upstream source.
+// SourceResult holds the check results for a single cited source.
 type SourceResult struct {
 	Source  config.Source   `json:"source"`
 	Commits []CommitResult `json:"commits"`
@@ -57,10 +56,9 @@ func RenderText(w io.Writer, results []SourceResult) {
 			fmt.Fprintln(w)
 		}
 
-		// Header: repo  branch  (relationship)
+		// Header: repo  branch
 		header := repoStyle.Render(r.Source.Repo) + "  " +
-			branchStyle.Render(r.Source.Branch) + "  " +
-			relStyle.Render("("+r.Source.Relationship+")")
+			branchStyle.Render(r.Source.Branch)
 		fmt.Fprintln(w, header)
 
 		if r.Source.Notes != "" {

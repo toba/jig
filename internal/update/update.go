@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type migration struct {
@@ -37,13 +39,20 @@ func Run(jigPath string) error {
 		}
 	}
 
-	// Migrate upstream skill (parsed from SKILL.md, not a verbatim copy).
-	upMigrated, upPath, err := migrateUpstreamSkill(jigPath)
+	// Rename legacy upstream: key to citations: in .jig.yaml.
+	if renamed, err := migrateUpstreamKey(jigPath); err != nil {
+		return fmt.Errorf("upstream key migration: %w", err)
+	} else if renamed {
+		fmt.Fprintf(os.Stderr, "update: renamed upstream → citations in %s\n", jigPath)
+	}
+
+	// Migrate legacy upstream skill (parsed from SKILL.md, not a verbatim copy).
+	upMigrated, upPath, err := migrateCiteSkill(jigPath)
 	if err != nil {
-		return fmt.Errorf("upstream skill migration: %w", err)
+		return fmt.Errorf("cite skill migration: %w", err)
 	}
 	if upMigrated {
-		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (upstream section)\n", upPath, jigPath)
+		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (citations section)\n", upPath, jigPath)
 	}
 
 	// Migrate commit command (scripts/commit.sh → jig commit).
@@ -119,6 +128,55 @@ func Run(jigPath string) error {
 	}
 
 	return nil
+}
+
+// migrateUpstreamKey renames an existing "upstream:" key to "citations:" in .jig.yaml
+// using the yaml.v3 Node API to preserve formatting. Returns true if renamed.
+func migrateUpstreamKey(jigPath string) (bool, error) {
+	data, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("reading %s: %w", jigPath, err)
+	}
+
+	lines := splitLines(string(data))
+	if !sectionExists(lines, "upstream") {
+		return false, nil
+	}
+	// Already has citations: — don't double-migrate.
+	if sectionExists(lines, "citations") {
+		return false, nil
+	}
+
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return false, fmt.Errorf("parsing %s: %w", jigPath, err)
+	}
+
+	mapping := &root
+	if mapping.Kind == yaml.DocumentNode && len(mapping.Content) > 0 {
+		mapping = mapping.Content[0]
+	}
+	if mapping.Kind != yaml.MappingNode {
+		return false, nil
+	}
+
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if mapping.Content[i].Value == "upstream" {
+			mapping.Content[i].Value = "citations"
+			out, err := yaml.Marshal(&root)
+			if err != nil {
+				return false, fmt.Errorf("marshaling %s: %w", jigPath, err)
+			}
+			if err := os.WriteFile(jigPath, out, 0o644); err != nil {
+				return false, fmt.Errorf("writing %s: %w", jigPath, err)
+			}
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // wrapInSection wraps content under sectionKey if it doesn't already start with it.

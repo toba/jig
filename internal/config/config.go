@@ -8,16 +8,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the upstream section of .jig.yaml.
-type Config struct {
-	Sources []Source `yaml:"sources"`
-}
+// Config represents the citations section of .jig.yaml (a list of sources).
+type Config []Source
 
-// Source represents a single upstream repository to monitor.
+// Source represents a single cited repository to monitor.
 type Source struct {
 	Repo            string    `yaml:"repo"`
 	Branch          string    `yaml:"branch"`
-	Relationship    string    `yaml:"relationship"`
 	Notes           string    `yaml:"notes,omitempty"`
 	LastCheckedSHA  string    `yaml:"last_checked_sha,omitempty"`
 	LastCheckedDate string    `yaml:"last_checked_date,omitempty"`
@@ -54,27 +51,27 @@ func LoadDocument(path string) (*Document, error) {
 	return &Document{Path: path, Root: &root}, nil
 }
 
-// Load reads a .jig.yaml file and extracts only the upstream section.
+// Load reads a .jig.yaml file and extracts only the citations section.
 func Load(path string) (*Document, *Config, error) {
 	doc, err := LoadDocument(path)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	upstreamNode := FindKey(doc.Root, "upstream")
-	if upstreamNode == nil {
-		return nil, nil, fmt.Errorf("no 'upstream' section found in %s", path)
+	citationsNode := FindKey(doc.Root, "citations")
+	if citationsNode == nil {
+		return nil, nil, fmt.Errorf("no 'citations' section found in %s", path)
 	}
 
 	var cfg Config
-	if err := upstreamNode.Decode(&cfg); err != nil {
-		return nil, nil, fmt.Errorf("decoding upstream section: %w", err)
+	if err := citationsNode.Decode(&cfg); err != nil {
+		return nil, nil, fmt.Errorf("decoding citations section: %w", err)
 	}
 
 	// Default branch to "main" if not set.
-	for i := range cfg.Sources {
-		if cfg.Sources[i].Branch == "" {
-			cfg.Sources[i].Branch = "main"
+	for i := range cfg {
+		if cfg[i].Branch == "" {
+			cfg[i].Branch = "main"
 		}
 	}
 
@@ -84,14 +81,14 @@ func Load(path string) (*Document, *Config, error) {
 // Save writes the updated config back to the document, preserving other sections.
 func Save(doc *Document, cfg *Config) error {
 	// Encode the updated config into a new YAML node.
-	var newUpstream yaml.Node
-	if err := newUpstream.Encode(cfg); err != nil {
-		return fmt.Errorf("encoding upstream config: %w", err)
+	var newCitations yaml.Node
+	if err := newCitations.Encode(cfg); err != nil {
+		return fmt.Errorf("encoding citations config: %w", err)
 	}
 
-	// Find and replace the upstream value node in the document tree.
-	if !ReplaceKey(doc.Root, "upstream", &newUpstream) {
-		return fmt.Errorf("could not find 'upstream' key in document to update")
+	// Find and replace the citations value node in the document tree.
+	if !ReplaceKey(doc.Root, "citations", &newCitations) {
+		return fmt.Errorf("could not find 'citations' key in document to update")
 	}
 
 	data, err := marshalNode(doc.Root)
@@ -109,18 +106,18 @@ func Save(doc *Document, cfg *Config) error {
 // FindSource returns a pointer to the source matching the given repo name.
 // It matches against the full "owner/name" or just "name".
 func FindSource(cfg *Config, name string) *Source {
-	for i := range cfg.Sources {
-		if cfg.Sources[i].Repo == name {
-			return &cfg.Sources[i]
+	for i := range *cfg {
+		if (*cfg)[i].Repo == name {
+			return &(*cfg)[i]
 		}
 	}
 	// Try matching just the repo name part (after /).
-	for i := range cfg.Sources {
-		repo := cfg.Sources[i].Repo
+	for i := range *cfg {
+		repo := (*cfg)[i].Repo
 		for j := len(repo) - 1; j >= 0; j-- {
 			if repo[j] == '/' {
 				if repo[j+1:] == name {
-					return &cfg.Sources[i]
+					return &(*cfg)[i]
 				}
 				break
 			}
@@ -167,6 +164,40 @@ func ReplaceKey(root *yaml.Node, key string, value *yaml.Node) bool {
 		}
 	}
 	return false
+}
+
+// AppendSource adds a new source to the citations section of the document.
+// If no citations section exists, one is created.
+func AppendSource(doc *Document, src Source) error {
+	root := doc.Root
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		root = root.Content[0]
+	}
+	if root.Kind != yaml.MappingNode {
+		return fmt.Errorf("expected mapping node at document root")
+	}
+
+	citationsNode := FindKey(doc.Root, "citations")
+	if citationsNode == nil {
+		// Create citations key and empty sequence.
+		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "citations", Tag: "!!str"}
+		citationsNode = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		root.Content = append(root.Content, keyNode, citationsNode)
+	}
+
+	// Encode the new source as a YAML node and append it.
+	var srcNode yaml.Node
+	if err := srcNode.Encode(&src); err != nil {
+		return fmt.Errorf("encoding source: %w", err)
+	}
+	citationsNode.Content = append(citationsNode.Content, &srcNode)
+
+	data, err := marshalNode(doc.Root)
+	if err != nil {
+		return fmt.Errorf("marshaling document: %w", err)
+	}
+
+	return os.WriteFile(doc.Path, data, 0o644)
 }
 
 // marshalNode marshals a yaml.Node back to bytes.

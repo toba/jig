@@ -67,9 +67,6 @@ func TestParseSkill(t *testing.T) {
 	if s.Branch != "main" {
 		t.Errorf("branch = %q, want main", s.Branch)
 	}
-	if s.Relationship != "derived" {
-		t.Errorf("relationship = %q, want derived", s.Relationship)
-	}
 	if s.Notes != "src/widgets/" {
 		t.Errorf("notes = %q, want src/widgets/", s.Notes)
 	}
@@ -83,19 +80,15 @@ func TestParseSkill(t *testing.T) {
 		t.Errorf("low = %v, want [.github/** README.md]", s.Paths.Low)
 	}
 
-	// Second source — dependency relationship.
+	// Second source.
 	s = sources[1]
-	if s.Relationship != "dependency" {
-		t.Errorf("relationship = %q, want dependency", s.Relationship)
-	}
 	if s.Branch != "develop" {
 		t.Errorf("branch = %q, want develop", s.Branch)
 	}
 
-	// Third source — watch relationship.
-	s = sources[2]
-	if s.Relationship != "watch" {
-		t.Errorf("relationship = %q, want watch", s.Relationship)
+	// Third source.
+	if sources[2].Repo != "other/tools" {
+		t.Errorf("repo = %q, want other/tools", sources[2].Repo)
 	}
 }
 
@@ -143,31 +136,14 @@ func TestParsePathTables(t *testing.T) {
 	}
 }
 
-func TestNormalizeRelationship(t *testing.T) {
-	tests := []struct {
-		in, want string
-	}{
-		{"Derived code", "derived"},
-		{"Dependency (pinned 1.2.3)", "dependency"},
-		{"Feature watch", "watch"},
-		{"something else", "something else"},
-	}
-	for _, tc := range tests {
-		got := normalizeRelationship(tc.in)
-		if got != tc.want {
-			t.Errorf("normalizeRelationship(%q) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}
-
-func TestMigrateUpstreamSkill(t *testing.T) {
+func TestMigrateCiteSkill(t *testing.T) {
 	tests := []struct {
 		name  string
 		setup func(t *testing.T, dir string)
 		check func(t *testing.T, dir string)
 	}{
 		{
-			name: "parses SKILL.md and creates upstream section",
+			name: "parses SKILL.md and creates citations section",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 				mkdir(t, filepath.Join(dir, ".claude/skills/upstream"))
@@ -176,8 +152,8 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			check: func(t *testing.T, dir string) {
 				t.Helper()
 				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
-				if !strings.Contains(data, "upstream:") {
-					t.Error("missing upstream: section")
+				if !strings.Contains(data, "citations:") {
+					t.Error("missing citations: section")
 				}
 				if !strings.Contains(data, "acme/widgets") {
 					t.Error("missing acme/widgets repo")
@@ -187,12 +163,6 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 				}
 				if !strings.Contains(data, "src/**/*.go") {
 					t.Error("missing path pattern")
-				}
-				if !strings.Contains(data, "relationship: derived") {
-					t.Error("missing derived relationship")
-				}
-				if !strings.Contains(data, "relationship: dependency") {
-					t.Error("missing dependency relationship")
 				}
 				// Skill directory should be cleaned up.
 				if _, err := os.Stat(filepath.Join(dir, ".claude/skills/upstream")); !os.IsNotExist(err) {
@@ -245,17 +215,17 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			},
 		},
 		{
-			name: "skips when upstream section already exists",
+			name: "skips when citations section already exists",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".jig.yaml"), "upstream:\n  sources: []\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "citations: []\n")
 				mkdir(t, filepath.Join(dir, ".claude/skills/upstream"))
 				writeFile(t, filepath.Join(dir, ".claude/skills/upstream/SKILL.md"), sampleSkill)
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
 				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
-				if data != "upstream:\n  sources: []\n" {
+				if data != "citations: []\n" {
 					t.Error(".jig.yaml should not have been modified")
 				}
 				// Skill directory should be cleaned up even when migration is skipped.
@@ -265,7 +235,7 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			},
 		},
 		{
-			name: "no skill file — no error, no upstream section",
+			name: "no skill file — no error, no citations section",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 			},
@@ -277,7 +247,7 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			},
 		},
 		{
-			name: "appends upstream to existing .jig.yaml content",
+			name: "appends citations to existing .jig.yaml content",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 				writeFile(t, filepath.Join(dir, ".jig.yaml"), "nope:\n  rules: []\n")
@@ -290,8 +260,8 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 				if !strings.Contains(data, "nope:") {
 					t.Error("existing nope section was lost")
 				}
-				if !strings.Contains(data, "upstream:") {
-					t.Error("upstream section not appended")
+				if !strings.Contains(data, "citations:") {
+					t.Error("citations section not appended")
 				}
 			},
 		},
@@ -317,9 +287,9 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			tc.setup(t, dir)
 
 			jigPath := filepath.Join(dir, ".jig.yaml")
-			migrated, _, mErr := migrateUpstreamSkill(jigPath)
+			migrated, _, mErr := migrateCiteSkill(jigPath)
 			if mErr != nil {
-				t.Fatalf("migrateUpstreamSkill: %v", mErr)
+				t.Fatalf("migrateCiteSkill: %v", mErr)
 			}
 			_ = migrated
 			tc.check(t, dir)

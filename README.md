@@ -4,7 +4,7 @@
 
 My dad was a cabinet maker. His perpetually sawdusted workshop was dotted with contrivances that I sometimes mistook for junk (some stories there!) that actually were thoughtful, if scrappy, efforts to make some task simpler or safer.
 
-Jig is a multi-tool CLI that bundles upstream repo monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
+Jig is a multi-tool CLI that bundles citation monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
 
 - [Install](#install)
 - [Configuration](#configuration)
@@ -32,9 +32,10 @@ Jig is a multi-tool CLI that bundles upstream repo monitoring, a file-based issu
       - **`doctor`**: validate issue links and references
       - **`sync`**: sync issues to external trackers
       - **`refry`**: migrate from [beans](https://github.com/hmans/beans) format
-   - **[`upstream`](#upstream)**: monitor upstream repositories for changes
-      - **`init`**: add starter upstream section to `.jig.yaml`
-      - **`check`**: fetch and display changes, update `last_checked_sha`
+   - **[`cite`](#cite)**: monitor cited repositories for changes
+      - **`init`**: add starter citations section to `.jig.yaml`
+      - **`add`**: add the given URL to citations
+      - **`review`**: fetch and display changes, update `last_checked_sha`
    - **[`nope`](#nope)**: Claude Code `PreToolUse` guard (reads JSON from stdin, exits 0 or 2)
       - **`init`**: scaffold nope rules in `.jig.yaml` and hook in `.claude/settings.json`
       - **`doctor`**: validate nope configuration
@@ -202,30 +203,32 @@ todo:
       repo: "owner/repo"
 ```
 
-## Upstream
+## Cite
 
-Track what's changed in repos you care about. `check` fetches changes and updates the marker in one step.
+This arose as a new pattern (to me) while working with agents. The agent makes it easy to fork a repo and make a bunch of updates. Great. But it was quickly obvious that these changes didn't constitute a proper contribution back to the source. There were too many changes, too specific to my use-case. I also began combining sources, further impeding formal contribution.
+
+The `cite` subcommand addresses a couple things. It will help check your license for proper attribution even when there's not a formal dependency or fork in place. And it can be run to notify you of changes within those cited sources that might be important to factor into your own project.
 
 ```bash
-jig upstream init
-jig upstream check
+jig cite init
+jig cite add
+jig cite review
+jig cite doctor
 ```
 
-Configure which files matter in `.jig.yaml`:
+Configure cited sources in `.jig.yaml`:
 
 ```yaml
-upstream:
-  sources:
-    - repo: owner/repo
-      branch: main
-      relationship: derived
-      paths:
-        high:
-          - "src/**/*.go"
-        medium:
-          - "go.mod"
-        low:
-          - "README.md"
+citations:
+  - repo: owner/repo
+    branch: main
+    paths:
+      high:
+        - "src/**/*.go"
+      medium:
+        - "go.mod"
+      low:
+        - "README.md"
 ```
 
 Files are classified as high, medium, or low relevance based on glob patterns. `**` works — we use [doublestar](https://github.com/bmatcuk/doublestar) because Go's `path.Match` stubbornly refuses to support it.

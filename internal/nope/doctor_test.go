@@ -27,7 +27,7 @@ func TestRunDoctor(t *testing.T) {
 		{
 			name: "no nope section",
 			setup: func(t *testing.T, dir string) {
-				setupTobaYAML(t, dir, []byte("upstream:\n  sources: []\n"))
+				setupTobaYAML(t, dir, []byte("citations:\n  sources: []\n"))
 			},
 			wantExit: 1,
 		},

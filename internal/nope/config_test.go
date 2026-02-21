@@ -112,7 +112,7 @@ func TestLoadConfigInvalidYAML(t *testing.T) {
 func TestLoadConfigNoNopeSection(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".jig.yaml")
-	if err := os.WriteFile(path, []byte("upstream:\n  sources: []\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("citations:\n  sources: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	_, err := LoadConfig(path)

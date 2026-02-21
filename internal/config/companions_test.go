@@ -6,8 +6,7 @@ import (
 )
 
 func TestLoadCompanions(t *testing.T) {
-	yaml := `upstream:
-  sources: []
+	yaml := `citations: []
 companions:
   zed: https://github.com/toba/zed-skill.git
   brew: https://github.com/toba/homebrew-skill.git
@@ -31,8 +30,7 @@ companions:
 }
 
 func TestLoadCompanionsPartial(t *testing.T) {
-	yaml := `upstream:
-  sources: []
+	yaml := `citations: []
 companions:
   brew: https://github.com/toba/homebrew-skill.git
 `
@@ -55,8 +53,7 @@ companions:
 }
 
 func TestLoadCompanionsMissing(t *testing.T) {
-	yaml := `upstream:
-  sources: []
+	yaml := `citations: []
 `
 	path := writeTempConfig(t, yaml)
 	doc, _, err := Load(path)
@@ -71,8 +68,7 @@ func TestLoadCompanionsMissing(t *testing.T) {
 }
 
 func TestSaveCompanionsNew(t *testing.T) {
-	yaml := `upstream:
-  sources: []
+	yaml := `citations: []
 `
 	path := writeTempConfig(t, yaml)
 	doc, _, err := Load(path)
@@ -110,14 +106,13 @@ func TestSaveCompanionsNew(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(data)
-	if !contains(content, "upstream:") {
-		t.Error("upstream section was lost")
+	if !contains(content, "citations:") {
+		t.Error("citations section was lost")
 	}
 }
 
 func TestSaveCompanionsUpdate(t *testing.T) {
-	yaml := `upstream:
-  sources: []
+	yaml := `citations: []
 companions:
   brew: https://github.com/toba/homebrew-old.git
 `

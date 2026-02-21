@@ -11,23 +11,21 @@ const testYAML = `# Some other tool's config
 other_tool:
   setting: value
 
-upstream:
-  sources:
-    - repo: owner/name
-      branch: main
-      relationship: derived
-      notes: "Derived into Sources/Tools/"
-      last_checked_sha: abc123
-      last_checked_date: "2026-02-18T22:08:27Z"
-      paths:
-        high:
-          - "Sources/**/*.swift"
-        medium:
-          - "Package.swift"
-          - "Tests/**"
-        low:
-          - ".github/**"
-          - "README.md"
+citations:
+  - repo: owner/name
+    branch: main
+    notes: "Derived into Sources/Tools/"
+    last_checked_sha: abc123
+    last_checked_date: "2026-02-18T22:08:27Z"
+    paths:
+      high:
+        - "Sources/**/*.swift"
+      medium:
+        - "Package.swift"
+        - "Tests/**"
+      low:
+        - ".github/**"
+        - "README.md"
 
 # Another section
 another:
@@ -51,19 +49,16 @@ func TestLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(cfg.Sources) != 1 {
-		t.Fatalf("expected 1 source, got %d", len(cfg.Sources))
+	if len(*cfg) != 1 {
+		t.Fatalf("expected 1 source, got %d", len(*cfg))
 	}
 
-	src := cfg.Sources[0]
+	src := (*cfg)[0]
 	if src.Repo != "owner/name" {
 		t.Errorf("repo = %q, want owner/name", src.Repo)
 	}
 	if src.Branch != "main" {
 		t.Errorf("branch = %q, want main", src.Branch)
-	}
-	if src.Relationship != "derived" {
-		t.Errorf("relationship = %q, want derived", src.Relationship)
 	}
 	if src.LastCheckedSHA != "abc123" {
 		t.Errorf("last_checked_sha = %q, want abc123", src.LastCheckedSHA)
@@ -80,21 +75,19 @@ func TestLoad(t *testing.T) {
 }
 
 func TestLoadDefaultBranch(t *testing.T) {
-	yaml := `upstream:
-  sources:
-    - repo: owner/name
-      relationship: watch
-      paths:
-        high:
-          - "*.go"
+	yaml := `citations:
+  - repo: owner/name
+    paths:
+      high:
+        - "*.go"
 `
 	path := writeTempConfig(t, yaml)
 	_, cfg, err := Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Sources[0].Branch != "main" {
-		t.Errorf("default branch = %q, want main", cfg.Sources[0].Branch)
+	if (*cfg)[0].Branch != "main" {
+		t.Errorf("default branch = %q, want main", (*cfg)[0].Branch)
 	}
 }
 
@@ -106,8 +99,8 @@ func TestSavePreservesOtherSections(t *testing.T) {
 	}
 
 	// Modify the config.
-	cfg.Sources[0].LastCheckedSHA = "def456"
-	cfg.Sources[0].LastCheckedDate = "2026-02-20T10:00:00Z"
+	(*cfg)[0].LastCheckedSHA = "def456"
+	(*cfg)[0].LastCheckedDate = "2026-02-20T10:00:00Z"
 
 	if err := Save(doc, cfg); err != nil {
 		t.Fatal(err)
@@ -138,17 +131,100 @@ func TestSavePreservesOtherSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg2.Sources[0].LastCheckedSHA != "def456" {
-		t.Errorf("reloaded SHA = %q, want def456", cfg2.Sources[0].LastCheckedSHA)
+	if (*cfg2)[0].LastCheckedSHA != "def456" {
+		t.Errorf("reloaded SHA = %q, want def456", (*cfg2)[0].LastCheckedSHA)
+	}
+}
+
+func TestAppendSource(t *testing.T) {
+	path := writeTempConfig(t, testYAML)
+	doc, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newSrc := Source{
+		Repo:   "other/project",
+		Branch: "main",
+		Notes:  "A new project",
+		Paths: PathDefs{
+			High: []string{"**/*.go"},
+			Low:  []string{"README.md"},
+		},
+	}
+
+	if err := AppendSource(doc, newSrc); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-load and verify.
+	_, cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(*cfg) != 2 {
+		t.Fatalf("expected 2 sources, got %d", len(*cfg))
+	}
+	if (*cfg)[1].Repo != "other/project" {
+		t.Errorf("repo = %q, want other/project", (*cfg)[1].Repo)
+	}
+	if (*cfg)[1].Notes != "A new project" {
+		t.Errorf("notes = %q, want A new project", (*cfg)[1].Notes)
+	}
+
+	// Verify other sections preserved.
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "other_tool") {
+		t.Error("other_tool section was lost")
+	}
+	if !strings.Contains(content, "another") {
+		t.Error("another section was lost")
+	}
+}
+
+func TestAppendSourceNoExistingCitations(t *testing.T) {
+	yaml := `other_tool:
+  setting: value
+`
+	path := writeTempConfig(t, yaml)
+	doc, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newSrc := Source{
+		Repo:   "new/repo",
+		Branch: "main",
+		Paths: PathDefs{
+			High: []string{"**/*.rs"},
+		},
+	}
+
+	if err := AppendSource(doc, newSrc); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-load and verify.
+	_, cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(*cfg) != 1 {
+		t.Fatalf("expected 1 source, got %d", len(*cfg))
+	}
+	if (*cfg)[0].Repo != "new/repo" {
+		t.Errorf("repo = %q, want new/repo", (*cfg)[0].Repo)
 	}
 }
 
 func TestFindSource(t *testing.T) {
 	cfg := &Config{
-		Sources: []Source{
-			{Repo: "owner/name", Branch: "main"},
-			{Repo: "other/repo", Branch: "master"},
-		},
+		{Repo: "owner/name", Branch: "main"},
+		{Repo: "other/repo", Branch: "master"},
 	}
 
 	// Full match.

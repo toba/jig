@@ -53,6 +53,26 @@ type File struct {
 	Status   string `json:"status"`
 }
 
+// RepoInfo represents repository metadata from the GitHub API.
+type RepoInfo struct {
+	DefaultBranch string `json:"default_branch"`
+	Description   string `json:"description"`
+	Language      string `json:"language"`
+}
+
+// TreeResponse represents the response from the git trees API endpoint.
+type TreeResponse struct {
+	SHA       string      `json:"sha"`
+	Tree      []TreeEntry `json:"tree"`
+	Truncated bool        `json:"truncated"`
+}
+
+// TreeEntry represents a single entry in a git tree.
+type TreeEntry struct {
+	Path string `json:"path"`
+	Type string `json:"type"` // "blob" or "tree"
+}
+
 func firstLine(s string) string {
 	for i, c := range s {
 		if c == '\n' {

@@ -154,12 +154,12 @@ func TestRun(t *testing.T) {
 			name: "no legacy files found — no error, .jig.yaml unchanged",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".jig.yaml"), "upstream:\n  sources: []\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "citations:\n  sources: []\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
 				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
-				if data != "upstream:\n  sources: []\n" {
+				if data != "citations:\n  sources: []\n" {
 					t.Error(".jig.yaml should be unchanged")
 				}
 			},
@@ -182,17 +182,17 @@ func TestRun(t *testing.T) {
 			name: "preserves existing sections during append",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".jig.yaml"), "upstream:\n  sources:\n    - repo: foo/bar\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "citations:\n  sources:\n    - repo: foo/bar\n")
 				writeFile(t, filepath.Join(dir, ".todo.yml"), "todo:\n  sync: github\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
 				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
-				if !strings.Contains(data, "upstream:") {
-					t.Error("existing upstream section was lost")
+				if !strings.Contains(data, "citations:") {
+					t.Error("existing citations section was lost")
 				}
 				if !strings.Contains(data, "foo/bar") {
-					t.Error("existing upstream content was lost")
+					t.Error("existing citations content was lost")
 				}
 				if !strings.Contains(data, "todo:") {
 					t.Error("todo section not appended")

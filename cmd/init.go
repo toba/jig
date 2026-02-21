@@ -8,32 +8,30 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const starterConfig = `upstream:
-  sources:
-    - repo: owner/repo
-      branch: main
-      relationship: derived    # derived | dependency | watch
-      notes: ""
-      paths:
-        high:
-          - "src/**/*.go"
-        medium:
-          - "go.mod"
-          - "go.sum"
-        low:
-          - ".github/**"
-          - "README.md"
+const starterConfig = `citations:
+  - repo: owner/repo
+    branch: main
+    notes: ""
+    paths:
+      high:
+        - "src/**/*.go"
+      medium:
+        - "go.mod"
+        - "go.sum"
+      low:
+        - ".github/**"
+        - "README.md"
 `
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Add starter upstream section to .jig.yaml",
-	Long:  "Create or update .jig.yaml with a starter upstream configuration section.",
+	Short: "Add starter citations section to .jig.yaml",
+	Long:  "Create or update .jig.yaml with a starter citations configuration section.",
 	RunE:  runInit,
 }
 
 func init() {
-	upstreamCmd.AddCommand(initCmd)
+	citeCmd.AddCommand(initCmd)
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -41,14 +39,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Check if file already exists.
 	if data, err := os.ReadFile(path); err == nil {
-		// File exists — check if it already has an upstream section.
+		// File exists — check if it already has a citations section.
 		content := string(data)
 		if len(content) > 0 {
-			// Simple check for existing upstream section.
-			if slices.Contains(splitLines(content), "upstream:") {
-				return fmt.Errorf("%s already contains an 'upstream' section", path)
+			// Simple check for existing citations section.
+			if slices.Contains(splitLines(content), "citations:") {
+				return fmt.Errorf("%s already contains a 'citations' section", path)
 			}
-			// Append upstream section to existing file.
+			// Append citations section to existing file.
 			if content[len(content)-1] != '\n' {
 				content += "\n"
 			}
@@ -56,7 +54,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 				return fmt.Errorf("updating %s: %w", path, err)
 			}
-			fmt.Printf("added upstream section to %s\n", path)
+			fmt.Printf("added citations section to %s\n", path)
 			return nil
 		}
 	}

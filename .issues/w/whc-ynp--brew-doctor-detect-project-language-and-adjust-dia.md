@@ -1,11 +1,11 @@
 ---
 # whc-ynp
 title: 'brew doctor: detect project language and adjust diagnostics'
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-21T06:19:26Z
-updated_at: 2026-02-21T16:32:35Z
+updated_at: 2026-02-21T19:19:47Z
 sync:
     github:
         issue_number: "4"
@@ -59,3 +59,9 @@ FAIL: workflow does not reference asset xc-mcp_darwin_arm64.tar.gz
 ```
 
 The actual release workflow uses `swift build -c release`, a custom tar archive (`xc-mcp-v0.19.0-arm64.tar.gz`), and a `.sha256` sidecar — all valid, but doctor flags them as failures.
+
+
+
+## Summary of Changes
+
+Duplicate of pt4-51i which implemented the language detection. Marking as completed.

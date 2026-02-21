@@ -6,67 +6,56 @@
   "type": "object",
   "additionalProperties": true,
   "properties": {
-    "upstream": {
-      "type": "object",
-      "description": "Upstream repository monitoring configuration.",
-      "additionalProperties": false,
-      "properties": {
-        "sources": {
-          "type": "array",
-          "description": "List of upstream repositories to monitor.",
-          "items": {
+    "citations": {
+      "type": "array",
+      "description": "List of cited repositories to monitor.",
+      "items": {
+        "type": "object",
+        "required": ["repo"],
+        "additionalProperties": false,
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "GitHub repository in owner/repo format.",
+            "pattern": "^[^/]+/[^/]+$"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Git branch to track.",
+            "default": "main"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Free-form description of this cited source."
+          },
+          "last_checked_sha": {
+            "type": "string",
+            "description": "SHA of the last checked commit (auto-updated by jig check)."
+          },
+          "last_checked_date": {
+            "type": "string",
+            "description": "RFC 3339 date of the last check (auto-updated by jig check).",
+            "format": "date-time"
+          },
+          "paths": {
             "type": "object",
-            "required": ["repo", "relationship"],
+            "description": "Glob patterns grouped by priority level.",
             "additionalProperties": false,
             "properties": {
-              "repo": {
-                "type": "string",
-                "description": "GitHub repository in owner/repo format.",
-                "pattern": "^[^/]+/[^/]+$"
+              "high": {
+                "type": "array",
+                "description": "High-priority file glob patterns.",
+                "items": { "type": "string" }
               },
-              "branch": {
-                "type": "string",
-                "description": "Git branch to track.",
-                "default": "main"
+              "medium": {
+                "type": "array",
+                "description": "Medium-priority file glob patterns.",
+                "items": { "type": "string" }
               },
-              "relationship": {
-                "type": "string",
-                "description": "Relationship to the upstream repo (e.g. watch, derived, fork)."
-              },
-              "notes": {
-                "type": "string",
-                "description": "Free-form description of this upstream source."
-              },
-              "last_checked_sha": {
-                "type": "string",
-                "description": "SHA of the last checked commit (auto-updated by jig check)."
-              },
-              "last_checked_date": {
-                "type": "string",
-                "description": "RFC 3339 date of the last check (auto-updated by jig check).",
-                "format": "date-time"
-              },
-              "paths": {
-                "type": "object",
-                "description": "Glob patterns grouped by priority level.",
-                "additionalProperties": false,
-                "properties": {
-                  "high": {
-                    "type": "array",
-                    "description": "High-priority file glob patterns.",
-                    "items": { "type": "string" }
-                  },
-                  "medium": {
-                    "type": "array",
-                    "description": "Medium-priority file glob patterns.",
-                    "items": { "type": "string" }
-                  },
-                  "low": {
-                    "type": "array",
-                    "description": "Low-priority file glob patterns.",
-                    "items": { "type": "string" }
-                  }
-                }
+              "low": {
+                "type": "array",
+                "description": "Low-priority file glob patterns.",
+                "items": { "type": "string" }
               }
             }
           }
