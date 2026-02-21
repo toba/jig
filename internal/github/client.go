@@ -16,6 +16,7 @@ type Client interface {
 	GetHeadSHA(repo, branch string) (string, error)
 	GetRepo(repo string) (*RepoInfo, error)
 	GetTree(repo, branch string) (*TreeResponse, error)
+	GetLicense(repo string) (*LicenseInfo, error)
 }
 
 // GHClient implements Client by shelling out to the gh CLI.
@@ -117,6 +118,18 @@ func (c *GHClient) GetTree(repo, branch string) (*TreeResponse, error) {
 		return nil, fmt.Errorf("parsing tree response: %w", err)
 	}
 	return &resp, nil
+}
+
+func (c *GHClient) GetLicense(repo string) (*LicenseInfo, error) {
+	out, err := gh("api", fmt.Sprintf("repos/%s/license", repo))
+	if err != nil {
+		return nil, err
+	}
+	var info LicenseInfo
+	if err := json.Unmarshal(out, &info); err != nil {
+		return nil, fmt.Errorf("parsing license info: %w", err)
+	}
+	return &info, nil
 }
 
 func gh(args ...string) ([]byte, error) {

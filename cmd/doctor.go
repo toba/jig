@@ -26,6 +26,7 @@ var doctorCmd = &cobra.Command{
 			{"nope", nopeDoctorCmd},
 			{"brew", brewDoctorCmd},
 			{"zed", zedDoctorCmd},
+			{"cite", citeDoctorCmd},
 		}
 
 		var failed int

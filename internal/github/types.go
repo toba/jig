@@ -73,6 +73,15 @@ type TreeEntry struct {
 	Type string `json:"type"` // "blob" or "tree"
 }
 
+// LicenseInfo represents license metadata from the GitHub API.
+type LicenseInfo struct {
+	License struct {
+		Key    string `json:"key"`
+		Name   string `json:"name"`
+		SPDXID string `json:"spdx_id"`
+	} `json:"license"`
+}
+
 func firstLine(s string) string {
 	for i, c := range s {
 		if c == '\n' {
