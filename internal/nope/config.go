@@ -18,6 +18,7 @@ const (
 	BuiltinSubshell       = "subshell"
 	BuiltinCredentialRead = "credential-read"
 	BuiltinNetwork        = "network"
+	BuiltinExfiltration   = "exfiltration"
 )
 
 // NopeConfig is the nope section of .jig.yaml.
@@ -170,6 +171,8 @@ func CompileRules(defs []RuleDef) ([]CompiledRule, error) {
 				check = CheckCredentialRead
 			case BuiltinNetwork:
 				check = CheckNetwork
+			case BuiltinExfiltration:
+				check = CheckExfiltration
 			default:
 				return nil, fmt.Errorf("rule %q: unknown builtin %q", d.Name, d.Builtin)
 			}

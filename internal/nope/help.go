@@ -44,6 +44,7 @@ BUILTINS
   subshell          Block subshell expansion ($(), backticks) outside quotes.
   credential-read   Block reading sensitive files (.env, .pem, .key, SSH keys, etc.).
   network           Block network tools (curl, wget, ssh, etc.) in command position.
+  exfiltration      Block uploading sensitive files over the network (curl -d @.env, scp keys, /dev/tcp).
 
 TOOL SCOPING
   By default, rules only match the Bash tool. Use the tools field to guard

@@ -2,6 +2,7 @@ package nope
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -126,6 +127,199 @@ var networkTools = map[string]bool{
 	"ssh":  true,
 	"scp":  true,
 	"sftp": true,
+}
+
+// CheckExfiltration returns true if a command exfiltrates sensitive files over
+// the network. It detects: curl/wget uploading sensitive files, scp of sensitive
+// files, bash /dev/tcp or /dev/udp socket writes, and piped credential access
+// to network tools.
+func CheckExfiltration(input string) bool {
+	cmd := ExtractCommand(input)
+	if cmd == "" {
+		return false
+	}
+	tokens := ShellTokenize(cmd)
+
+	// Split into segments at pipe/chain operators.
+	type segment struct {
+		tokens []Token
+		kind   string // "pipe", "chain", or "first"
+	}
+	var segments []segment
+	var cur []Token
+	var curKind string = "first"
+
+	for _, t := range tokens {
+		if t.Operator && (t.Value == "|" || t.Value == "&&" || t.Value == "||" || t.Value == ";") {
+			segments = append(segments, segment{cur, curKind})
+			if t.Value == "|" {
+				curKind = "pipe"
+			} else {
+				curKind = "chain"
+			}
+			cur = nil
+			continue
+		}
+		cur = append(cur, t)
+	}
+	segments = append(segments, segment{cur, curKind})
+
+	for i, seg := range segments {
+		unwrapped := SkipWrappers(seg.tokens)
+		if len(unwrapped) == 0 {
+			continue
+		}
+		base := filepath.Base(unwrapped[0].Value)
+
+		// (a) curl uploading sensitive files
+		if base == "curl" {
+			if checkCurlExfil(unwrapped[1:]) {
+				return true
+			}
+		}
+
+		// (b) wget --post-file with sensitive file
+		if base == "wget" {
+			if checkWgetExfil(unwrapped[1:]) {
+				return true
+			}
+		}
+
+		// (c) scp of sensitive files
+		if base == "scp" {
+			if checkScpExfil(unwrapped[1:]) {
+				return true
+			}
+		}
+
+		// (d) /dev/tcp or /dev/udp tokens
+		for _, t := range seg.tokens {
+			if !t.Operator && (strings.Contains(t.Value, "/dev/tcp/") || strings.Contains(t.Value, "/dev/udp/")) {
+				return true
+			}
+		}
+
+		// (e) Piped credential access to network tool:
+		// Previous segment has a sensitive file, and this segment (after pipe)
+		// starts with a network tool.
+		if seg.kind == "pipe" && i > 0 && networkTools[base] {
+			prev := segments[i-1]
+			for _, t := range prev.tokens {
+				if !t.Operator && isSensitiveFile(t.Value) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// checkCurlExfil checks curl arguments for sensitive file uploads.
+func checkCurlExfil(args []Token) bool {
+	for i, t := range args {
+		if t.Operator {
+			continue
+		}
+		v := t.Value
+
+		// --data @file, --data-binary @file, --data-raw @file, --data-urlencode @file, -d @file
+		if (v == "-d" || v == "--data" || v == "--data-binary" || v == "--data-raw" || v == "--data-urlencode") &&
+			i+1 < len(args) && !args[i+1].Operator {
+			next := args[i+1].Value
+			if strings.HasPrefix(next, "@") && isSensitiveFile(next[1:]) {
+				return true
+			}
+		}
+		// -d@file (combined form)
+		if strings.HasPrefix(v, "-d@") && isSensitiveFile(v[3:]) {
+			return true
+		}
+		// --data=@file etc.
+		for _, prefix := range []string{"--data=@", "--data-binary=@", "--data-raw=@", "--data-urlencode=@"} {
+			if strings.HasPrefix(v, prefix) && isSensitiveFile(v[len(prefix):]) {
+				return true
+			}
+		}
+
+		// -F key=@file, --form key=@file
+		if (v == "-F" || v == "--form") && i+1 < len(args) && !args[i+1].Operator {
+			next := args[i+1].Value
+			if _, after, ok := strings.Cut(next, "=@"); ok {
+				if isSensitiveFile(after) {
+					return true
+				}
+			}
+		}
+
+		// --upload-file file, -T file
+		if (v == "--upload-file" || v == "-T") && i+1 < len(args) && !args[i+1].Operator {
+			if isSensitiveFile(args[i+1].Value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// checkWgetExfil checks wget arguments for sensitive file uploads.
+func checkWgetExfil(args []Token) bool {
+	for i, t := range args {
+		if t.Operator {
+			continue
+		}
+		v := t.Value
+
+		// --post-file=<file>
+		if strings.HasPrefix(v, "--post-file=") && isSensitiveFile(v[len("--post-file="):]) {
+			return true
+		}
+		// --post-file <file>
+		if v == "--post-file" && i+1 < len(args) && !args[i+1].Operator {
+			if isSensitiveFile(args[i+1].Value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// checkScpExfil checks scp arguments for sensitive file transfers.
+// Flags with values (-P, -i, -F, -o, etc.) are skipped. Remaining non-flag
+// tokens are checked; the last one is the destination (user@host:...) and is
+// skipped, while earlier ones are source files.
+func checkScpExfil(args []Token) bool {
+	// scp flags that take a following argument value
+	scpValueFlags := map[string]bool{
+		"-P": true, "-i": true, "-F": true, "-o": true,
+		"-c": true, "-l": true, "-S": true, "-J": true,
+	}
+
+	var sources []string
+	skip := false
+	for _, t := range args {
+		if t.Operator {
+			continue
+		}
+		if skip {
+			skip = false
+			continue
+		}
+		if scpValueFlags[t.Value] {
+			skip = true
+			continue
+		}
+		// Skip flag-only args (e.g. -r, -v, -q)
+		if strings.HasPrefix(t.Value, "-") {
+			continue
+		}
+		sources = append(sources, t.Value)
+	}
+	// Last non-flag token is the destination; check everything before it
+	if len(sources) < 2 {
+		return false
+	}
+	return slices.ContainsFunc(sources[:len(sources)-1], isSensitiveFile)
 }
 
 // CheckNetwork returns true if a network tool is found in command position.

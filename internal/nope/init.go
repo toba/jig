@@ -63,6 +63,12 @@ var StarterConfig = `nope:
         direct network tool usage (curl, wget, ssh, etc.) not
         allowed — only user should make network requests.
 
+    - name: data-exfiltration
+      builtin: exfiltration
+      message: >-
+        data exfiltration detected — uploading sensitive files
+        (credentials, keys, .env) over the network is not allowed.
+
     # Non-Bash tool rules
     - name: no-write-env
       pattern: '"file_path"\s*:\s*"[^"]*\.env"'

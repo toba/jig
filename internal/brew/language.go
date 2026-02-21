@@ -40,6 +40,19 @@ func (l Language) AssetName(tool, tag string) string {
 	}
 }
 
+// AssetNameTemplate returns the expected asset filename pattern with
+// ${{ github.ref_name }} in place of the tag, for matching in workflows.
+func (l Language) AssetNameTemplate(tool string) string {
+	switch l.Name {
+	case "swift":
+		return fmt.Sprintf("%s-${{ github.ref_name }}-arm64.tar.gz", tool)
+	case "rust":
+		return fmt.Sprintf("%s-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz", tool)
+	default: // go — goreleaser handles naming, no tag in asset name
+		return fmt.Sprintf("%s_darwin_arm64.tar.gz", tool)
+	}
+}
+
 // ChecksumMode returns "checksums.txt" for Go (goreleaser convention) or
 // "sidecar" for languages that produce per-asset .sha256 files.
 func (l Language) ChecksumMode() string {
