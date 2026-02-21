@@ -1,0 +1,98 @@
+nope:
+  rules:
+    - name: multiline-commands
+      builtin: multiline
+      message: "multiline bash commands break permission matching (glob * can't match newlines). Reformat as a single line and use the description parameter for comments."
+
+    - name: git-checkout-switch
+      pattern: 'git\s+(checkout|switch)\s+'
+      message: "git checkout/switch not allowed - branch changes require user approval"
+
+    - name: git-commit-push
+      pattern: 'git\s+(commit|push)'
+      message: "git commit/push not allowed - only user should commit"
+
+    - name: dropdb
+      pattern: 'dropdb'
+      message: "dropdb is not allowed"
+
+    - name: prod-migrations
+      pattern: 'prod-query.*migrations'
+      message: "running migrations against production is not allowed"
+
+    - name: psql-apply-migrations
+      pattern: 'psql.*-f.*migrations/'
+      message: "applying migrations directly is not allowed - use migrate command"
+
+    - name: psql-dml-ddl
+      pattern: 'psql.*(UPDATE|INSERT|DELETE|ALTER|DROP|CREATE|TRUNCATE|SET\s+search_path)'
+      message: "DML/DDL via psql not allowed - use migrations for data changes"
+
+    - name: pgmigrate
+      pattern: 'pgmigrate'
+      message: "pgmigrate not allowed - user must run migrations manually"
+
+    - name: prod-query-ddl-dml
+      pattern: 'prod-query.*(ALTER|INSERT|UPDATE|DELETE|DROP|CREATE|TRUNCATE)'
+      message: "DDL/DML against production is not allowed - use migrations"
+
+    - name: beans-archive
+      pattern: 'beans\s+archive'
+      message: "beans archive not allowed - user must archive beans manually"
+
+    - name: bq-mutations
+      pattern: 'bq\s+(update|mk|rm|cp)\s+'
+      message: "bq infrastructure mutations not allowed - use tofu for dataset/table changes"
+
+    - name: gcloud-mutations
+      pattern: 'gcloud\s+(run|compute|sql|iam|services|projects|scheduler)\s+(create|delete|update|deploy|set-iam-policy|add-iam-policy-binding|remove-iam-policy-binding)'
+      message: "gcloud infrastructure mutations not allowed - use tofu"
+
+    - name: tofu-apply-destroy
+      pattern: 'tofu\s+(apply|destroy|import)'
+      message: "tofu apply/destroy/import not allowed - user must run infrastructure changes"
+
+    - name: curl-bearer
+      pattern: 'curl.*Authorization.*Bearer'
+      message: "direct API calls with bearer tokens not allowed - use Go client (handles token caching)"
+
+    - name: curl-pms-apis
+      pattern: 'curl.*(open-api\.guesty\.com|api\.hostaway\.com|api\.pricelabs\.co|api\.featherpms\.com)'
+      message: "direct curl to PMS APIs not allowed - use Go client (handles token caching)"
+
+    - name: psql-oauth-tokens
+      pattern: 'psql.*oauth_tokens'
+      message: "direct oauth_tokens access not allowed - Go client manages token caching"
+
+    - name: deploy-sh
+      pattern: 'deploy\.sh'
+      message: "deploy.sh not allowed - only user should deploy"
+
+    - name: pipe-commands
+      builtin: pipe
+      message: "piped commands not allowed - run commands separately"
+
+    - name: chained-commands
+      builtin: chained
+      message: "chained commands (&&, ||, ;) not allowed - run commands separately"
+
+    - name: redirect-output
+      builtin: redirect
+      message: "output redirection not allowed - use tee or write to file directly"
+
+    - name: subshell-expansion
+      builtin: subshell
+      message: "subshell expansion ($(), backticks) not allowed - run commands separately"
+
+    - name: credential-read
+      builtin: credential-read
+      message: "reading credential/secret files not allowed"
+
+    - name: network-access
+      builtin: network
+      message: "direct network tool usage not allowed - use approved API clients"
+
+    - name: no-write-env
+      pattern: '"file_path"\s*:\s*"[^"]*\.env"'
+      tools: ["Write", "Edit"]
+      message: "writing to .env files not allowed"

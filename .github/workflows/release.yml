@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+
+          ASSET="skill_darwin_arm64.tar.gz"
+          SHA=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt -O - \
+            | grep "$ASSET" | awk '{print $1}')
+
+          if [ -z "$SHA" ]; then
+            echo "ERROR: Could not extract SHA256 for $ASSET"
+            exit 1
+          fi
+
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/toba/homebrew-skill.git" tap
+          cd tap
+
+          cat > Formula/skill.rb << FORMULA
+          class Skill < Formula
+            desc "Monitor upstream repositories for changes"
+            homepage "https://github.com/toba/skill"
+            url "https://github.com/toba/skill/releases/download/${TAG}/skill_darwin_arm64.tar.gz"
+            version "${VERSION}"
+            sha256 "${SHA}"
+            license "Apache-2.0"
+
+            depends_on :macos
+            depends_on arch: :arm64
+
+            def install
+              bin.install "skill"
+            end
+
+            test do
+              assert_match "skill", shell_output("#{bin}/skill version")
+            end
+          end
+          FORMULA
+
+          sed -i 's/^          //' Formula/skill.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/skill.rb
+          git commit -m "bump to ${VERSION}"
+          git push

@@ -1,0 +1,3 @@
+upstream
+dist/
+.claude/settings.local.json
