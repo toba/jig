@@ -5,6 +5,8 @@ An agent multi-tool for little things.
 ## Commands
 
 - **`skill`**
+   - **`commit`**: stage changes, check for gitignore candidates, signal push intent
+   - **`doctor`**: run all doctor checks (brew, zed, nope)
    - **`update`**: migrate legacy config files into `.toba.yaml`
    - **`version`**: print version info
    - **`upstream`**: monitor upstream repositories for changes
@@ -150,16 +152,6 @@ skill zed init --ext toba/gozer --languages "CSS" --tag v1.0.0 --repo toba/go-cs
 Use `--dry-run` to preview all generated files without creating anything. Use `--json` for machine-readable output.
 
 **After running**, add an `EXTENSION_PAT` secret to the source repo — a GitHub PAT with Contents write access to the extension repo. Also run `cargo generate-lockfile` in the extension repo to create the initial `Cargo.lock`.
-
-## Zed Doctor
-
-Validates the full Zed extension companion chain is healthy: config, remote repos, scaffolding files, release assets, workflow wiring, and secrets.
-
-```bash
-skill zed doctor
-```
-
-Reads `companions.zed` from `.toba.yaml` and the source repo from `gh`. Checks: extension repo exists on GitHub, extension.toml/Cargo.toml/bump-version.sh/bump-version.yml present in it, source repo has releases with platform assets (darwin/linux), local release.yml has a `sync-extension` job referencing the correct extension repo and `EXTENSION_PAT`, and .goreleaser.yaml exists.
 
 ## Configuration
 
