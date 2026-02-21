@@ -26,7 +26,7 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 1. companions.brew configured
 	if opts.Tap == "" {
-		fmt.Fprintf(os.Stderr, "FAIL: companions.brew not configured in .toba.yaml\n")
+		fmt.Fprintf(os.Stderr, "FAIL: companions.brew not configured in .jig.yaml\n")
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "OK:   companions.brew configured: %s\n", opts.Tap)

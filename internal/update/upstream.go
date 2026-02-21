@@ -44,9 +44,9 @@ type upstreamPath struct {
 }
 
 // migrateUpstreamSkill looks for a PROJECT upstream skill file, parses it,
-// and generates the upstream: section in .toba.yaml.
+// and generates the upstream: section in .jig.yaml.
 // Returns (migrated bool, source path, error).
-func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
+func migrateUpstreamSkill(jigPath string) (bool, string, error) {
 	// Find the skill file.
 	var skillPath string
 	var skillData []byte
@@ -63,15 +63,15 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if upstream: already exists in .toba.yaml.
-	existing, err := os.ReadFile(tobaPath) //nolint:gosec // path from caller
+	// Check if upstream: already exists in .jig.yaml.
+	existing, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
 	if err != nil && !os.IsNotExist(err) {
-		return false, "", fmt.Errorf("reading %s: %w", tobaPath, err)
+		return false, "", fmt.Errorf("reading %s: %w", jigPath, err)
 	}
 	if sectionExists(splitLines(string(existing)), "upstream") {
 		// Section already exists, but still clean up the legacy skill directory.
 		cleanupSkillDir(skillPath)
-		fmt.Fprintf(os.Stderr, "update: skipped upstream — section already exists in %s\n", tobaPath)
+		fmt.Fprintf(os.Stderr, "update: skipped upstream — section already exists in %s\n", jigPath)
 		return false, skillPath, nil
 	}
 
@@ -106,7 +106,7 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 		return false, skillPath, fmt.Errorf("generating upstream YAML: %w", err)
 	}
 
-	// Append to .toba.yaml.
+	// Append to .jig.yaml.
 	tobaContent := string(existing)
 	if tobaContent != "" && !strings.HasSuffix(tobaContent, "\n\n") {
 		if !strings.HasSuffix(tobaContent, "\n") {
@@ -116,8 +116,8 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 	}
 	tobaContent += string(yamlBytes)
 
-	if err := os.WriteFile(tobaPath, []byte(tobaContent), 0o644); err != nil {
-		return false, skillPath, fmt.Errorf("writing %s: %w", tobaPath, err)
+	if err := os.WriteFile(jigPath, []byte(tobaContent), 0o644); err != nil {
+		return false, skillPath, fmt.Errorf("writing %s: %w", jigPath, err)
 	}
 
 	cleanupSkillDir(skillPath)

@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-21T16:49:47Z
 updated_at: 2026-02-21T16:52:32Z
+sync:
+    github:
+        issue_number: "5"
+        synced_at: "2026-02-21T16:53:27Z"
 ---
 
 Rename Go module github.com/toba/skill → github.com/toba/jig, binary ja → jig, update all references across codebase.
@@ -25,7 +29,7 @@ Renamed project from skill/ja to jig:
 - Binary: ja → jig (.goreleaser.yaml, cmd/root.go Use field)
 - Hook command: ja nope → jig nope, with ja nope added to legacy migration chain
 - Release workflow: updated asset names, formula, tap repo references
-- Config: .toba.yaml repo and companions updated
+- Config: .jig.yaml repo and companions updated
 - Schema:  and descriptions updated
 - Docs: README.md and CLAUDE.md fully updated
 - Tests: all assertions updated to expect jig

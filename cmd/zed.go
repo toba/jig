@@ -17,7 +17,7 @@ func init() {
 	rootCmd.AddCommand(zedCmd)
 }
 
-// extFromCompanions reads the companions.zed git URL from .toba.yaml
+// extFromCompanions reads the companions.zed git URL from .jig.yaml
 // and extracts the "owner/repo" identifier. Returns "" on any failure.
 func extFromCompanions(cfgPath string) string {
 	doc, err := config.LoadDocument(cfgPath)
@@ -33,7 +33,7 @@ func extFromCompanions(cfgPath string) string {
 
 // resolveExt determines the extension repo using (in order):
 //  1. explicit --ext flag
-//  2. companions.zed from .toba.yaml
+//  2. companions.zed from .jig.yaml
 func resolveExt(flag, cfgPath string) (string, error) {
 	if flag != "" {
 		return flag, nil

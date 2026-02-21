@@ -8,7 +8,7 @@ import (
 
 func setupTobaYAML(t *testing.T, dir string, content []byte) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, ".toba.yaml"), content, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".jig.yaml"), content, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

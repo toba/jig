@@ -27,8 +27,8 @@ const starterConfig = `upstream:
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Add starter upstream section to .toba.yaml",
-	Long:  "Create or update .toba.yaml with a starter upstream configuration section.",
+	Short: "Add starter upstream section to .jig.yaml",
+	Long:  "Create or update .jig.yaml with a starter upstream configuration section.",
 	RunE:  runInit,
 }
 

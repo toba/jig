@@ -32,7 +32,7 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 1. companions.zed configured
 	if opts.Ext == "" {
-		fmt.Fprintf(os.Stderr, "FAIL: companions.zed not configured in .toba.yaml\n")
+		fmt.Fprintf(os.Stderr, "FAIL: companions.zed not configured in .jig.yaml\n")
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "OK:   companions.zed configured: %s\n", opts.Ext)

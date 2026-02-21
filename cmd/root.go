@@ -26,7 +26,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgPath, "config", "", "path to config file (default .toba.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgPath, "config", "", "path to config file (default .jig.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "output as JSON")
 }
 
@@ -44,5 +44,5 @@ func configPath() string {
 	if cfgPath != "" {
 		return cfgPath
 	}
-	return ".toba.yaml"
+	return ".jig.yaml"
 }

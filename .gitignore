@@ -2,3 +2,4 @@ upstream
 dist/
 .claude/settings.local.json
 skill
+jig

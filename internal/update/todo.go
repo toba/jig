@@ -8,18 +8,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// migrateTodoConfig detects the legacy todo format in .toba.yaml where
+// migrateTodoConfig detects the legacy todo format in .jig.yaml where
 // "issues:" and "sync:" are top-level keys, and restructures them under
 // a "todo:" key with "issues:" renamed to its inner fields and "sync:"
 // nested inside "todo:".
 // Returns (migrated bool, error).
-func migrateTodoConfig(tobaPath string) (bool, error) {
-	data, err := os.ReadFile(tobaPath) //nolint:gosec // path from caller
+func migrateTodoConfig(jigPath string) (bool, error) {
+	data, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("reading %s: %w", tobaPath, err)
+		return false, fmt.Errorf("reading %s: %w", jigPath, err)
 	}
 
 	lines := splitLines(string(data))
@@ -37,7 +37,7 @@ func migrateTodoConfig(tobaPath string) (bool, error) {
 	// Parse into a generic map to extract the legacy keys.
 	var raw yaml.Node
 	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return false, fmt.Errorf("parsing %s: %w", tobaPath, err)
+		return false, fmt.Errorf("parsing %s: %w", jigPath, err)
 	}
 	if raw.Kind != yaml.DocumentNode || len(raw.Content) == 0 {
 		return false, nil
@@ -90,7 +90,7 @@ func migrateTodoConfig(tobaPath string) (bool, error) {
 	doc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{newMapping}}
 	out, err := yaml.Marshal(doc)
 	if err != nil {
-		return false, fmt.Errorf("marshaling %s: %w", tobaPath, err)
+		return false, fmt.Errorf("marshaling %s: %w", jigPath, err)
 	}
 
 	// Ensure trailing newline.
@@ -99,10 +99,10 @@ func migrateTodoConfig(tobaPath string) (bool, error) {
 		result += "\n"
 	}
 
-	if err := os.WriteFile(tobaPath, []byte(result), 0o644); err != nil {
-		return false, fmt.Errorf("writing %s: %w", tobaPath, err)
+	if err := os.WriteFile(jigPath, []byte(result), 0o644); err != nil {
+		return false, fmt.Errorf("writing %s: %w", jigPath, err)
 	}
 
-	fmt.Fprintf(os.Stderr, "update: restructured issues/sync → todo section in %s\n", tobaPath)
+	fmt.Fprintf(os.Stderr, "update: restructured issues/sync → todo section in %s\n", jigPath)
 	return true, nil
 }

@@ -7,7 +7,7 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Migrate legacy config files into .toba.yaml",
+	Short: "Migrate legacy config files into .jig.yaml",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return update.Run(configPath())
 	},

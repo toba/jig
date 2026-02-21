@@ -8,7 +8,7 @@ import (
 	"slices"
 )
 
-// StarterConfig is the default nope rules written to .toba.yaml.
+// StarterConfig is the default nope rules written to .jig.yaml.
 var StarterConfig = `nope:
   rules:
     - name: multiline-commands
@@ -94,37 +94,37 @@ var hookEntry = map[string]any{
 	},
 }
 
-// RunInit scaffolds the nope section in .toba.yaml and the hook in .claude/settings.json.
+// RunInit scaffolds the nope section in .jig.yaml and the hook in .claude/settings.json.
 func RunInit() int {
-	tobaPath := ".toba.yaml"
+	jigPath := ".jig.yaml"
 	claudeDir := ".claude"
 	settingsPath := filepath.Join(claudeDir, "settings.json")
 
-	// Write nope section to .toba.yaml
-	if data, err := os.ReadFile(tobaPath); err == nil {
+	// Write nope section to .jig.yaml
+	if data, err := os.ReadFile(jigPath); err == nil {
 		// File exists — check if it already has a nope section.
 		content := string(data)
 		if hasNopeSection(content) {
-			fmt.Fprintf(os.Stderr, "nope init: %s already contains a 'nope' section, skipping\n", tobaPath)
+			fmt.Fprintf(os.Stderr, "nope init: %s already contains a 'nope' section, skipping\n", jigPath)
 		} else {
 			// Append nope section.
 			if len(content) > 0 && content[len(content)-1] != '\n' {
 				content += "\n"
 			}
 			content += "\n" + StarterConfig
-			if err := os.WriteFile(tobaPath, []byte(content), 0o644); err != nil {
-				fmt.Fprintf(os.Stderr, "nope init: write %s: %v\n", tobaPath, err)
+			if err := os.WriteFile(jigPath, []byte(content), 0o644); err != nil {
+				fmt.Fprintf(os.Stderr, "nope init: write %s: %v\n", jigPath, err)
 				return 1
 			}
-			fmt.Fprintf(os.Stderr, "nope init: added nope section to %s\n", tobaPath)
+			fmt.Fprintf(os.Stderr, "nope init: added nope section to %s\n", jigPath)
 		}
 	} else {
 		// Create new file.
-		if err := os.WriteFile(tobaPath, []byte(StarterConfig), 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "nope init: write %s: %v\n", tobaPath, err)
+		if err := os.WriteFile(jigPath, []byte(StarterConfig), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "nope init: write %s: %v\n", jigPath, err)
 			return 1
 		}
-		fmt.Fprintf(os.Stderr, "nope init: created %s\n", tobaPath)
+		fmt.Fprintf(os.Stderr, "nope init: created %s\n", jigPath)
 	}
 
 	// Write or merge settings.json

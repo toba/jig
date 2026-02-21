@@ -168,7 +168,7 @@ func init() {
 	rootCmd.AddCommand(commitCmd)
 }
 
-// hasTodoSync checks whether .toba.yaml has a todo.sync section.
+// hasTodoSync checks whether .jig.yaml has a todo.sync section.
 func hasTodoSync(path string) bool {
 	doc, err := config.LoadDocument(path)
 	if err != nil {

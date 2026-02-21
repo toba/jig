@@ -16,8 +16,8 @@ var migrations = []migration{
 	{sectionKey: "todo", candidates: []string{".todo.yml", ".todo.yaml"}},
 }
 
-// Run discovers legacy config files and merges them into tobaPath.
-func Run(tobaPath string) error {
+// Run discovers legacy config files and merges them into jigPath.
+func Run(jigPath string) error {
 	type found struct {
 		migration
 		path    string
@@ -38,22 +38,22 @@ func Run(tobaPath string) error {
 	}
 
 	// Migrate upstream skill (parsed from SKILL.md, not a verbatim copy).
-	upMigrated, upPath, err := migrateUpstreamSkill(tobaPath)
+	upMigrated, upPath, err := migrateUpstreamSkill(jigPath)
 	if err != nil {
 		return fmt.Errorf("upstream skill migration: %w", err)
 	}
 	if upMigrated {
-		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (upstream section)\n", upPath, tobaPath)
+		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (upstream section)\n", upPath, jigPath)
 	}
 
 	// Migrate commit command (scripts/commit.sh → jig commit).
-	commitMigrated, err := migrateCommitCommand(tobaPath)
+	commitMigrated, err := migrateCommitCommand(jigPath)
 	if err != nil {
 		return fmt.Errorf("commit command migration: %w", err)
 	}
 
 	// Migrate legacy todo config (issues: + sync: → todo:).
-	todoMigrated, err := migrateTodoConfig(tobaPath)
+	todoMigrated, err := migrateTodoConfig(jigPath)
 	if err != nil {
 		return fmt.Errorf("todo config migration: %w", err)
 	}
@@ -67,10 +67,10 @@ func Run(tobaPath string) error {
 		return nil
 	}
 
-	// Read existing .toba.yaml (may have been updated by upstream migration).
-	existing, err := os.ReadFile(tobaPath) //nolint:gosec // path from caller
+	// Read existing .jig.yaml (may have been updated by upstream migration).
+	existing, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("reading %s: %w", tobaPath, err)
+		return fmt.Errorf("reading %s: %w", jigPath, err)
 	}
 	tobaContent := string(existing)
 
@@ -79,7 +79,7 @@ func Run(tobaPath string) error {
 
 	for _, h := range hits {
 		if sectionExists(lines, h.sectionKey) {
-			fmt.Fprintf(os.Stderr, "update: skipped %s — section already exists in %s\n", h.sectionKey, tobaPath)
+			fmt.Fprintf(os.Stderr, "update: skipped %s — section already exists in %s\n", h.sectionKey, jigPath)
 			continue
 		}
 		migrated = append(migrated, h)
@@ -105,9 +105,9 @@ func Run(tobaPath string) error {
 		}
 	}
 
-	// Write .toba.yaml.
-	if err := os.WriteFile(tobaPath, []byte(tobaContent), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", tobaPath, err)
+	// Write .jig.yaml.
+	if err := os.WriteFile(jigPath, []byte(tobaContent), 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", jigPath, err)
 	}
 
 	// Cleanup legacy files and report.
@@ -115,7 +115,7 @@ func Run(tobaPath string) error {
 		if err := os.Remove(h.path); err != nil {
 			fmt.Fprintf(os.Stderr, "update: warning: could not remove %s: %v\n", h.path, err)
 		}
-		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (%s section)\n", h.path, tobaPath, h.sectionKey)
+		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (%s section)\n", h.path, jigPath, h.sectionKey)
 	}
 
 	return nil

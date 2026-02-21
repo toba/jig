@@ -21,21 +21,21 @@ func TestRunInit(t *testing.T) {
 			setup:    func(t *testing.T, dir string) {},
 			wantExit: 0,
 			checkYAML: func(t *testing.T, dir string) {
-				data, err := os.ReadFile(filepath.Join(dir, ".toba.yaml")) //nolint:gosec // test path
+				data, err := os.ReadFile(filepath.Join(dir, ".jig.yaml")) //nolint:gosec // test path
 				if err != nil {
-					t.Fatalf(".toba.yaml not created: %v", err)
+					t.Fatalf(".jig.yaml not created: %v", err)
 				}
 				if !strings.Contains(string(data), "multiline-commands") {
-					t.Error(".toba.yaml missing multiline-commands rule")
+					t.Error(".jig.yaml missing multiline-commands rule")
 				}
 				if !strings.Contains(string(data), "git-push") {
-					t.Error(".toba.yaml missing git-push rule")
+					t.Error(".jig.yaml missing git-push rule")
 				}
 				if !strings.Contains(string(data), "no-write-env") {
-					t.Error(".toba.yaml missing no-write-env rule")
+					t.Error(".jig.yaml missing no-write-env rule")
 				}
 				if !strings.Contains(string(data), "nope:") {
-					t.Error(".toba.yaml missing nope: section")
+					t.Error(".jig.yaml missing nope: section")
 				}
 			},
 			checkSettings: func(t *testing.T, dir string) {
@@ -66,20 +66,20 @@ func TestRunInit(t *testing.T) {
 			},
 		},
 		{
-			name: "skips existing nope section in .toba.yaml",
+			name: "skips existing nope section in .jig.yaml",
 			setup: func(t *testing.T, dir string) {
-				if err := os.WriteFile(filepath.Join(dir, ".toba.yaml"), []byte("nope:\n  rules: []\n"), 0o644); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, ".jig.yaml"), []byte("nope:\n  rules: []\n"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			},
 			wantExit: 0,
 			checkYAML: func(t *testing.T, dir string) {
-				data, err := os.ReadFile(filepath.Join(dir, ".toba.yaml")) //nolint:gosec // test path
+				data, err := os.ReadFile(filepath.Join(dir, ".jig.yaml")) //nolint:gosec // test path
 				if err != nil {
 					t.Fatal(err)
 				}
 				if string(data) != "nope:\n  rules: []\n" {
-					t.Error(".toba.yaml was overwritten")
+					t.Error(".jig.yaml was overwritten")
 				}
 			},
 			checkSettings: func(t *testing.T, dir string) {
@@ -90,15 +90,15 @@ func TestRunInit(t *testing.T) {
 			},
 		},
 		{
-			name: "appends nope section to existing .toba.yaml",
+			name: "appends nope section to existing .jig.yaml",
 			setup: func(t *testing.T, dir string) {
-				if err := os.WriteFile(filepath.Join(dir, ".toba.yaml"), []byte("upstream:\n  sources: []\n"), 0o644); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, ".jig.yaml"), []byte("upstream:\n  sources: []\n"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			},
 			wantExit: 0,
 			checkYAML: func(t *testing.T, dir string) {
-				data, err := os.ReadFile(filepath.Join(dir, ".toba.yaml")) //nolint:gosec // test path
+				data, err := os.ReadFile(filepath.Join(dir, ".jig.yaml")) //nolint:gosec // test path
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -301,12 +301,12 @@ func TestRunInit(t *testing.T) {
 			},
 			wantExit: 0,
 			checkYAML: func(t *testing.T, dir string) {
-				data, err := os.ReadFile(filepath.Join(dir, ".toba.yaml")) //nolint:gosec // test path
+				data, err := os.ReadFile(filepath.Join(dir, ".jig.yaml")) //nolint:gosec // test path
 				if err != nil {
 					t.Fatal(err)
 				}
 				if !strings.Contains(string(data), "multiline-commands") {
-					t.Error(".toba.yaml content unexpected after second run")
+					t.Error(".jig.yaml content unexpected after second run")
 				}
 			},
 			checkSettings: func(t *testing.T, dir string) {

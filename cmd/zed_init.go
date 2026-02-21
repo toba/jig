@@ -119,7 +119,7 @@ automatically via CI when you push a new tag.`,
 }
 
 func init() {
-	zedInitCmd.Flags().StringVar(&zedInitExt, "ext", "", "extension repo (default: companions.zed from .toba.yaml)")
+	zedInitCmd.Flags().StringVar(&zedInitExt, "ext", "", "extension repo (default: companions.zed from .jig.yaml)")
 	zedInitCmd.Flags().StringVar(&zedInitTag, "tag", "", "release tag (default: latest release)")
 	zedInitCmd.Flags().StringVar(&zedInitRepo, "repo", "", "source repo (default: current repo via gh)")
 	zedInitCmd.Flags().StringVar(&zedInitDesc, "desc", "", "extension description (default: repo description)")

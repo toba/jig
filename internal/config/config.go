@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the upstream section of .toba.yaml.
+// Config represents the upstream section of .jig.yaml.
 type Config struct {
 	Sources []Source `yaml:"sources"`
 }
@@ -37,7 +37,7 @@ type Document struct {
 	Root *yaml.Node
 }
 
-// LoadDocument reads and parses a .toba.yaml file without requiring any
+// LoadDocument reads and parses a .jig.yaml file without requiring any
 // particular section to exist. Use this when you only need the Document
 // (e.g. for LoadCompanions).
 func LoadDocument(path string) (*Document, error) {
@@ -54,7 +54,7 @@ func LoadDocument(path string) (*Document, error) {
 	return &Document{Path: path, Root: &root}, nil
 }
 
-// Load reads a .toba.yaml file and extracts only the upstream section.
+// Load reads a .jig.yaml file and extracts only the upstream section.
 func Load(path string) (*Document, *Config, error) {
 	doc, err := LoadDocument(path)
 	if err != nil {

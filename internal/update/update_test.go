@@ -16,7 +16,7 @@ func TestRun(t *testing.T) {
 		wantStderr string // substring expected in stderr output
 	}{
 		{
-			name: "migrates .claude/nope.yml into .toba.yaml and deletes legacy file",
+			name: "migrates .claude/nope.yml into .jig.yaml and deletes legacy file",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 				mkdir(t, filepath.Join(dir, ".claude"))
@@ -24,27 +24,27 @@ func TestRun(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "nope:") {
-					t.Error(".toba.yaml missing nope section")
+					t.Error(".jig.yaml missing nope section")
 				}
 				if !strings.Contains(data, "- name: test") {
-					t.Error(".toba.yaml missing rule content")
+					t.Error(".jig.yaml missing rule content")
 				}
 				assertRemoved(t, filepath.Join(dir, ".claude/nope.yml"))
 			},
 		},
 		{
-			name: "migrates .todo.yml into .toba.yaml and deletes legacy file",
+			name: "migrates .todo.yml into .jig.yaml and deletes legacy file",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 				writeFile(t, filepath.Join(dir, ".todo.yml"), "todo:\n  sync: github\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "todo:") {
-					t.Error(".toba.yaml missing todo section")
+					t.Error(".jig.yaml missing todo section")
 				}
 				assertRemoved(t, filepath.Join(dir, ".todo.yml"))
 			},
@@ -59,28 +59,28 @@ func TestRun(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "nope:") {
-					t.Error(".toba.yaml missing nope section")
+					t.Error(".jig.yaml missing nope section")
 				}
 				if !strings.Contains(data, "todo:") {
-					t.Error(".toba.yaml missing todo section")
+					t.Error(".jig.yaml missing todo section")
 				}
 				assertRemoved(t, filepath.Join(dir, ".claude/nope.yml"))
 				assertRemoved(t, filepath.Join(dir, ".todo.yml"))
 			},
 		},
 		{
-			name: "skips when section already exists in .toba.yaml",
+			name: "skips when section already exists in .jig.yaml",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".toba.yaml"), "nope:\n  rules:\n    - name: existing\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "nope:\n  rules:\n    - name: existing\n")
 				mkdir(t, filepath.Join(dir, ".claude"))
 				writeFile(t, filepath.Join(dir, ".claude/nope.yml"), "nope:\n  rules:\n    - name: legacy\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if strings.Contains(data, "legacy") {
 					t.Error("legacy content should not have been merged")
 				}
@@ -99,7 +99,7 @@ func TestRun(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "github") {
 					t.Error("should have used .yml content")
 				}
@@ -122,7 +122,7 @@ func TestRun(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "nope:\n  rules:") {
 					t.Errorf("expected rules nested under nope:, got:\n%s", data)
 				}
@@ -140,7 +140,7 @@ func TestRun(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "todo:\n  sync:") {
 					t.Errorf("expected sync nested under todo:, got:\n%s", data)
 				}
@@ -151,30 +151,30 @@ func TestRun(t *testing.T) {
 			},
 		},
 		{
-			name: "no legacy files found — no error, .toba.yaml unchanged",
+			name: "no legacy files found — no error, .jig.yaml unchanged",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".toba.yaml"), "upstream:\n  sources: []\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "upstream:\n  sources: []\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if data != "upstream:\n  sources: []\n" {
-					t.Error(".toba.yaml should be unchanged")
+					t.Error(".jig.yaml should be unchanged")
 				}
 			},
 		},
 		{
-			name: "creates .toba.yaml if it doesn't exist",
+			name: "creates .jig.yaml if it doesn't exist",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
 				writeFile(t, filepath.Join(dir, ".todo.yml"), "todo:\n  sync: github\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "todo:") {
-					t.Error(".toba.yaml should have been created with todo section")
+					t.Error(".jig.yaml should have been created with todo section")
 				}
 			},
 		},
@@ -182,12 +182,12 @@ func TestRun(t *testing.T) {
 			name: "preserves existing sections during append",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".toba.yaml"), "upstream:\n  sources:\n    - repo: foo/bar\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "upstream:\n  sources:\n    - repo: foo/bar\n")
 				writeFile(t, filepath.Join(dir, ".todo.yml"), "todo:\n  sync: github\n")
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "upstream:") {
 					t.Error("existing upstream section was lost")
 				}
@@ -205,13 +205,13 @@ func TestRun(t *testing.T) {
 				t.Helper()
 				writeFile(t, filepath.Join(dir, ".todo.yml"), "todo:\n  sync: github\n")
 				// First run.
-				if err := Run(filepath.Join(dir, ".toba.yaml")); err != nil {
+				if err := Run(filepath.Join(dir, ".jig.yaml")); err != nil {
 					t.Fatalf("first run: %v", err)
 				}
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "todo:") {
 					t.Error("todo section missing after second run")
 				}
@@ -242,7 +242,7 @@ func TestRun(t *testing.T) {
 
 			tc.setup(t, dir)
 
-			err = Run(filepath.Join(dir, ".toba.yaml"))
+			err = Run(filepath.Join(dir, ".jig.yaml"))
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("Run() error = %v, wantErr %v", err, tc.wantErr)
 			}

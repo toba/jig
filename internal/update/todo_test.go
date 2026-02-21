@@ -89,13 +89,13 @@ sync:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
-			tobaPath := filepath.Join(dir, ".toba.yaml")
+			jigPath := filepath.Join(dir, ".jig.yaml")
 
 			if tc.input != "" {
-				writeFile(t, tobaPath, tc.input)
+				writeFile(t, jigPath, tc.input)
 			}
 
-			migrated, err := migrateTodoConfig(tobaPath)
+			migrated, err := migrateTodoConfig(jigPath)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -103,7 +103,7 @@ sync:
 				t.Fatalf("migrated = %v, want %v", migrated, tc.wantMig)
 			}
 			if tc.want != nil {
-				output := readFile(t, tobaPath)
+				output := readFile(t, jigPath)
 				tc.want(t, output)
 			}
 		})

@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// NopeConfig is the nope section of .toba.yaml.
+// NopeConfig is the nope section of .jig.yaml.
 type NopeConfig struct {
 	Debug string    `yaml:"debug"` // path to debug log file (empty = disabled)
 	Rules []RuleDef `yaml:"rules"`
@@ -33,7 +33,7 @@ type CompiledRule struct {
 	Message   string
 }
 
-// LoadConfig reads .toba.yaml, finds the nope: node, and decodes it into NopeConfig.
+// LoadConfig reads .jig.yaml, finds the nope: node, and decodes it into NopeConfig.
 func LoadConfig(path string) (*NopeConfig, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // config path from trusted walk-up search
 	if err != nil {
@@ -68,14 +68,14 @@ func LoadConfig(path string) (*NopeConfig, error) {
 	return nil, fmt.Errorf("config %s: no 'nope' section found", path)
 }
 
-// FindConfigPath locates .toba.yaml by walking up from cwd.
+// FindConfigPath locates .jig.yaml by walking up from cwd.
 func FindConfigPath() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("getwd: %w", err)
 	}
 	for {
-		candidate := filepath.Join(dir, ".toba.yaml")
+		candidate := filepath.Join(dir, ".jig.yaml")
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate, nil
 		}
@@ -86,11 +86,11 @@ func FindConfigPath() (string, error) {
 		dir = parent
 	}
 
-	return "", fmt.Errorf("no config found (create .toba.yaml with a nope: section or run `jig nope init`)")
+	return "", fmt.Errorf("no config found (create .jig.yaml with a nope: section or run `jig nope init`)")
 }
 
-// FindAndLoadConfig locates and parses the nope section of .toba.yaml.
-// Returns the config and the project root (directory containing .toba.yaml).
+// FindAndLoadConfig locates and parses the nope section of .jig.yaml.
+// Returns the config and the project root (directory containing .jig.yaml).
 func FindAndLoadConfig() (*NopeConfig, string, error) {
 	path, err := FindConfigPath()
 	if err != nil {
@@ -100,7 +100,7 @@ func FindAndLoadConfig() (*NopeConfig, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	// Project root is the directory containing .toba.yaml.
+	// Project root is the directory containing .jig.yaml.
 	root := filepath.Dir(path)
 	return cfg, root, nil
 }

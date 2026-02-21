@@ -7,7 +7,7 @@ import (
 
 var nopeInitCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Scaffold nope rules in .toba.yaml and hook in .claude/settings.json",
+	Short: "Scaffold nope rules in .jig.yaml and hook in .claude/settings.json",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		code := nope.RunInit()
 		if code != 0 {

@@ -7,16 +7,16 @@ const HelpText = `jig nope — Claude Code PreToolUse guard
 
 USAGE
   jig nope              Run as hook guard (reads JSON from stdin)
-  jig nope init         Scaffold nope: section in .toba.yaml and hook in .claude/settings.json
+  jig nope init         Scaffold nope: section in .jig.yaml and hook in .claude/settings.json
   jig nope doctor       Validate configuration
   jig nope help         Show this help
 
 CONFIGURATION
-  jig nope reads rules from the nope: section of .toba.yaml, found by
+  jig nope reads rules from the nope: section of .jig.yaml, found by
   walking up from the current directory. Each rule blocks tool usage when
   its pattern matches the tool_input field from the hook's stdin JSON payload.
 
-  Config file structure (.toba.yaml):
+  Config file structure (.jig.yaml):
 
     nope:
       rules:

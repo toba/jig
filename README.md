@@ -7,14 +7,14 @@ An agent multi-tool for little things.
 - **`jig`**
    - **`commit`**: stage changes, check for gitignore candidates, signal push intent
    - **`doctor`**: run all doctor checks (brew, zed, nope)
-   - **`update`**: migrate legacy config files into `.toba.yaml`
+   - **`update`**: migrate legacy config files into `.jig.yaml`
    - **`version`**: print version info
    - **`upstream`**: monitor upstream repositories for changes
-      - **`init`**: add starter upstream section to `.toba.yaml`
+      - **`init`**: add starter upstream section to `.jig.yaml`
       - **`check`**: fetch and display changes grouped by relevance
       - **`mark`**: update `last_checked_sha` to current HEAD for a source
    - **`nope`**: Claude Code `PreToolUse` guard (reads JSON from stdin, exits 0 or 2)
-      - **`init`**: scaffold nope rules in `.toba.yaml` and hook in `.claude/settings.json`
+      - **`init`**: scaffold nope rules in `.jig.yaml` and hook in `.claude/settings.json`
       - **`doctor`**: validate nope configuration
       - **`help`**: show nope guard reference
    - **`brew`**: Homebrew tap management
@@ -46,7 +46,7 @@ jig upstream check
 jig upstream mark owner/repo
 ```
 
-Configure which files matter in `.toba.yaml`:
+Configure which files matter in `.jig.yaml`:
 
 ```yaml
 upstream:
@@ -67,13 +67,13 @@ Files are classified as high, medium, or low relevance based on glob patterns. `
 
 ## Nope Guard
 
-A `PreToolUse` hook for Claude Code. Rules live in the `nope:` section of `.toba.yaml` — regex patterns and built-in checks that block tool calls before they execute.
+A `PreToolUse` hook for Claude Code. Rules live in the `nope:` section of `.jig.yaml` — regex patterns and built-in checks that block tool calls before they execute.
 
 ```bash
 jig nope init
 ```
 
-This adds a `nope:` section to `.toba.yaml` with starter rules and wires up the hook in `.claude/settings.json`. Claude Code pipes a JSON payload to `jig nope` on stdin before each tool call. If a rule matches, the tool is blocked (exit 2). If nothing matches, it's allowed (exit 0).
+This adds a `nope:` section to `.jig.yaml` with starter rules and wires up the hook in `.claude/settings.json`. Claude Code pipes a JSON payload to `jig nope` on stdin before each tool call. If a rule matches, the tool is blocked (exit 2). If nothing matches, it's allowed (exit 0).
 
 ### Structure
 
@@ -118,7 +118,7 @@ Built-ins use proper shell tokenization — they understand quoting, so `grep "f
 
 ### Migration from nogo
 
-If you were using `nogo`, `skill nope`, or `ja nope`, `jig nope init` will detect existing hooks in `.claude/settings.json` and migrate them to `jig nope`. Rules move from `.claude/nope.yaml` to the `nope:` section of `.toba.yaml` — you'll need to move those manually (wrap them under a `nope:` key).
+If you were using `nogo`, `skill nope`, or `ja nope`, `jig nope init` will detect existing hooks in `.claude/settings.json` and migrate them to `jig nope`. Rules move from `.claude/nope.yaml` to the `nope:` section of `.jig.yaml` — you'll need to move those manually (wrap them under a `nope:` key).
 
 ## Brew Init
 
@@ -158,7 +158,7 @@ Use `--dry-run` to preview all generated files without creating anything. Use `-
 
 ## Configuration
 
-Everything lives in `.toba.yaml`. Sections are independent — you can use any subset.
+Everything lives in `.jig.yaml`. Sections are independent — you can use any subset.
 
 ```yaml
 upstream:
@@ -171,7 +171,7 @@ nope:
 
 Config reading uses the yaml.v3 Node API for partial read/write, so no section clobbers another.
 
-A [JSON Schema](https://raw.githubusercontent.com/toba/jig/main/schema.json) is available for editor autocomplete and validation. Add this modeline to the top of your `.toba.yaml`:
+A [JSON Schema](https://raw.githubusercontent.com/toba/jig/main/schema.json) is available for editor autocomplete and validation. Add this modeline to the top of your `.jig.yaml`:
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/toba/jig/main/schema.json

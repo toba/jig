@@ -175,7 +175,7 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "upstream:") {
 					t.Error("missing upstream: section")
 				}
@@ -215,7 +215,7 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "last_checked_sha: abc123") {
 					t.Errorf("missing last_checked_sha in output:\n%s", data)
 				}
@@ -248,15 +248,15 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			name: "skips when upstream section already exists",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".toba.yaml"), "upstream:\n  sources: []\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "upstream:\n  sources: []\n")
 				mkdir(t, filepath.Join(dir, ".claude/skills/upstream"))
 				writeFile(t, filepath.Join(dir, ".claude/skills/upstream/SKILL.md"), sampleSkill)
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if data != "upstream:\n  sources: []\n" {
-					t.Error(".toba.yaml should not have been modified")
+					t.Error(".jig.yaml should not have been modified")
 				}
 				// Skill directory should be cleaned up even when migration is skipped.
 				if _, err := os.Stat(filepath.Join(dir, ".claude/skills/upstream")); !os.IsNotExist(err) {
@@ -271,22 +271,22 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				if _, err := os.Stat(filepath.Join(dir, ".toba.yaml")); err == nil {
-					t.Error(".toba.yaml should not have been created")
+				if _, err := os.Stat(filepath.Join(dir, ".jig.yaml")); err == nil {
+					t.Error(".jig.yaml should not have been created")
 				}
 			},
 		},
 		{
-			name: "appends upstream to existing .toba.yaml content",
+			name: "appends upstream to existing .jig.yaml content",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()
-				writeFile(t, filepath.Join(dir, ".toba.yaml"), "nope:\n  rules: []\n")
+				writeFile(t, filepath.Join(dir, ".jig.yaml"), "nope:\n  rules: []\n")
 				mkdir(t, filepath.Join(dir, ".claude/skills/upstream"))
 				writeFile(t, filepath.Join(dir, ".claude/skills/upstream/SKILL.md"), sampleSkill)
 			},
 			check: func(t *testing.T, dir string) {
 				t.Helper()
-				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				data := readFile(t, filepath.Join(dir, ".jig.yaml"))
 				if !strings.Contains(data, "nope:") {
 					t.Error("existing nope section was lost")
 				}
@@ -316,8 +316,8 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 
 			tc.setup(t, dir)
 
-			tobaPath := filepath.Join(dir, ".toba.yaml")
-			migrated, _, mErr := migrateUpstreamSkill(tobaPath)
+			jigPath := filepath.Join(dir, ".jig.yaml")
+			migrated, _, mErr := migrateUpstreamSkill(jigPath)
 			if mErr != nil {
 				t.Fatalf("migrateUpstreamSkill: %v", mErr)
 			}

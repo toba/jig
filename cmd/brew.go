@@ -19,7 +19,7 @@ func init() {
 	rootCmd.AddCommand(brewCmd)
 }
 
-// tapFromCompanions reads the companions.brew git URL from .toba.yaml
+// tapFromCompanions reads the companions.brew git URL from .jig.yaml
 // and extracts the "owner/repo" tap identifier. Returns "" on any failure.
 func tapFromCompanions(cfgPath string) string {
 	doc, err := config.LoadDocument(cfgPath)
@@ -35,7 +35,7 @@ func tapFromCompanions(cfgPath string) string {
 
 // resolveTap determines the tap repo using (in order):
 //  1. explicit --tap flag
-//  2. companions.brew from .toba.yaml
+//  2. companions.brew from .jig.yaml
 //  3. convention: owner/homebrew-<name> derived from the current GitHub repo
 func resolveTap(flag, cfgPath string) (string, error) {
 	if flag != "" {

@@ -92,7 +92,7 @@ automatically via CI when you push a new tag.`,
 }
 
 func init() {
-	brewInitCmd.Flags().StringVar(&brewInitTap, "tap", "", "tap repo (default: companions.brew from .toba.yaml)")
+	brewInitCmd.Flags().StringVar(&brewInitTap, "tap", "", "tap repo (default: companions.brew from .jig.yaml)")
 	brewInitCmd.Flags().StringVar(&brewInitTag, "tag", "", "release tag (default: latest release)")
 	brewInitCmd.Flags().StringVar(&brewInitRepo, "repo", "", "source repo (default: current repo via gh)")
 	brewInitCmd.Flags().StringVar(&brewInitDesc, "desc", "", "formula description (default: repo description)")
