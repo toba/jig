@@ -194,6 +194,54 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 				if !strings.Contains(data, "relationship: dependency") {
 					t.Error("missing dependency relationship")
 				}
+				// Skill directory should be cleaned up.
+				if _, err := os.Stat(filepath.Join(dir, ".claude/skills/upstream")); !os.IsNotExist(err) {
+					t.Error(".claude/skills/upstream should have been removed")
+				}
+			},
+		},
+		{
+			name: "migrates marker data from last-checked.json",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				mkdir(t, filepath.Join(dir, ".claude/skills/upstream/references"))
+				writeFile(t, filepath.Join(dir, ".claude/skills/upstream/SKILL.md"), sampleSkill)
+				writeFile(t, filepath.Join(dir, ".claude/skills/upstream/references/last-checked.json"), `{
+  "acme/widgets": {
+    "last_checked_sha": "abc123",
+    "last_checked_date": "2026-01-20T10:00:00Z"
+  }
+}`)
+			},
+			check: func(t *testing.T, dir string) {
+				t.Helper()
+				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				if !strings.Contains(data, "last_checked_sha: abc123") {
+					t.Errorf("missing last_checked_sha in output:\n%s", data)
+				}
+				if !strings.Contains(data, "last_checked_date: \"2026-01-20T10:00:00Z\"") {
+					t.Errorf("missing last_checked_date in output:\n%s", data)
+				}
+				// No marker fields for acme/gadgets (not in JSON).
+				// Skill directory should be cleaned up.
+				if _, err := os.Stat(filepath.Join(dir, ".claude/skills/upstream")); !os.IsNotExist(err) {
+					t.Error(".claude/skills/upstream should have been removed")
+				}
+			},
+		},
+		{
+			name: "removes empty .claude/skills parent",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				mkdir(t, filepath.Join(dir, ".claude/skills/upstream"))
+				writeFile(t, filepath.Join(dir, ".claude/skills/upstream/SKILL.md"), sampleSkill)
+			},
+			check: func(t *testing.T, dir string) {
+				t.Helper()
+				if _, err := os.Stat(filepath.Join(dir, ".claude/skills")); !os.IsNotExist(err) {
+					t.Error(".claude/skills should have been removed when empty")
+				}
+				// .claude itself should remain (might have other files).
 			},
 		},
 		{
@@ -209,6 +257,10 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
 				if data != "upstream:\n  sources: []\n" {
 					t.Error(".toba.yaml should not have been modified")
+				}
+				// Skill directory should NOT be removed when skipped.
+				if _, err := os.Stat(filepath.Join(dir, ".claude/skills/upstream/SKILL.md")); os.IsNotExist(err) {
+					t.Error("SKILL.md should still exist when migration was skipped")
 				}
 			},
 		},

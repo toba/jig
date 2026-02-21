@@ -75,12 +75,13 @@ skill nope init
 
 This adds a `nope:` section to `.toba.yaml` with starter rules and wires up the hook in `.claude/settings.json`. Claude Code pipes a JSON payload to `skill nope` on stdin before each tool call. If a rule matches, the tool is blocked (exit 2). If nothing matches, it's allowed (exit 0).
 
-### Rules
+### Structure
 
-Rules are either regex patterns or built-in checks:
+The `nope:` section contains a `rules` list and an optional `debug` log path:
 
 ```yaml
 nope:
+  debug: .claude/nope.log   # optional JSONL debug log (omit to disable)
   rules:
     # Regex pattern — matched against the tool_input JSON
     - name: git-push
@@ -98,6 +99,8 @@ nope:
       tools: ["Write", "Edit"]
       message: "writing to .env files not allowed"
 ```
+
+Rules are either regex patterns or built-in checks. Each rule has a `name`, a `message`, and either a `pattern` (regex) or `builtin` (structural check). The optional `tools` array scopes which tools the rule applies to (defaults to `["Bash"]`; use `["*"]` for all tools).
 
 ### Built-in Checks
 
@@ -167,6 +170,12 @@ nope:
 ```
 
 Config reading uses the yaml.v3 Node API for partial read/write, so no section clobbers another.
+
+A [JSON Schema](https://raw.githubusercontent.com/toba/skill/main/schema.json) is available for editor autocomplete and validation. Add this modeline to the top of your `.toba.yaml`:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/toba/skill/main/schema.json
+```
 
 ## Requirements
 

@@ -1,8 +1,10 @@
 package update
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -20,11 +22,19 @@ type upstreamConfig struct {
 }
 
 type upstreamSource struct {
-	Repo         string       `yaml:"repo"`
-	Branch       string       `yaml:"branch"`
-	Relationship string       `yaml:"relationship"`
-	Notes        string       `yaml:"notes,omitempty"`
-	Paths        upstreamPath `yaml:"paths"`
+	Repo            string       `yaml:"repo"`
+	Branch          string       `yaml:"branch"`
+	Relationship    string       `yaml:"relationship"`
+	Notes           string       `yaml:"notes,omitempty"`
+	LastCheckedSHA  string       `yaml:"last_checked_sha,omitempty"`
+	LastCheckedDate string       `yaml:"last_checked_date,omitempty"`
+	Paths           upstreamPath `yaml:"paths"`
+}
+
+// markerEntry represents one repo's entry in last-checked.json.
+type markerEntry struct {
+	LastCheckedSHA  string `json:"last_checked_sha"`
+	LastCheckedDate string `json:"last_checked_date"`
 }
 
 type upstreamPath struct {
@@ -73,6 +83,20 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 		return false, skillPath, nil
 	}
 
+	// Merge marker data from references/last-checked.json if present.
+	markerPath := filepath.Join(filepath.Dir(skillPath), "references", "last-checked.json")
+	if markerData, err := os.ReadFile(markerPath); err == nil { //nolint:gosec // path derived from hardcoded skill path
+		var markers map[string]markerEntry
+		if err := json.Unmarshal(markerData, &markers); err == nil {
+			for i := range sources {
+				if m, ok := markers[sources[i].Repo]; ok {
+					sources[i].LastCheckedSHA = m.LastCheckedSHA
+					sources[i].LastCheckedDate = m.LastCheckedDate
+				}
+			}
+		}
+	}
+
 	// Generate YAML.
 	cfg := upstreamConfig{Sources: sources}
 	yamlBytes, err := yaml.Marshal(map[string]upstreamConfig{"upstream": cfg})
@@ -92,6 +116,17 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 
 	if err := os.WriteFile(tobaPath, []byte(tobaContent), 0o644); err != nil {
 		return false, skillPath, fmt.Errorf("writing %s: %w", tobaPath, err)
+	}
+
+	// Clean up the legacy skill directory.
+	skillDir := filepath.Dir(skillPath)
+	if err := os.RemoveAll(skillDir); err != nil {
+		fmt.Fprintf(os.Stderr, "update: warning: could not remove %s: %v\n", skillDir, err)
+	}
+	// Remove .claude/skills/ if now empty.
+	skillsParent := filepath.Dir(skillDir)
+	if entries, err := os.ReadDir(skillsParent); err == nil && len(entries) == 0 {
+		_ = os.Remove(skillsParent)
 	}
 
 	return true, skillPath, nil

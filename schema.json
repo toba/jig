@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/toba/skill/schema.json",
+  "title": ".toba.yaml",
+  "description": "Configuration file for toba tools (skill, todo).",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "upstream": {
+      "type": "object",
+      "description": "Upstream repository monitoring configuration.",
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "array",
+          "description": "List of upstream repositories to monitor.",
+          "items": {
+            "type": "object",
+            "required": ["repo", "relationship"],
+            "additionalProperties": false,
+            "properties": {
+              "repo": {
+                "type": "string",
+                "description": "GitHub repository in owner/repo format.",
+                "pattern": "^[^/]+/[^/]+$"
+              },
+              "branch": {
+                "type": "string",
+                "description": "Git branch to track.",
+                "default": "main"
+              },
+              "relationship": {
+                "type": "string",
+                "description": "Relationship to the upstream repo (e.g. watch, derived, fork)."
+              },
+              "notes": {
+                "type": "string",
+                "description": "Free-form description of this upstream source."
+              },
+              "last_checked_sha": {
+                "type": "string",
+                "description": "SHA of the last checked commit (auto-updated by skill check)."
+              },
+              "last_checked_date": {
+                "type": "string",
+                "description": "RFC 3339 date of the last check (auto-updated by skill check).",
+                "format": "date-time"
+              },
+              "paths": {
+                "type": "object",
+                "description": "Glob patterns grouped by priority level.",
+                "additionalProperties": false,
+                "properties": {
+                  "high": {
+                    "type": "array",
+                    "description": "High-priority file glob patterns.",
+                    "items": { "type": "string" }
+                  },
+                  "medium": {
+                    "type": "array",
+                    "description": "Medium-priority file glob patterns.",
+                    "items": { "type": "string" }
+                  },
+                  "low": {
+                    "type": "array",
+                    "description": "Low-priority file glob patterns.",
+                    "items": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nope": {
+      "type": "object",
+      "description": "Security guard configuration for Claude Code PreToolUse hooks.",
+      "additionalProperties": false,
+      "properties": {
+        "debug": {
+          "type": "string",
+          "description": "Path to debug log file. Empty or omitted to disable."
+        },
+        "rules": {
+          "type": "array",
+          "description": "Guard rules evaluated against tool invocations.",
+          "items": {
+            "type": "object",
+            "required": ["name", "message"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Unique rule identifier."
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regex pattern to match against tool input. Mutually exclusive with builtin."
+              },
+              "builtin": {
+                "type": "string",
+                "description": "Name of a built-in rule. Mutually exclusive with pattern.",
+                "enum": [
+                  "multiline",
+                  "pipe",
+                  "chained",
+                  "redirect",
+                  "subshell",
+                  "credential-read",
+                  "network"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Message shown when the rule matches."
+              },
+              "tools": {
+                "type": "array",
+                "description": "Tools this rule applies to. Defaults to [\"Bash\"]. Use [\"*\"] for all tools.",
+                "items": { "type": "string" },
+                "default": ["Bash"]
+              }
+            },
+            "oneOf": [
+              { "required": ["pattern"] },
+              { "required": ["builtin"] }
+            ]
+          }
+        }
+      }
+    },
+    "todo": {
+      "type": "object",
+      "description": "Issue tracking configuration for the todo CLI.",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Relative path to the issues directory.",
+          "default": ".issues"
+        },
+        "default_status": {
+          "type": "string",
+          "description": "Default status for new issues.",
+          "enum": ["in-progress", "ready", "draft", "completed", "scrapped"],
+          "default": "ready"
+        },
+        "default_type": {
+          "type": "string",
+          "description": "Default type for new issues.",
+          "enum": ["milestone", "epic", "bug", "feature", "task"],
+          "default": "task"
+        },
+        "default_sort": {
+          "type": "string",
+          "description": "Default sort order for listing issues.",
+          "enum": ["default", "created", "updated", "due", "status", "priority", "id"],
+          "default": "default"
+        },
+        "editor": {
+          "type": "string",
+          "description": "Editor command override. Falls back to $EDITOR if unset."
+        },
+        "require_if_match": {
+          "type": "boolean",
+          "description": "Require etag-based optimistic locking on updates.",
+          "default": false
+        },
+        "sync": {
+          "type": "object",
+          "description": "External tracker sync integrations.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "properties": {
+            "github": {
+              "type": "object",
+              "description": "GitHub Issues sync configuration.",
+              "additionalProperties": false,
+              "properties": {
+                "repo": {
+                  "type": "string",
+                  "description": "GitHub repository in owner/repo format.",
+                  "pattern": "^[^/]+/[^/]+$"
+                }
+              },
+              "required": ["repo"]
+            },
+            "clickup": {
+              "type": "object",
+              "description": "ClickUp sync configuration.",
+              "additionalProperties": true,
+              "properties": {
+                "list_id": {
+                  "type": "string",
+                  "description": "ClickUp list ID."
+                },
+                "assignee": {
+                  "type": "integer",
+                  "description": "ClickUp user ID for auto-assignment."
+                },
+                "status_mapping": {
+                  "type": "object",
+                  "description": "Map issue statuses to ClickUp statuses.",
+                  "additionalProperties": { "type": "string" }
+                },
+                "priority_mapping": {
+                  "type": "object",
+                  "description": "Map issue priorities to ClickUp priority numbers (1-4).",
+                  "additionalProperties": { "type": "integer" }
+                },
+                "type_mapping": {
+                  "type": "object",
+                  "description": "Map issue types to ClickUp type IDs.",
+                  "additionalProperties": { "type": "integer" }
+                },
+                "custom_fields": {
+                  "type": "object",
+                  "description": "Map issue fields to ClickUp custom field UUIDs.",
+                  "additionalProperties": { "type": "string" }
+                },
+                "sync_filter": {
+                  "type": "object",
+                  "description": "Filter which issues to sync.",
+                  "additionalProperties": false,
+                  "properties": {
+                    "exclude_status": {
+                      "type": "array",
+                      "description": "Status names to exclude from sync.",
+                      "items": { "type": "string" }
+                    }
+                  }
+                }
+              },
+              "required": ["list_id"]
+            }
+          }
+        }
+      }
+    },
+    "companions": {
+      "type": "object",
+      "description": "Git URLs for companion repositories managed by skill.",
+      "additionalProperties": false,
+      "properties": {
+        "brew": {
+          "type": "string",
+          "description": "Git URL for the Homebrew tap repository."
+        },
+        "zed": {
+          "type": "string",
+          "description": "Git URL for the Zed extension repository."
+        }
+      }
+    }
+  }
+}
