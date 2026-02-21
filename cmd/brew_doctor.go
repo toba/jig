@@ -19,17 +19,19 @@ var brewDoctorCmd = &cobra.Command{
 			return err
 		}
 
-		// Detect source repo and tool name.
+		// Detect source repo.
 		out, err := exec.Command("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner").Output()
 		if err != nil {
 			return fmt.Errorf("detecting source repo: %w", err)
 		}
 		repo := strings.TrimSpace(string(out))
-		parts := strings.SplitN(repo, "/", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("unexpected repo format: %s", repo)
+
+		// Derive tool name from tap repo (homebrew-<tool>).
+		tapParts := strings.SplitN(tap, "/", 2)
+		if len(tapParts) != 2 {
+			return fmt.Errorf("unexpected tap format: %s", tap)
 		}
-		tool := parts[1]
+		tool := strings.TrimPrefix(tapParts[1], "homebrew-")
 
 		code := brew.RunDoctor(brew.DoctorOpts{
 			Tap:  tap,
