@@ -5,3 +5,6 @@ todo:
   sync:
     github:
       repo: toba/skill
+
+companions:
+  brew: https://github.com/toba/homebrew-skill.git

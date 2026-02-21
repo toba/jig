@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/toba/skill/internal/classify"
@@ -21,7 +22,7 @@ var checkCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(checkCmd)
+	upstreamCmd.AddCommand(checkCmd)
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {
@@ -35,17 +36,26 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	client := github.NewClient()
-	var results []display.SourceResult
+	results := make([]display.SourceResult, len(sources))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 
-	for _, src := range sources {
-		result, err := checkSource(client, src)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: %s: %v\n", src.Repo, err)
-			results = append(results, display.SourceResult{Source: src})
-			continue
-		}
-		results = append(results, *result)
+	for i, src := range sources {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			result, err := checkSource(client, src)
+			if err != nil {
+				mu.Lock()
+				fmt.Fprintf(os.Stderr, "warning: %s: %v\n", src.Repo, err)
+				mu.Unlock()
+				results[i] = display.SourceResult{Source: src}
+				return
+			}
+			results[i] = *result
+		}()
 	}
+	wg.Wait()
 
 	if jsonOut {
 		return display.RenderJSON(os.Stdout, results)

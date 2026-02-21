@@ -55,7 +55,7 @@ func TestDebugLogging(t *testing.T) {
 	}
 
 	// Each line should be valid JSON
-	for _, line := range strings.Split(strings.TrimSpace(log), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(log), "\n") {
 		if line == "" {
 			continue
 		}

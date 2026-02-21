@@ -17,7 +17,7 @@ var markCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(markCmd)
+	upstreamCmd.AddCommand(markCmd)
 }
 
 func runMark(cmd *cobra.Command, args []string) error {

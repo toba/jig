@@ -37,19 +37,29 @@ type Document struct {
 	Root *yaml.Node
 }
 
-// Load reads a .toba.yaml file and extracts only the upstream section.
-func Load(path string) (*Document, *Config, error) {
+// LoadDocument reads and parses a .toba.yaml file without requiring any
+// particular section to exist. Use this when you only need the Document
+// (e.g. for LoadCompanions).
+func LoadDocument(path string) (*Document, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, fmt.Errorf("reading %s: %w", path, err)
+		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 
 	var root yaml.Node
 	if err := yaml.Unmarshal(data, &root); err != nil {
-		return nil, nil, fmt.Errorf("parsing %s: %w", path, err)
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
 
-	doc := &Document{Path: path, Root: &root}
+	return &Document{Path: path, Root: &root}, nil
+}
+
+// Load reads a .toba.yaml file and extracts only the upstream section.
+func Load(path string) (*Document, *Config, error) {
+	doc, err := LoadDocument(path)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	upstreamNode := findKey(doc.Root, "upstream")
 	if upstreamNode == nil {

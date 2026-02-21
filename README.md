@@ -1,12 +1,26 @@
-# skill
+# Skillz
 
-A multi-tool CLI that does two mostly unrelated things under one roof because *why maintain two binaries when you can maintain one slightly confused binary*.
+An agent multi-tool for little things.
 
-**Upstream monitoring** — track changes in repos you've forked or derived from, classify files by how much you care, and remember what you've already reviewed.
+## Commands
 
-**Nope guard** — a Claude Code `PreToolUse` hook that blocks dangerous tool invocations. When Claude Code wears you down and you go YOLO with `dangerously-skip-permissions`, *nope* keeps a few guardrails in place so your agent doesn't `rm -rf /` your life's work or `git push --force` your main branch into oblivion.
-
-Formerly two projects: `upstream` and [`nogo`](https://github.com/toba/nogo). Now they share a config file (`.toba.yaml`) and a single binary.
+- **`skill`**
+   - **`update`**: migrate legacy config files into `.toba.yaml`
+   - **`version`**: print version info
+   - **`upstream`**: monitor upstream repositories for changes
+      - **`init`**: add starter upstream section to `.toba.yaml`
+      - **`check`**: fetch and display changes grouped by relevance
+      - **`mark`**: update `last_checked_sha` to current HEAD for a source
+   - **`nope`**: Claude Code `PreToolUse` guard (reads JSON from stdin, exits 0 or 2)
+      - **`init`**: scaffold nope rules in `.toba.yaml` and hook in `.claude/settings.json`
+      - **`doctor`**: validate nope configuration
+      - **`help`**: show nope guard reference
+   - **`brew`**: Homebrew tap management
+      - **`init`**: create tap repo, push initial formula, inject `update-homebrew` CI job
+      - **`doctor`**: verify brew tap setup is healthy
+   - **`zed`**: Zed extension management
+      - **`init`**: create extension repo, push scaffold, inject `sync-extension` CI job
+      - **`doctor`**: verify Zed extension setup is healthy
 
 ## Install
 
@@ -25,14 +39,9 @@ go install github.com/toba/skill@latest
 Track what's changed in repos you care about. Read-only by default — `check` looks, `mark` remembers.
 
 ```bash
-# Add a source to .toba.yaml
-skill init
-
-# See what's changed upstream
-skill check
-
-# Mark a source as reviewed (updates last_checked_sha)
-skill mark owner/repo
+skill upstream init
+skill upstream check
+skill upstream mark owner/repo
 ```
 
 Configure which files matter in `.toba.yaml`:
@@ -58,27 +67,11 @@ Files are classified as high, medium, or low relevance based on glob patterns. `
 
 A `PreToolUse` hook for Claude Code. Rules live in the `nope:` section of `.toba.yaml` — regex patterns and built-in checks that block tool calls before they execute.
 
-### Quick Start
-
 ```bash
 skill nope init
 ```
 
-This does two things:
-1. Adds a `nope:` section to `.toba.yaml` with starter rules
-2. Wires up the hook in `.claude/settings.json`
-
-### How It Works
-
-Claude Code pipes a JSON payload to `skill nope` on stdin before each tool call. If a rule matches, the tool is blocked (exit 2). If nothing matches, it's allowed (exit 0).
-
-```bash
-# Blocked — exit 2
-echo '{"tool_name":"Bash","tool_input":{"command":"git push"}}' | skill nope
-
-# Allowed — exit 0
-echo '{"tool_name":"Bash","tool_input":{"command":"ls"}}' | skill nope
-```
+This adds a `nope:` section to `.toba.yaml` with starter rules and wires up the hook in `.claude/settings.json`. Claude Code pipes a JSON payload to `skill nope` on stdin before each tool call. If a rule matches, the tool is blocked (exit 2). If nothing matches, it's allowed (exit 0).
 
 ### Rules
 
@@ -118,20 +111,59 @@ nope:
 
 Built-ins use proper shell tokenization — they understand quoting, so `grep "foo|bar"` won't trigger the pipe check. Regex patterns get `(?s)` prepended automatically so `.` matches newlines.
 
-### Other Commands
-
-```bash
-skill nope doctor    # Validate your config
-skill nope help      # Full reference
-```
-
 ### Migration from nogo
 
 If you were using `nogo`, `skill nope init` will detect existing `nogo` hooks in `.claude/settings.json` and migrate them to `skill nope`. Rules move from `.claude/nope.yaml` to the `nope:` section of `.toba.yaml` — you'll need to move those manually (wrap them under a `nope:` key).
 
+## Brew Init
+
+One-time setup for Homebrew tap automation. Creates the companion tap repo on GitHub, pushes an initial formula and README, and injects an `update-homebrew` job into the source repo's `release.yml`.
+
+```bash
+skill brew init --tap toba/homebrew-todo
+```
+
+It auto-detects the source repo, latest release tag, description, and license via `gh`. The formula SHA256 is resolved using the same three-strategy approach (`.sha256` sidecar, `checksums.txt`, direct download). After running, tap updates happen automatically via CI.
+
+```bash
+skill brew init --tap toba/homebrew-todo --tag v1.2.3 --repo toba/todo --desc "My tool" --license MIT
+```
+
+Use `--dry-run` to preview without creating anything. Use `--json` for machine-readable output.
+
+**After running**, add a `HOMEBREW_TAP_TOKEN` secret to the source repo — a GitHub PAT with Contents write access to the tap repo.
+
+## Zed Init
+
+One-time setup for Zed extension automation. Creates a companion extension repo on GitHub with the full scaffold (extension.toml, Cargo.toml, src/lib.rs, bump-version script and workflow, LICENSE, README), and injects a `sync-extension` job into the source repo's `release.yml`.
+
+```bash
+skill zed init --ext toba/gozer --languages "Go Text Template,Go HTML Template"
+```
+
+It auto-detects the source repo, latest release tag, and description via `gh`. The `--languages` flag is required — it sets which languages the extension provides LSP support for. After running, extension updates happen automatically via CI.
+
+```bash
+skill zed init --ext toba/gozer --languages "CSS" --tag v1.0.0 --repo toba/go-css-lsp --desc "CSS LSP" --lsp-name go-css-lsp
+```
+
+Use `--dry-run` to preview all generated files without creating anything. Use `--json` for machine-readable output.
+
+**After running**, add an `EXTENSION_PAT` secret to the source repo — a GitHub PAT with Contents write access to the extension repo. Also run `cargo generate-lockfile` in the extension repo to create the initial `Cargo.lock`.
+
+## Zed Doctor
+
+Validates the full Zed extension companion chain is healthy: config, remote repos, scaffolding files, release assets, workflow wiring, and secrets.
+
+```bash
+skill zed doctor
+```
+
+Reads `companions.zed` from `.toba.yaml` and the source repo from `gh`. Checks: extension repo exists on GitHub, extension.toml/Cargo.toml/bump-version.sh/bump-version.yml present in it, source repo has releases with platform assets (darwin/linux), local release.yml has a `sync-extension` job referencing the correct extension repo and `EXTENSION_PAT`, and .goreleaser.yaml exists.
+
 ## Configuration
 
-Everything lives in `.toba.yaml`. The upstream and nope sections are independent — you can use one without the other.
+Everything lives in `.toba.yaml`. Sections are independent — you can use any subset.
 
 ```yaml
 upstream:
@@ -142,12 +174,12 @@ nope:
   rules: [...]
 ```
 
-Config reading uses the yaml.v3 Node API for partial read/write, so neither section clobbers the other (or any other sections you might have in the file).
+Config reading uses the yaml.v3 Node API for partial read/write, so no section clobbers another.
 
 ## Requirements
 
 - macOS or Linux (Windows builds exist but are untested)
-- `gh` CLI for upstream monitoring (nope guard has no external dependencies)
+- `gh` CLI for upstream monitoring, brew, and zed commands (nope guard has no external dependencies)
 
 ## License
 

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -19,26 +18,9 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "skill",
-	Short: "Check upstream repos for changes",
-	Long:  "Monitor upstream repositories for changes, classify them by relevance, and track what you've reviewed.",
+	Short: "Multi-tool CLI for upstream monitoring and Claude Code security guard",
+	Long:  "Multi-tool CLI combining upstream repo monitoring, companion management, and Claude Code security guard.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Skip config loading for init, version, and nope commands.
-		if cmd.Name() == "init" || cmd.Name() == "version" {
-			return nil
-		}
-		if cmd.Name() == "nope" || (cmd.Parent() != nil && cmd.Parent().Name() == "nope") {
-			return nil
-		}
-		path := cfgPath
-		if path == "" {
-			path = ".toba.yaml"
-		}
-		doc, c, err := config.Load(path)
-		if err != nil {
-			return fmt.Errorf("loading config: %w", err)
-		}
-		cfg = c
-		cfgDoc = doc
 		return nil
 	},
 }

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,7 @@ var initCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(initCmd)
+	upstreamCmd.AddCommand(initCmd)
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -44,10 +45,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		content := string(data)
 		if len(content) > 0 {
 			// Simple check for existing upstream section.
-			for _, line := range splitLines(content) {
-				if line == "upstream:" {
-					return fmt.Errorf("%s already contains an 'upstream' section", path)
-				}
+			if slices.Contains(splitLines(content), "upstream:") {
+				return fmt.Errorf("%s already contains an 'upstream' section", path)
 			}
 			// Append upstream section to existing file.
 			if content[len(content)-1] != '\n' {
