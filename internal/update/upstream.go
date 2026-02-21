@@ -69,6 +69,8 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 		return false, "", fmt.Errorf("reading %s: %w", tobaPath, err)
 	}
 	if sectionExists(splitLines(string(existing)), "upstream") {
+		// Section already exists, but still clean up the legacy skill directory.
+		cleanupSkillDir(skillPath)
 		fmt.Fprintf(os.Stderr, "update: skipped upstream — section already exists in %s\n", tobaPath)
 		return false, skillPath, nil
 	}
@@ -118,7 +120,12 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 		return false, skillPath, fmt.Errorf("writing %s: %w", tobaPath, err)
 	}
 
-	// Clean up the legacy skill directory.
+	cleanupSkillDir(skillPath)
+	return true, skillPath, nil
+}
+
+// cleanupSkillDir removes the legacy skill directory and its empty parent.
+func cleanupSkillDir(skillPath string) {
 	skillDir := filepath.Dir(skillPath)
 	if err := os.RemoveAll(skillDir); err != nil {
 		fmt.Fprintf(os.Stderr, "update: warning: could not remove %s: %v\n", skillDir, err)
@@ -128,8 +135,6 @@ func migrateUpstreamSkill(tobaPath string) (bool, string, error) {
 	if entries, err := os.ReadDir(skillsParent); err == nil && len(entries) == 0 {
 		_ = os.Remove(skillsParent)
 	}
-
-	return true, skillPath, nil
 }
 
 // parseSkill extracts upstream source definitions from a SKILL.md file.

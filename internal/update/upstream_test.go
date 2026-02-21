@@ -258,9 +258,9 @@ func TestMigrateUpstreamSkill(t *testing.T) {
 				if data != "upstream:\n  sources: []\n" {
 					t.Error(".toba.yaml should not have been modified")
 				}
-				// Skill directory should NOT be removed when skipped.
-				if _, err := os.Stat(filepath.Join(dir, ".claude/skills/upstream/SKILL.md")); os.IsNotExist(err) {
-					t.Error("SKILL.md should still exist when migration was skipped")
+				// Skill directory should be cleaned up even when migration is skipped.
+				if _, err := os.Stat(filepath.Join(dir, ".claude/skills/upstream")); !os.IsNotExist(err) {
+					t.Error(".claude/skills/upstream should have been removed")
 				}
 			},
 		},
