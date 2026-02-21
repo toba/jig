@@ -64,8 +64,9 @@ func tapFromConvention() string {
 	return parts[0] + "/homebrew-" + parts[1]
 }
 
-// repoFromGitURL extracts "owner/repo" from a git URL.
-// Handles https://github.com/owner/repo.git and git@github.com:owner/repo.git.
+// repoFromGitURL extracts "owner/repo" from a git URL or short-form repo name.
+// Handles https://github.com/owner/repo.git, git@github.com:owner/repo.git,
+// and bare owner/repo.
 func repoFromGitURL(u string) string {
 	// Strip trailing .git
 	u = strings.TrimSuffix(u, ".git")
@@ -82,6 +83,11 @@ func repoFromGitURL(u string) string {
 	// SSH: git@github.com:owner/repo
 	if _, after, ok := strings.Cut(u, ":"); ok {
 		return after
+	}
+
+	// Bare owner/repo
+	if strings.Count(u, "/") == 1 && u[0] != '/' {
+		return u
 	}
 
 	return ""
