@@ -114,6 +114,43 @@ func TestRun(t *testing.T) {
 			},
 		},
 		{
+			name: "wraps bare rules under nope section when legacy file lacks nope: wrapper",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				mkdir(t, filepath.Join(dir, ".claude"))
+				writeFile(t, filepath.Join(dir, ".claude/nope.yaml"), "rules:\n  - name: no-force-push\n    glob: \"**\"\n")
+			},
+			check: func(t *testing.T, dir string) {
+				t.Helper()
+				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				if !strings.Contains(data, "nope:\n  rules:") {
+					t.Errorf("expected rules nested under nope:, got:\n%s", data)
+				}
+				if !strings.Contains(data, "    - name: no-force-push") {
+					t.Error("rule content not properly indented under nope:")
+				}
+				assertRemoved(t, filepath.Join(dir, ".claude/nope.yaml"))
+			},
+		},
+		{
+			name: "wraps bare content under todo section when legacy file lacks todo: wrapper",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				writeFile(t, filepath.Join(dir, ".todo.yml"), "sync:\n  provider: github\n  repo: owner/repo\n")
+			},
+			check: func(t *testing.T, dir string) {
+				t.Helper()
+				data := readFile(t, filepath.Join(dir, ".toba.yaml"))
+				if !strings.Contains(data, "todo:\n  sync:") {
+					t.Errorf("expected sync nested under todo:, got:\n%s", data)
+				}
+				if !strings.Contains(data, "    provider: github") {
+					t.Error("sync content not properly indented under todo:")
+				}
+				assertRemoved(t, filepath.Join(dir, ".todo.yml"))
+			},
+		},
+		{
 			name: "no legacy files found — no error, .toba.yaml unchanged",
 			setup: func(t *testing.T, dir string) {
 				t.Helper()

@@ -98,7 +98,7 @@ func Run(tobaPath string) error {
 			}
 			tobaContent += "\n"
 		}
-		tobaContent += string(h.content)
+		tobaContent += string(wrapInSection(h.sectionKey, h.content))
 		// Ensure content ends with newline.
 		if !strings.HasSuffix(tobaContent, "\n") {
 			tobaContent += "\n"
@@ -119,6 +119,25 @@ func Run(tobaPath string) error {
 	}
 
 	return nil
+}
+
+// wrapInSection wraps content under sectionKey if it doesn't already start with it.
+func wrapInSection(key string, content []byte) []byte {
+	prefix := key + ":"
+	lines := strings.Split(string(content), "\n")
+	if len(lines) > 0 && (lines[0] == prefix || strings.HasPrefix(lines[0], prefix+" ")) {
+		return content // already wrapped
+	}
+	var b strings.Builder
+	b.WriteString(prefix + "\n")
+	for _, line := range lines {
+		if line == "" {
+			b.WriteString("\n")
+		} else {
+			b.WriteString("  " + line + "\n")
+		}
+	}
+	return []byte(strings.TrimRight(b.String(), "\n") + "\n")
 }
 
 // splitLines splits s into lines, preserving empty lines.
