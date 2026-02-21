@@ -86,7 +86,7 @@ func FindConfigPath() (string, error) {
 		dir = parent
 	}
 
-	return "", fmt.Errorf("no config found (create .toba.yaml with a nope: section or run `skill nope init`)")
+	return "", fmt.Errorf("no config found (create .toba.yaml with a nope: section or run `ja nope init`)")
 }
 
 // FindAndLoadConfig locates and parses the nope section of .toba.yaml.

@@ -9,37 +9,43 @@ This is an active codebase with multiple agents and people making changes concur
 - If files you didn't touch appear modified, another agent may have changed them - include or exclude as appropriate
 - Focus on what IS changed, not what ISN'T
 
-## Stage and Commit
+## Phase 1: Gather
 
-Run `skill commit $ARGUMENTS`
+Run `ja commit gather`
 
-### If script exits with code 2 (gitignore candidates found)
+### If exit code 2 (gitignore candidates found)
 
 Ask the user whether to:
 1. Add the files to .gitignore
 2. Proceed with committing them anyway
 3. Cancel
 
-### If script succeeds (staged changes shown)
+### If successful
 
-1. Commit ALL staged changes - never unstage or filter files
-2. Create a commit with a concise, descriptive message:
-   - Lowercase, imperative mood (e.g., "add feature" not "Added feature")
-   - Focus on "why" not just "what"
-   - No need to check git log for style
-   - Include affected issue IDs
-3. Run `git status` to confirm the commit succeeded
-4. If output contains "PUSH_AFTER_COMMIT":
-   a. Tag a version bump (see Version Bumps below)
-   b. Run `git push && git push --tags`
-   c. Run `todo sync` to sync issues to GitHub
+You'll receive structured output with these sections:
+- **STAGED** — files that will be committed
+- **DIFF** — full staged diff
+- **LATEST_TAG** — current version tag (or "(none)")
+- **LOG_SINCE_TAG** — commits since the last tag
+
+Analyze these to determine:
+1. A concise commit message (lowercase imperative, focus on "why", include affected issue IDs)
+2. Whether a version bump is needed (see below)
+
+## Phase 2: Apply
+
+Run `ja commit apply -m "<message>" [-v <version>] [--push]`
+
+- Always include `-m` with your commit message
+- Include `-v <version>` when pushing (see Version Bumps)
+- Include `--push` if the user said "push" in their prompt, i.e. $ARGUMENTS contains "push"
 
 ## Version Bumps
 
-Every push includes a version bump. Determine the new tag by reading the latest `v*` tag with `git tag -l 'v*' | sort -V | tail -1`, then increment accordingly:
+Every push includes a version bump. Use the LATEST_TAG from gather output and increment:
 
 - **patch**: Bug fixes, docs, refactors, tests — no behavior change
 - **minor**: New features, non-breaking additions, breaking changes while pre-1.0
 - **major**: Breaking changes (post-1.0 only)
 
-Tag with `git tag v<new_version>`.
+Tag format: `v<major>.<minor>.<patch>` (e.g., v1.2.3)

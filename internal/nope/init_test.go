@@ -57,11 +57,11 @@ func TestRunInit(t *testing.T) {
 				if entry["matcher"] != ".*" {
 					t.Errorf("matcher = %q, want %q", entry["matcher"], ".*")
 				}
-				// Verify command is "skill nope"
+				// Verify command is "ja nope"
 				innerHooks := entry["hooks"].([]any)
 				hm := innerHooks[0].(map[string]any)
-				if hm["command"] != "skill nope" {
-					t.Errorf("command = %q, want %q", hm["command"], "skill nope")
+				if hm["command"] != "ja nope" {
+					t.Errorf("command = %q, want %q", hm["command"], "ja nope")
 				}
 			},
 		},
@@ -198,7 +198,7 @@ func TestRunInit(t *testing.T) {
 					"hooks": []any{
 						map[string]any{
 							"type":    "command",
-							"command": "skill nope",
+							"command": "ja nope",
 						},
 					},
 				}
@@ -234,7 +234,7 @@ func TestRunInit(t *testing.T) {
 			},
 		},
 		{
-			name: "migrates nogo command to skill nope",
+			name: "migrates nogo command to ja nope",
 			setup: func(t *testing.T, dir string) {
 				if err := os.MkdirAll(filepath.Join(dir, ".claude"), 0o750); err != nil {
 					t.Fatal(err)
@@ -276,8 +276,8 @@ func TestRunInit(t *testing.T) {
 				entry := ptu[0].(map[string]any)
 				innerHooks := entry["hooks"].([]any)
 				hm := innerHooks[0].(map[string]any)
-				if hm["command"] != "skill nope" {
-					t.Errorf("command = %q, want %q", hm["command"], "skill nope")
+				if hm["command"] != "ja nope" {
+					t.Errorf("command = %q, want %q", hm["command"], "ja nope")
 				}
 			},
 		},

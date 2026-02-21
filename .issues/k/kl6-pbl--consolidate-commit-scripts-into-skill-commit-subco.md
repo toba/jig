@@ -1,6 +1,6 @@
 ---
 # kl6-pbl
-title: Consolidate commit scripts into skill commit subcommand
+title: Consolidate commit scripts into ja commit subcommand
 status: completed
 type: feature
 priority: normal
@@ -21,4 +21,4 @@ sync:
 
 ## Summary of Changes
 
-Implemented `skill commit [push]` subcommand that consolidates duplicated commit script logic from ~18 repos. Created `internal/commit/` package with gitignore candidate pattern matching (33 patterns covering Go, Python, Node, Swift/iOS, and secrets), git staging, and background todo sync. Exported `FindKey`/`ReplaceKey` from `internal/config/` to support checking for `todo.sync` config section.
+Implemented `ja commit [push]` subcommand that consolidates duplicated commit script logic from ~18 repos. Created `internal/commit/` package with gitignore candidate pattern matching (33 patterns covering Go, Python, Node, Swift/iOS, and secrets), git staging, and background todo sync. Exported `FindKey`/`ReplaceKey` from `internal/config/` to support checking for `todo.sync` config section.

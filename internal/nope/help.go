@@ -3,16 +3,16 @@ package nope
 import "fmt"
 
 // HelpText is the full help reference for the nope guard.
-const HelpText = `skill nope — Claude Code PreToolUse guard
+const HelpText = `ja nope — Claude Code PreToolUse guard
 
 USAGE
-  skill nope              Run as hook guard (reads JSON from stdin)
-  skill nope init         Scaffold nope: section in .toba.yaml and hook in .claude/settings.json
-  skill nope doctor       Validate configuration
-  skill nope help         Show this help
+  ja nope              Run as hook guard (reads JSON from stdin)
+  ja nope init         Scaffold nope: section in .toba.yaml and hook in .claude/settings.json
+  ja nope doctor       Validate configuration
+  ja nope help         Show this help
 
 CONFIGURATION
-  skill nope reads rules from the nope: section of .toba.yaml, found by
+  ja nope reads rules from the nope: section of .toba.yaml, found by
   walking up from the current directory. Each rule blocks tool usage when
   its pattern matches the tool_input field from the hook's stdin JSON payload.
 

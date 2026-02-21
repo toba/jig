@@ -82,7 +82,7 @@ var StarterConfig = `nope:
       message: "writing to credential files not allowed"
 `
 
-const hookCommand = "skill nope"
+const hookCommand = "ja nope"
 
 var hookEntry = map[string]any{
 	"matcher": ".*",
@@ -183,7 +183,7 @@ func mergeSettings(path string) error {
 	}
 
 	if hasNopeHook(settings) {
-		if migrateNogoCommand(settings) {
+		if migrateLegacyCommand(settings) {
 			fmt.Fprintf(os.Stderr, "nope init: migrated nogo hook command to %q\n", hookCommand)
 			return writeSettings(path, settings, false)
 		}
@@ -255,9 +255,9 @@ func migrateNogoMatcher(settings map[string]any) bool {
 	return changed
 }
 
-// migrateNogoCommand updates existing hook entries that use "nogo" command
-// to use "skill nope" instead. Returns true if any change was made.
-func migrateNogoCommand(settings map[string]any) bool {
+// migrateLegacyCommand updates existing hook entries that use "nogo" or
+// "skill nope" command to use "ja nope" instead. Returns true if any change was made.
+func migrateLegacyCommand(settings map[string]any) bool {
 	hooks, _ := settings["hooks"].(map[string]any)
 	if hooks == nil {
 		return false
@@ -272,7 +272,11 @@ func migrateNogoCommand(settings map[string]any) bool {
 		innerHooks, _ := m["hooks"].([]any)
 		for _, h := range innerHooks {
 			hm, _ := h.(map[string]any)
-			if hm != nil && hm["command"] == "nogo" {
+			if hm == nil {
+				continue
+			}
+			cmd, _ := hm["command"].(string)
+			if cmd == "nogo" || cmd == "skill nope" {
 				hm["command"] = hookCommand
 				changed = true
 			}
@@ -304,11 +308,11 @@ func hasNopeHook(settings map[string]any) bool {
 	return false
 }
 
-// isNopeCommand returns true if the command is "skill nope" or "nogo".
+// isNopeCommand returns true if the command is "ja nope", "skill nope", or "nogo".
 func isNopeCommand(cmd any) bool {
 	s, ok := cmd.(string)
 	if !ok {
 		return false
 	}
-	return s == hookCommand || s == "nogo"
+	return s == hookCommand || s == "skill nope" || s == "nogo"
 }

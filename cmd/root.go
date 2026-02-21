@@ -17,7 +17,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "skill",
+	Use:   "ja",
 	Short: "Multi-tool CLI for upstream monitoring and Claude Code security guard",
 	Long:  "Multi-tool CLI combining upstream repo monitoring, companion management, and Claude Code security guard.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

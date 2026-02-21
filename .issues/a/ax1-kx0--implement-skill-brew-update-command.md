@@ -12,14 +12,14 @@ sync:
         synced_at: "2026-02-21T03:40:28Z"
 ---
 
-Implement `skill brew update` CLI command to automate Homebrew tap formula updates after a release.
+Implement `ja brew update` CLI command to automate Homebrew tap formula updates after a release.
 
 ## Tasks
 - [x] Create `internal/brew/formula.go` — Parse and rewrite `.rb` formula files
 - [x] Create `internal/brew/sha.go` — SHA extraction (3 strategies: sidecar, checksums.txt, compute)
 - [x] Create `internal/brew/update.go` — Orchestration: clone tap, update formula, commit+push
 - [x] Create `cmd/brew.go` — Cobra parent command
-- [x] Create `cmd/brew_update.go` — `skill brew update` subcommand with flags
+- [x] Create `cmd/brew_update.go` — `ja brew update` subcommand with flags
 - [x] Add `brew` to PersistentPreRunE skip list in cmd/root.go
 - [x] Write tests for formula parsing, SHA extraction, and URL building
 - [x] Verify build, tests, and vet pass
