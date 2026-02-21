@@ -2,25 +2,7 @@ package nope
 
 import (
 	"encoding/json"
-	"strings"
 )
-
-// CheckMultiline returns true if the command field contains multiple lines,
-// unless it looks like a heredoc commit (git commit -m "$(cat <<'EOF'...").
-func CheckMultiline(input string) bool {
-	cmd := ExtractCommand(input)
-	if cmd == "" {
-		return false
-	}
-	if !strings.Contains(cmd, "\n") {
-		return false
-	}
-	// Allow heredoc-style git commits
-	if strings.Contains(cmd, "git commit") {
-		return false
-	}
-	return true
-}
 
 // ExtractCommand pulls the "command" field from JSON tool input.
 func ExtractCommand(input string) string {

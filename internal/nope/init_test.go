@@ -25,9 +25,6 @@ func TestRunInit(t *testing.T) {
 				if err != nil {
 					t.Fatalf(".jig.yaml not created: %v", err)
 				}
-				if !strings.Contains(string(data), "multiline-commands") {
-					t.Error(".jig.yaml missing multiline-commands rule")
-				}
 				if !strings.Contains(string(data), "git-push") {
 					t.Error(".jig.yaml missing git-push rule")
 				}
@@ -305,7 +302,7 @@ func TestRunInit(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if !strings.Contains(string(data), "multiline-commands") {
+				if !strings.Contains(string(data), "git-push") {
 					t.Error(".jig.yaml content unexpected after second run")
 				}
 			},

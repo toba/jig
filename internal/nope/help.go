@@ -38,8 +38,6 @@ RULE FIELDS
              Common tool names: Bash, Read, Write, Edit, Glob, Grep, WebFetch.
 
 BUILTINS
-  multiline         Block multiline Bash commands (newlines in the command field).
-                    Allows heredoc-style git commits.
   pipe              Block pipe operators (|) outside quotes.
   chained           Block chained operators (&&, ||, ;) outside quotes.
   redirect          Block output redirection (>, >>) outside quotes.

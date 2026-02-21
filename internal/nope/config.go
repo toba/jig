@@ -12,7 +12,6 @@ import (
 
 // Builtin rule names.
 const (
-	BuiltinMultiline      = "multiline"
 	BuiltinPipe           = "pipe"
 	BuiltinChained        = "chained"
 	BuiltinRedirect       = "redirect"
@@ -159,8 +158,6 @@ func CompileRules(defs []RuleDef) ([]CompiledRule, error) {
 				}
 			}
 			switch d.Builtin {
-			case BuiltinMultiline:
-				check = CheckMultiline
 			case BuiltinPipe:
 				check = CheckPipe
 			case BuiltinChained:

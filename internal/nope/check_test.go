@@ -26,12 +26,6 @@ func TestCheckRulesBlocked(t *testing.T) {
 		input string
 		want  string // substring of expected block message
 	}{
-		// multiline
-		{
-			name:  "multiline command",
-			input: `{"command":"echo hello\necho world"}`,
-			want:  "multiline",
-		},
 		// git checkout/switch
 		{
 			name:  "git checkout",
@@ -211,29 +205,6 @@ func TestCheckRulesAllowed(t *testing.T) {
 			msg := CheckRules(rules, "Bash", tt.input, nil)
 			if msg != "" {
 				t.Errorf("expected allow, got block: %s", msg)
-			}
-		})
-	}
-}
-
-func TestCheckMultiline(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  bool
-	}{
-		{"single line", `{"command":"echo hello"}`, false},
-		{"multiline", `{"command":"echo hello\necho world"}`, true},
-		{"git commit multiline allowed", `{"command":"git commit -m 'foo\nbar'"}`, false},
-		{"empty command", `{"command":""}`, false},
-		{"no command field", `{"file_path":"foo"}`, false},
-		{"invalid json", `not json`, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := CheckMultiline(tt.input)
-			if got != tt.want {
-				t.Errorf("CheckMultiline = %v, want %v", got, tt.want)
 			}
 		})
 	}

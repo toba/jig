@@ -17,7 +17,7 @@ go vet ./...
   - `prime` — output instructions for AI coding agents
   - `tui` — top-level alias for `todo tui`
   - `sync` — top-level alias for `todo sync` (with `check`, `link`, `unlink` subcommands)
-  - `upstream` parent with `init`, `check`, `mark` subcommands — upstream monitoring
+  - `upstream` parent with `init`, `check` subcommands — upstream monitoring
   - `nope` parent with `init`, `doctor`, `help` subcommands — security guard
   - `brew` parent with `init`, `doctor` subcommands — Homebrew tap management
   - `zed` parent with `init`, `doctor` subcommands — Zed extension management
@@ -45,7 +45,6 @@ go vet ./...
 
 - Config uses yaml.v3 Node API for partial read/write to avoid clobbering other sections in `.jig.yaml`
 - GitHub calls shell out to `gh` CLI (no API token management needed)
-- `check` is strictly read-only; `mark` is the explicit write step
 - Uses `doublestar` for `**` glob support since Go's `path.Match` lacks it
 - `nope` guard reads rules from `nope:` key in `.jig.yaml` (not a separate file)
 - `nope` uses instance-based `DebugLogger` (nil-safe) instead of global state

@@ -30,7 +30,6 @@ func TestHelpTextContainsKeySections(t *testing.T) {
 
 func TestHelpTextDocumentsAllBuiltins(t *testing.T) {
 	builtins := []string{
-		"multiline",
 		"pipe",
 		"chained",
 		"redirect",

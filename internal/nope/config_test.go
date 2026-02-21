@@ -12,26 +12,17 @@ func TestLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfig: %v", err)
 	}
-	if len(cfg.Rules) != 24 {
-		t.Fatalf("expected 24 rules, got %d", len(cfg.Rules))
+	if len(cfg.Rules) != 23 {
+		t.Fatalf("expected 23 rules, got %d", len(cfg.Rules))
 	}
 
-	// Verify first rule is the multiline builtin
+	// Verify first rule is a regex rule
 	r := cfg.Rules[0]
-	if r.Name != "multiline-commands" {
-		t.Errorf("first rule name = %q, want multiline-commands", r.Name)
-	}
-	if r.Builtin != "multiline" {
-		t.Errorf("first rule builtin = %q, want multiline", r.Builtin)
-	}
-
-	// Verify a regex rule
-	r = cfg.Rules[1]
 	if r.Name != "git-checkout-switch" {
-		t.Errorf("second rule name = %q, want git-checkout-switch", r.Name)
+		t.Errorf("first rule name = %q, want git-checkout-switch", r.Name)
 	}
 	if r.Pattern == "" {
-		t.Error("second rule should have a pattern")
+		t.Error("first rule should have a pattern")
 	}
 }
 
@@ -44,8 +35,8 @@ func TestCompileRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompileRules: %v", err)
 	}
-	if len(rules) != 24 {
-		t.Fatalf("expected 24 compiled rules, got %d", len(rules))
+	if len(rules) != 23 {
+		t.Fatalf("expected 23 compiled rules, got %d", len(rules))
 	}
 }
 
@@ -57,7 +48,7 @@ func TestCompileRulesValidation(t *testing.T) {
 	}{
 		{
 			name:    "both pattern and builtin",
-			rules:   []RuleDef{{Name: "bad", Pattern: "foo", Builtin: "multiline", Message: "msg"}},
+			rules:   []RuleDef{{Name: "bad", Pattern: "foo", Builtin: "pipe", Message: "msg"}},
 			wantErr: "mutually exclusive",
 		},
 		{
@@ -82,7 +73,7 @@ func TestCompileRulesValidation(t *testing.T) {
 		},
 		{
 			name:    "builtin with non-Bash tool",
-			rules:   []RuleDef{{Name: "bad", Builtin: "multiline", Tools: []string{"Write"}, Message: "msg"}},
+			rules:   []RuleDef{{Name: "bad", Builtin: "pipe", Tools: []string{"Write"}, Message: "msg"}},
 			wantErr: "builtin rules only support Bash tool",
 		},
 	}

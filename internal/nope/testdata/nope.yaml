@@ -1,9 +1,5 @@
 nope:
   rules:
-    - name: multiline-commands
-      builtin: multiline
-      message: "multiline bash commands break permission matching (glob * can't match newlines). Reformat as a single line and use the description parameter for comments."
-
     - name: git-checkout-switch
       pattern: 'git\s+(checkout|switch)\s+'
       message: "git checkout/switch not allowed - branch changes require user approval"

@@ -61,11 +61,11 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 
-	// Update last_checked for sources that returned data.
+	// Update last_checked for every source that was successfully checked.
 	dirty := false
 	for _, r := range results {
 		if r.headSHA == "" {
-			continue
+			continue // error path — checkSource failed
 		}
 		origSrc := config.FindSource(cfg, r.display.Source.Repo)
 		if origSrc == nil {
@@ -130,7 +130,12 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 	}
 
 	if len(commits) == 0 {
-		return result, "", nil
+		// No new commits — still update the marker to record the check.
+		headSHA, err := client.GetHeadSHA(src.Repo, src.Branch)
+		if err != nil {
+			return nil, "", fmt.Errorf("getting HEAD: %w", err)
+		}
+		return result, headSHA, nil
 	}
 
 	// The most recent commit SHA becomes the new last_checked reference.

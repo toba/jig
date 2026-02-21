@@ -11,13 +11,6 @@ import (
 // StarterConfig is the default nope rules written to .jig.yaml.
 var StarterConfig = `nope:
   rules:
-    - name: multiline-commands
-      builtin: multiline
-      message: >-
-        multiline bash commands break permission matching
-        (glob * can't match newlines). Reformat as a single
-        line and use the description parameter for comments.
-
     - name: git-push
       pattern: 'git\s+push'
       message: "git push not allowed — only user should push"

@@ -1,11 +1,11 @@
 # Jig
 
 <img src="./assets/dad.jpg" align="right" width="100"/>
+
 My dad was a cabinet maker. His perpetually sawdusted workshop was dotted with contrivances that I sometimes mistook for junk (some stories there!) that actually were thoughtful, if scrappy, efforts to make some task simpler or safer.
 
 Jig is a multi-tool CLI that bundles upstream repo monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
 
-- [Commands](#commands)
 - [Install](#install)
 - [Configuration](#configuration)
 - [Requirements](#requirements)
@@ -13,12 +13,12 @@ Jig is a multi-tool CLI that bundles upstream repo monitoring, a file-based issu
 ## Commands
 
 - **`jig`**
-    - **`tui`**: alias for `todo tui`
-    - **`sync`**: alias for `todo sync`
+   - **`tui`**: alias for `todo tui`
+   - **`sync`**: alias for `todo sync`
    - **`doctor`**: run all doctor checks (brew, zed, nope)
    - **`prime`**: output agent instructions for issue tracking
    - **`version`**: print version info
-    - **[`todo`](#todo)**: file-based issue tracker for AI-first workflows
+   - **[`todo`](#todo)**: file-based issue tracker for AI-first workflows
       - **`tui`**: interactive terminal UI that displays `todo` issues
       - **`init`**: create `.issues/` directory and config
       - **`create`**: create a new issue
@@ -31,11 +31,10 @@ Jig is a multi-tool CLI that bundles upstream repo monitoring, a file-based issu
       - **`query`**: run GraphQL queries and mutations
       - **`doctor`**: validate issue links and references
       - **`sync`**: sync issues to external trackers
-      - **`refry`**: migrate from hmans/beans format
+      - **`refry`**: migrate from [beans](https://github.com/hmans/beans) format
    - **[`upstream`](#upstream)**: monitor upstream repositories for changes
       - **`init`**: add starter upstream section to `.jig.yaml`
-      - **`check`**: fetch and display changes grouped by relevance
-      - **`mark`**: update `last_checked_sha` to current HEAD for a source
+      - **`check`**: fetch and display changes, update `last_checked_sha`
    - **[`nope`](#nope)**: Claude Code `PreToolUse` guard (reads JSON from stdin, exits 0 or 2)
       - **`init`**: scaffold nope rules in `.jig.yaml` and hook in `.claude/settings.json`
       - **`doctor`**: validate nope configuration
@@ -205,12 +204,11 @@ todo:
 
 ## Upstream
 
-Track what's changed in repos you care about. Read-only by default — `check` looks, `mark` remembers.
+Track what's changed in repos you care about. `check` fetches changes and updates the marker in one step.
 
 ```bash
 jig upstream init
 jig upstream check
-jig upstream mark owner/repo
 ```
 
 Configure which files matter in `.jig.yaml`:
@@ -234,7 +232,9 @@ Files are classified as high, medium, or low relevance based on glob patterns. `
 
 ## Nope
 
-A `PreToolUse` hook for Claude Code. Rules live in the `nope:` section of `.jig.yaml` — regex patterns and built-in checks that block tool calls before they execute.
+When the agent wears you down with incessant prompts you've tried fruitlessly to *always-allow*, and you decide to go YOLO (`dangerously-skip-permissions`), a little *nope* remains prudent to prevent personal apocalypse.
+
+This command applies Claude's PreToolUse guard so that even when allowed to run wild, you can say "nope" if it tries to erase your thesis, send bomb threats or wire funds to your many enemies.
 
 ```bash
 jig nope init
@@ -273,7 +273,6 @@ Rules are either regex patterns or built-in checks. Each rule has a `name`, a `m
 
 | Name | What it catches |
 |------|----------------|
-| `multiline` | Multi-line commands (breaks permission glob matching) |
 | `pipe` | Pipe operators outside quotes |
 | `chained` | `&&`, `\|\|`, `;` outside quotes |
 | `redirect` | `>`, `>>` outside quotes |
@@ -285,20 +284,19 @@ Built-ins use proper shell tokenization — they understand quoting, so `grep "f
 
 ## Commit
 
-A two-phase commit workflow: **gather** then **apply**.
+I am all for having the agent write nice commit messages but my eyes bleed a little very time I see tokens ticking away while it runs the same wrong commands three times before getting it right.
 
-1. **Gather**: `jig commit` stages all changes, checks for files that should be gitignored, and drafts a commit message.
-2. **Apply**: If everything looks good, it creates the commit and optionally signals push intent.
+This command uses other configuration in `.jig.yaml` to determine whether there are issues to synchronize or a companion `brew` or Zed extension repo to consider so the agent isn't always evaluating such things.
+
+Instead, the agent is given the list of changes to summarize, along with the last tag, if any, and asked to respond with a description and likely next tag (version).
 
 ```bash
 jig commit
 ```
 
-This is designed for agent-driven workflows where the agent stages, reviews, and commits in a single pass. The gitignore check catches common mistakes (`.env`, build artifacts) before they land in history.
-
 ## Brew
 
-One-time setup for Homebrew tap automation. Creates the companion tap repo on GitHub, pushes an initial formula and README, and injects an `update-homebrew` job into the source repo's `release.yml`.
+I just got tired of re-figuring-out how to set up the companion repository for homebrew releases. At first I used an agent skill, which helped but I ended up with three different approaches for three repositories.
 
 ```bash
 jig brew init --tap toba/homebrew-todo
