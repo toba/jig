@@ -26,7 +26,7 @@ type todoCheckResult struct {
 }
 
 var todoCheckCmd = &cobra.Command{
-	Use:   "check",
+	Use:   "doctor",
 	Short: "Validate configuration and issue integrity",
 	Long: `Checks configuration and issue integrity, including:
 - Configuration settings (colors, default type)

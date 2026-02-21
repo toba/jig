@@ -1,30 +1,53 @@
 # Jig
 
-My dad was a cabinet maker. His perpetually sawdusted workshop 
+<img src="./assets/dad.jpg" align="right" width="100"/>
+My dad was a cabinet maker. His perpetually sawdusted workshop was dotted with contrivances that I sometimes mistook for junk (some stories there!) that actually were thoughtful, if scrappy, efforts to make some task simpler or safer.
 
-An agent multi-tool for little things.
+Jig is a multi-tool CLI that bundles upstream repo monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
+
+- [Commands](#commands)
+- [Install](#install)
+- [Configuration](#configuration)
+- [Requirements](#requirements)
 
 ## Commands
 
 - **`jig`**
-   - **`commit`**: stage changes, check for gitignore candidates, signal push intent
+    - **`tui`**: alias for `todo tui`
+    - **`sync`**: alias for `todo sync`
    - **`doctor`**: run all doctor checks (brew, zed, nope)
-   - **`update`**: migrate legacy config files into `.jig.yaml`
+   - **`prime`**: output agent instructions for issue tracking
    - **`version`**: print version info
-   - **`upstream`**: monitor upstream repositories for changes
+    - **[`todo`](#todo)**: file-based issue tracker for AI-first workflows
+      - **`tui`**: interactive terminal UI that displays `todo` issues
+      - **`init`**: create `.issues/` directory and config
+      - **`create`**: create a new issue
+      - **`list`**: list issues with filters
+      - **`show`**: display issue details
+      - **`update`**: modify an issue
+      - **`delete`**: remove an issue
+      - **`archive`**: archive completed/scrapped issues
+      - **`roadmap`**: render issue tree
+      - **`query`**: run GraphQL queries and mutations
+      - **`doctor`**: validate issue links and references
+      - **`sync`**: sync issues to external trackers
+      - **`refry`**: migrate from hmans/beans format
+   - **[`upstream`](#upstream)**: monitor upstream repositories for changes
       - **`init`**: add starter upstream section to `.jig.yaml`
       - **`check`**: fetch and display changes grouped by relevance
       - **`mark`**: update `last_checked_sha` to current HEAD for a source
-   - **`nope`**: Claude Code `PreToolUse` guard (reads JSON from stdin, exits 0 or 2)
+   - **[`nope`](#nope)**: Claude Code `PreToolUse` guard (reads JSON from stdin, exits 0 or 2)
       - **`init`**: scaffold nope rules in `.jig.yaml` and hook in `.claude/settings.json`
       - **`doctor`**: validate nope configuration
       - **`help`**: show nope guard reference
-   - **`brew`**: Homebrew tap management
+   - **[`commit`](#commit)**: stage changes, check for gitignore candidates, signal push intent
+   - **[`brew`](#brew)**: Homebrew tap management
       - **`init`**: create tap repo, push initial formula, inject `update-homebrew` CI job
       - **`doctor`**: verify brew tap setup is healthy
-   - **`zed`**: Zed extension management
+   - **[`zed`](#zed)**: Zed extension management
       - **`init`**: create extension repo, push scaffold, inject `sync-extension` CI job
       - **`doctor`**: verify Zed extension setup is healthy
+  
 
 ## Install
 
@@ -38,7 +61,149 @@ Or build from source:
 go install github.com/toba/jig@latest
 ```
 
-## Upstream Monitoring
+## Todo
+
+A git-diffable issue tracker that lives in your project. Issues are markdown files with YAML frontmatter stored in `.issues/`. Unlike similar tools, jig can sync bidirectionally with external trackers, and it's designed to be driven by LLM agents.
+
+```bash
+jig todo init                                  # create .issues/ and config
+jig todo create "Fix login bug" -t bug -s ready
+jig todo list                                  # list all issues
+jig todo show abc-def                          # view an issue
+jig todo tui                                   # interactive terminal UI
+jig todo sync                                  # sync to ClickUp or GitHub Issues
+```
+
+### What's in it
+
+[Beans](https://github.com/hmans/beans) things and ...
+
+- **External sync**: bidirectional sync with ClickUp and GitHub Issues (`jig todo sync`)
+- **Due dates**: date field with sort support
+- **TUI improvements**
+    - Status icons instead of text labels
+    - Sort picker (`o` key)
+    - Substring search instead of fuzzy match
+    - Tap `/` twice to search descriptions too
+    - Due date indicators
+
+![tui](assets/tui.png)
+
+### Issue Types
+
+| Type | Purpose |
+|------|---------|
+| `milestone` | A target release or checkpoint |
+| `epic` | A thematic container for related work |
+| `feature` | A user-facing capability or enhancement |
+| `bug` | Something that is broken and needs fixing |
+| `task` | A concrete piece of work (chore, sub-task) |
+
+### Agent Configuration
+
+The most basic way to teach your agent about jig's issue tracker is to add the following to your `AGENTS.md`, `CLAUDE.md`, or equivalent:
+
+```
+**IMPORTANT**: before you do anything else, run the `jig prime` command and heed its output.
+```
+
+The `prime` output is designed to be token-efficient — about 680 words — so it doesn't eat your context window every time a session starts or compacts.
+
+#### Claude Code Hooks
+
+Add the following hooks to your project's `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "jig prime" }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "jig prime" }] }
+    ]
+  }
+}
+```
+
+### Agent Workflows
+
+The real power of jig's issue tracker comes from letting your coding agent manage tasks. With the hooks above, you can use natural language:
+
+```
+Are there any tasks we should be tracking for this project? If so, please create issues for them.
+```
+
+```
+What should we work on next?
+```
+
+```
+Please inspect this project's issues and reorganize them into epics and milestones.
+```
+
+### Syncing with External Trackers
+
+jig syncs issues bidirectionally with **ClickUp** and **GitHub Issues**. Configure the integration in `.jig.yaml` under `todo.sync`, then run:
+
+```bash
+jig todo sync                  # Sync all issues
+jig todo sync abc-def xyz-123  # Sync specific issues
+jig todo sync --dry-run        # Preview changes without applying
+jig todo sync --force          # Force update even if unchanged
+```
+
+Per-issue sync state is stored in frontmatter:
+
+```yaml
+---
+title: Fix login bug
+status: ready
+sync:
+  clickup:
+    task_id: "868h4hd05"
+    synced_at: "2026-01-18T00:07:02Z"
+  github:
+    issue_number: "42"
+    synced_at: "2026-01-18T00:07:02Z"
+---
+```
+
+#### ClickUp
+
+Requires `CLICKUP_TOKEN` environment variable. Syncs statuses, priorities, types, and blocking relationships as ClickUp task dependencies.
+
+```yaml
+todo:
+  sync:
+    clickup:
+      list_id: "123456789"
+      assignee: 42
+      status_mapping:
+        draft: "backlog"
+        ready: "to do"
+        in-progress: "in progress"
+        completed: "complete"
+        scrapped: "closed"
+      priority_mapping:
+        critical: 1
+        high: 2
+        normal: 3
+        low: 4
+```
+
+#### GitHub Issues
+
+Requires `GITHUB_TOKEN` environment variable (or `gh` CLI auth). Maps statuses, priorities, and types to GitHub labels (e.g., `status:in-progress`, `priority:high`, `type:bug`). Blocking relationships are rendered as text in the issue body.
+
+```yaml
+todo:
+  sync:
+    github:
+      repo: "owner/repo"
+```
+
+## Upstream
 
 Track what's changed in repos you care about. Read-only by default — `check` looks, `mark` remembers.
 
@@ -67,7 +232,7 @@ upstream:
 
 Files are classified as high, medium, or low relevance based on glob patterns. `**` works — we use [doublestar](https://github.com/bmatcuk/doublestar) because Go's `path.Match` stubbornly refuses to support it.
 
-## Nope Guard
+## Nope
 
 A `PreToolUse` hook for Claude Code. Rules live in the `nope:` section of `.jig.yaml` — regex patterns and built-in checks that block tool calls before they execute.
 
@@ -118,11 +283,20 @@ Rules are either regex patterns or built-in checks. Each rule has a `name`, a `m
 
 Built-ins use proper shell tokenization — they understand quoting, so `grep "foo|bar"` won't trigger the pipe check. Regex patterns get `(?s)` prepended automatically so `.` matches newlines.
 
-### Migration from nogo
+## Commit
 
-If you were using `nogo`, `skill nope`, or `ja nope`, `jig nope init` will detect existing hooks in `.claude/settings.json` and migrate them to `jig nope`. Rules move from `.claude/nope.yaml` to the `nope:` section of `.jig.yaml` — you'll need to move those manually (wrap them under a `nope:` key).
+A two-phase commit workflow: **gather** then **apply**.
 
-## Brew Init
+1. **Gather**: `jig commit` stages all changes, checks for files that should be gitignored, and drafts a commit message.
+2. **Apply**: If everything looks good, it creates the commit and optionally signals push intent.
+
+```bash
+jig commit
+```
+
+This is designed for agent-driven workflows where the agent stages, reviews, and commits in a single pass. The gitignore check catches common mistakes (`.env`, build artifacts) before they land in history.
+
+## Brew
 
 One-time setup for Homebrew tap automation. Creates the companion tap repo on GitHub, pushes an initial formula and README, and injects an `update-homebrew` job into the source repo's `release.yml`.
 
@@ -140,7 +314,7 @@ Use `--dry-run` to preview without creating anything. Use `--json` for machine-r
 
 **After running**, add a `HOMEBREW_TAP_TOKEN` secret to the source repo — a GitHub PAT with Contents write access to the tap repo.
 
-## Zed Init
+## Zed
 
 One-time setup for Zed extension automation. Creates a companion extension repo on GitHub with the full scaffold (extension.toml, Cargo.toml, src/lib.rs, bump-version script and workflow, LICENSE, README), and injects a `sync-extension` job into the source repo's `release.yml`.
 
@@ -163,6 +337,14 @@ Use `--dry-run` to preview all generated files without creating anything. Use `-
 Everything lives in `.jig.yaml`. Sections are independent — you can use any subset.
 
 ```yaml
+todo:
+  issues:
+    path: .issues
+    editor: "code --wait"
+  sync:
+    github:
+      repo: "owner/repo"
+
 upstream:
   sources: [...]
 
@@ -182,7 +364,7 @@ A [JSON Schema](https://raw.githubusercontent.com/toba/jig/main/schema.json) is 
 ## Requirements
 
 - macOS or Linux (Windows builds exist but are untested)
-- `gh` CLI for upstream monitoring, brew, and zed commands (nope guard has no external dependencies)
+- `gh` CLI for upstream monitoring, brew, zed, and sync commands (nope guard and todo core have no external dependencies)
 
 ## License
 

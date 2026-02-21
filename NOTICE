@@ -1,0 +1,14 @@
+Jig
+Copyright 2026 Jason Abbott
+
+The issue tracking component of this project is derived from:
+
+  beans - https://github.com/hmans/beans
+  Copyright 2025 Hendrik Mans
+  Licensed under the Apache License, Version 2.0
+
+  beans was itself inspired by:
+
+  beads - https://github.com/steveyegge/beads
+  Copyright 2024 Steve Yegge
+  Licensed under the Apache License, Version 2.0

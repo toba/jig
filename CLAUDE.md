@@ -13,7 +13,7 @@ go vet ./...
 ## Architecture
 
 - `cmd/` — Cobra commands
-  - `todo` parent with `init`, `create`, `list`, `show`, `update`, `delete`, `archive`, `roadmap`, `graphql`, `check`, `sync`, `refry`, `tui` subcommands — issue tracking
+  - `todo` parent with `init`, `create`, `list`, `show`, `update`, `delete`, `archive`, `roadmap`, `graphql`, `doctor`, `sync`, `refry`, `tui` subcommands — issue tracking
   - `prime` — output instructions for AI coding agents
   - `tui` — top-level alias for `todo tui`
   - `sync` — top-level alias for `todo sync` (with `check`, `link`, `unlink` subcommands)
