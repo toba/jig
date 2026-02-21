@@ -1,4 +1,4 @@
-module github.com/toba/skill
+module github.com/toba/jig
 
 go 1.26
 

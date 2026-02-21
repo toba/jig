@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T16:36:54Z
 updated_at: 2026-02-21T16:38:11Z
+sync:
+    github:
+        issue_number: "3"
+        synced_at: "2026-02-21T16:40:37Z"
 ---
 
 - [x] Create internal/brew/language.go with Language type, DetectLanguage, and per-language methods

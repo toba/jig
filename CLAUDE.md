@@ -1,11 +1,11 @@
-# skill
+# jig
 
 Multi-tool CLI combining upstream repo monitoring and Claude Code security guard.
 
 ## Build & Test
 
 ```bash
-go build -o skill .
+go build -o jig .
 go test ./...
 go vet ./...
 ```
@@ -36,4 +36,4 @@ go vet ./...
 - `nope` uses instance-based `DebugLogger` (nil-safe) instead of global state
 - Guard mode runs via `RunE` on the parent cobra command; exit codes use `ExitError` sentinel
 - Each command group (`upstream`, `nope`, `brew`, `zed`) has its own `PersistentPreRunE`; root's is a no-op
-- `nope init` writes to `.toba.yaml` and `.claude/settings.json`; migrates old `nogo` hooks to `skill nope`
+- `nope init` writes to `.toba.yaml` and `.claude/settings.json`; migrates old `nogo`/`skill nope`/`ja nope` hooks to `jig nope`

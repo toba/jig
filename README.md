@@ -1,10 +1,10 @@
-# ja
+# jig
 
 An agent multi-tool for little things.
 
 ## Commands
 
-- **`ja`**
+- **`jig`**
    - **`commit`**: stage changes, check for gitignore candidates, signal push intent
    - **`doctor`**: run all doctor checks (brew, zed, nope)
    - **`update`**: migrate legacy config files into `.toba.yaml`
@@ -27,13 +27,13 @@ An agent multi-tool for little things.
 ## Install
 
 ```bash
-brew install toba/ja/ja
+brew install toba/jig/jig
 ```
 
 Or build from source:
 
 ```bash
-go install github.com/toba/skill@latest
+go install github.com/toba/jig@latest
 ```
 
 ## Upstream Monitoring
@@ -41,9 +41,9 @@ go install github.com/toba/skill@latest
 Track what's changed in repos you care about. Read-only by default — `check` looks, `mark` remembers.
 
 ```bash
-ja upstream init
-ja upstream check
-ja upstream mark owner/repo
+jig upstream init
+jig upstream check
+jig upstream mark owner/repo
 ```
 
 Configure which files matter in `.toba.yaml`:
@@ -70,10 +70,10 @@ Files are classified as high, medium, or low relevance based on glob patterns. `
 A `PreToolUse` hook for Claude Code. Rules live in the `nope:` section of `.toba.yaml` — regex patterns and built-in checks that block tool calls before they execute.
 
 ```bash
-ja nope init
+jig nope init
 ```
 
-This adds a `nope:` section to `.toba.yaml` with starter rules and wires up the hook in `.claude/settings.json`. Claude Code pipes a JSON payload to `ja nope` on stdin before each tool call. If a rule matches, the tool is blocked (exit 2). If nothing matches, it's allowed (exit 0).
+This adds a `nope:` section to `.toba.yaml` with starter rules and wires up the hook in `.claude/settings.json`. Claude Code pipes a JSON payload to `jig nope` on stdin before each tool call. If a rule matches, the tool is blocked (exit 2). If nothing matches, it's allowed (exit 0).
 
 ### Structure
 
@@ -118,20 +118,20 @@ Built-ins use proper shell tokenization — they understand quoting, so `grep "f
 
 ### Migration from nogo
 
-If you were using `nogo` or `skill nope`, `ja nope init` will detect existing hooks in `.claude/settings.json` and migrate them to `ja nope`. Rules move from `.claude/nope.yaml` to the `nope:` section of `.toba.yaml` — you'll need to move those manually (wrap them under a `nope:` key).
+If you were using `nogo`, `skill nope`, or `ja nope`, `jig nope init` will detect existing hooks in `.claude/settings.json` and migrate them to `jig nope`. Rules move from `.claude/nope.yaml` to the `nope:` section of `.toba.yaml` — you'll need to move those manually (wrap them under a `nope:` key).
 
 ## Brew Init
 
 One-time setup for Homebrew tap automation. Creates the companion tap repo on GitHub, pushes an initial formula and README, and injects an `update-homebrew` job into the source repo's `release.yml`.
 
 ```bash
-ja brew init --tap toba/homebrew-todo
+jig brew init --tap toba/homebrew-todo
 ```
 
 It auto-detects the source repo, latest release tag, description, and license via `gh`. The formula SHA256 is resolved using the same three-strategy approach (`.sha256` sidecar, `checksums.txt`, direct download). After running, tap updates happen automatically via CI.
 
 ```bash
-ja brew init --tap toba/homebrew-todo --tag v1.2.3 --repo toba/todo --desc "My tool" --license MIT
+jig brew init --tap toba/homebrew-todo --tag v1.2.3 --repo toba/todo --desc "My tool" --license MIT
 ```
 
 Use `--dry-run` to preview without creating anything. Use `--json` for machine-readable output.
@@ -143,13 +143,13 @@ Use `--dry-run` to preview without creating anything. Use `--json` for machine-r
 One-time setup for Zed extension automation. Creates a companion extension repo on GitHub with the full scaffold (extension.toml, Cargo.toml, src/lib.rs, bump-version script and workflow, LICENSE, README), and injects a `sync-extension` job into the source repo's `release.yml`.
 
 ```bash
-ja zed init --ext toba/gozer --languages "Go Text Template,Go HTML Template"
+jig zed init --ext toba/gozer --languages "Go Text Template,Go HTML Template"
 ```
 
 It auto-detects the source repo, latest release tag, and description via `gh`. The `--languages` flag is required — it sets which languages the extension provides LSP support for. After running, extension updates happen automatically via CI.
 
 ```bash
-ja zed init --ext toba/gozer --languages "CSS" --tag v1.0.0 --repo toba/go-css-lsp --desc "CSS LSP" --lsp-name go-css-lsp
+jig zed init --ext toba/gozer --languages "CSS" --tag v1.0.0 --repo toba/go-css-lsp --desc "CSS LSP" --lsp-name go-css-lsp
 ```
 
 Use `--dry-run` to preview all generated files without creating anything. Use `--json` for machine-readable output.
@@ -171,10 +171,10 @@ nope:
 
 Config reading uses the yaml.v3 Node API for partial read/write, so no section clobbers another.
 
-A [JSON Schema](https://raw.githubusercontent.com/toba/skill/main/schema.json) is available for editor autocomplete and validation. Add this modeline to the top of your `.toba.yaml`:
+A [JSON Schema](https://raw.githubusercontent.com/toba/jig/main/schema.json) is available for editor autocomplete and validation. Add this modeline to the top of your `.toba.yaml`:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/toba/skill/main/schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/toba/jig/main/schema.json
 ```
 
 ## Requirements

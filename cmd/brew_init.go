@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
-	"github.com/toba/skill/internal/brew"
+	"github.com/toba/jig/internal/brew"
 )
 
 var (

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toba/skill/internal/companion"
+	"github.com/toba/jig/internal/companion"
 )
 
 func TestGenerateSyncExtensionJob(t *testing.T) {

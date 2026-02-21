@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/toba/skill/internal/config"
+	"github.com/toba/jig/internal/config"
 )
 
 var upstreamCmd = &cobra.Command{

@@ -7,10 +7,10 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
-	"github.com/toba/skill/internal/classify"
-	"github.com/toba/skill/internal/config"
-	"github.com/toba/skill/internal/display"
-	"github.com/toba/skill/internal/github"
+	"github.com/toba/jig/internal/classify"
+	"github.com/toba/jig/internal/config"
+	"github.com/toba/jig/internal/display"
+	"github.com/toba/jig/internal/github"
 )
 
 var checkCmd = &cobra.Command{

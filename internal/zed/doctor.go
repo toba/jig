@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/toba/skill/internal/companion"
+	"github.com/toba/jig/internal/companion"
 )
 
 // DoctorOpts holds the inputs for zed doctor.

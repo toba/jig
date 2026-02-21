@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/toba/skill/internal/companion"
+	"github.com/toba/jig/internal/companion"
 )
 
 // InitOpts holds the inputs for zed init.

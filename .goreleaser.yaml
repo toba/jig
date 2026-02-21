@@ -1,9 +1,9 @@
 version: 2
 
-project_name: ja
+project_name: jig
 
 builds:
-  - binary: ja
+  - binary: jig
     env:
       - CGO_ENABLED=0
     goos:
@@ -15,9 +15,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/toba/skill/cmd.ver={{.Version}}
-      - -X github.com/toba/skill/cmd.commit={{.ShortCommit}}
-      - -X github.com/toba/skill/cmd.date={{.Date}}
+      - -X github.com/toba/jig/cmd.ver={{.Version}}
+      - -X github.com/toba/jig/cmd.commit={{.ShortCommit}}
+      - -X github.com/toba/jig/cmd.date={{.Date}}
 
 archives:
   - formats:

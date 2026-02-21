@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/toba/skill/internal/nope"
-	"github.com/toba/skill/internal/zed"
+	"github.com/toba/jig/internal/nope"
+	"github.com/toba/jig/internal/zed"
 )
 
 var zedDoctorCmd = &cobra.Command{

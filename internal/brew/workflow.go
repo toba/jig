@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toba/skill/internal/companion"
+	"github.com/toba/jig/internal/companion"
 )
 
 // WorkflowParams holds the inputs needed to generate the update-homebrew CI job.

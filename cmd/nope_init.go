@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/toba/skill/internal/nope"
+	"github.com/toba/jig/internal/nope"
 )
 
 var nopeInitCmd = &cobra.Command{

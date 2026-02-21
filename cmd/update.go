@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/toba/skill/internal/update"
+	"github.com/toba/jig/internal/update"
 )
 
 var updateCmd = &cobra.Command{

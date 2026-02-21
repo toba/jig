@@ -57,11 +57,11 @@ func TestRunInit(t *testing.T) {
 				if entry["matcher"] != ".*" {
 					t.Errorf("matcher = %q, want %q", entry["matcher"], ".*")
 				}
-				// Verify command is "ja nope"
+				// Verify command is "jig nope"
 				innerHooks := entry["hooks"].([]any)
 				hm := innerHooks[0].(map[string]any)
-				if hm["command"] != "ja nope" {
-					t.Errorf("command = %q, want %q", hm["command"], "ja nope")
+				if hm["command"] != "jig nope" {
+					t.Errorf("command = %q, want %q", hm["command"], "jig nope")
 				}
 			},
 		},
@@ -198,7 +198,7 @@ func TestRunInit(t *testing.T) {
 					"hooks": []any{
 						map[string]any{
 							"type":    "command",
-							"command": "ja nope",
+							"command": "jig nope",
 						},
 					},
 				}
@@ -276,8 +276,8 @@ func TestRunInit(t *testing.T) {
 				entry := ptu[0].(map[string]any)
 				innerHooks := entry["hooks"].([]any)
 				hm := innerHooks[0].(map[string]any)
-				if hm["command"] != "ja nope" {
-					t.Errorf("command = %q, want %q", hm["command"], "ja nope")
+				if hm["command"] != "jig nope" {
+					t.Errorf("command = %q, want %q", hm["command"], "jig nope")
 				}
 			},
 		},

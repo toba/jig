@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/toba/skill/schema.json",
+  "$id": "https://github.com/toba/jig/schema.json",
   "title": ".toba.yaml",
-  "description": "Configuration file for toba tools (ja, todo).",
+  "description": "Configuration file for toba tools (jig, todo).",
   "type": "object",
   "additionalProperties": true,
   "properties": {
@@ -39,11 +39,11 @@
               },
               "last_checked_sha": {
                 "type": "string",
-                "description": "SHA of the last checked commit (auto-updated by ja check)."
+                "description": "SHA of the last checked commit (auto-updated by jig check)."
               },
               "last_checked_date": {
                 "type": "string",
-                "description": "RFC 3339 date of the last check (auto-updated by ja check).",
+                "description": "RFC 3339 date of the last check (auto-updated by jig check).",
                 "format": "date-time"
               },
               "paths": {
@@ -242,7 +242,7 @@
     },
     "companions": {
       "type": "object",
-      "description": "Git URLs for companion repositories managed by ja.",
+      "description": "Git URLs for companion repositories managed by jig.",
       "additionalProperties": false,
       "properties": {
         "brew": {

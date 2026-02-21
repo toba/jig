@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/toba/skill/internal/companion"
+	"github.com/toba/jig/internal/companion"
 	"gopkg.in/yaml.v3"
 )
 

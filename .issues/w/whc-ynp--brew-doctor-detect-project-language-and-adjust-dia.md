@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T06:19:26Z
 updated_at: 2026-02-21T16:32:35Z
+sync:
+    github:
+        issue_number: "4"
+        synced_at: "2026-02-21T16:40:37Z"
 ---
 
 \`ja brew doctor\` currently assumes a Go/goreleaser-based release pipeline and fails on non-Go projects that have valid custom release workflows.

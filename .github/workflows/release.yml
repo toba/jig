@@ -38,7 +38,7 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
 
-          ASSET="ja_darwin_arm64.tar.gz"
+          ASSET="jig_darwin_arm64.tar.gz"
           SHA=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt -O - \
             | grep "$ASSET" | awk '{print $1}')
 
@@ -47,14 +47,14 @@ jobs:
             exit 1
           fi
 
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/toba/homebrew-ja.git" tap
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/toba/homebrew-jig.git" tap
           cd tap
 
-          cat > Formula/ja.rb << FORMULA
-          class Ja < Formula
+          cat > Formula/jig.rb << FORMULA
+          class Jig < Formula
             desc "Multi-tool CLI for upstream repo monitoring and Claude Code security guard"
-            homepage "https://github.com/toba/skill"
-            url "https://github.com/toba/skill/releases/download/${TAG}/ja_darwin_arm64.tar.gz"
+            homepage "https://github.com/toba/jig"
+            url "https://github.com/toba/jig/releases/download/${TAG}/jig_darwin_arm64.tar.gz"
             version "${VERSION}"
             sha256 "${SHA}"
             license "Apache-2.0"
@@ -63,19 +63,19 @@ jobs:
             depends_on arch: :arm64
 
             def install
-              bin.install "ja"
+              bin.install "jig"
             end
 
             test do
-              assert_match "ja", shell_output("#{bin}/ja version")
+              assert_match "jig", shell_output("#{bin}/jig version")
             end
           end
           FORMULA
 
-          sed -i 's/^          //' Formula/ja.rb
+          sed -i 's/^          //' Formula/jig.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/ja.rb
+          git add Formula/jig.rb
           git commit -m "bump to ${VERSION}"
           git push

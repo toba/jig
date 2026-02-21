@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/toba/skill/internal/config"
-	"github.com/toba/skill/internal/nope"
+	"github.com/toba/jig/internal/config"
+	"github.com/toba/jig/internal/nope"
 )
 
 var (
@@ -17,7 +17,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ja",
+	Use:   "jig",
 	Short: "Multi-tool CLI for upstream monitoring and Claude Code security guard",
 	Long:  "Multi-tool CLI combining upstream repo monitoring, companion management, and Claude Code security guard.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

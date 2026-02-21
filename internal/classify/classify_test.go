@@ -3,7 +3,7 @@ package classify
 import (
 	"testing"
 
-	"github.com/toba/skill/internal/config"
+	"github.com/toba/jig/internal/config"
 )
 
 func TestClassify(t *testing.T) {

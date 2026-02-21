@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toba/skill/internal/classify"
-	"github.com/toba/skill/internal/config"
+	"github.com/toba/jig/internal/classify"
+	"github.com/toba/jig/internal/config"
 )
 
 var (

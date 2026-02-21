@@ -46,7 +46,7 @@ func Run(tobaPath string) error {
 		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (upstream section)\n", upPath, tobaPath)
 	}
 
-	// Migrate commit command (scripts/commit.sh → skill commit).
+	// Migrate commit command (scripts/commit.sh → jig commit).
 	commitMigrated, err := migrateCommitCommand(tobaPath)
 	if err != nil {
 		return fmt.Errorf("commit command migration: %w", err)

@@ -16,7 +16,7 @@ var commitCandidates = []struct {
 }
 
 // migrateCommitCommand detects a project commit command or shell script
-// that references scripts/commit.sh and rewrites it to use ja commit.
+// that references scripts/commit.sh and rewrites it to use jig commit.
 // Returns (migrated bool, error).
 func migrateCommitCommand(_ string) (bool, error) {
 	for _, c := range commitCandidates {
@@ -45,8 +45,8 @@ func tryMigrateCommitCommand(commandPath, scriptPath string) (bool, error) {
 		return false, nil
 	}
 
-	// Check that ja commit exists (it should, since we're running skill).
-	// Rewrite the command to use ja commit instead.
+	// Check that jig commit exists (it should, since we're running skill).
+	// Rewrite the command to use jig commit instead.
 	newContent := rewriteCommitCommand(content, scriptPath)
 	if newContent == content {
 		return false, nil // nothing changed
@@ -55,11 +55,11 @@ func tryMigrateCommitCommand(commandPath, scriptPath string) (bool, error) {
 	if err := os.WriteFile(commandPath, []byte(newContent), 0o644); err != nil {
 		return false, fmt.Errorf("writing %s: %w", commandPath, err)
 	}
-	fmt.Fprintf(os.Stderr, "update: rewrote %s to use ja commit\n", commandPath)
+	fmt.Fprintf(os.Stderr, "update: rewrote %s to use jig commit\n", commandPath)
 
 	// Remove the old script if it exists.
 	if err := os.Remove(scriptPath); err == nil {
-		fmt.Fprintf(os.Stderr, "update: removed %s (replaced by ja commit)\n", scriptPath)
+		fmt.Fprintf(os.Stderr, "update: removed %s (replaced by jig commit)\n", scriptPath)
 		// Clean up empty scripts/ directory.
 		removeEmptyDir(filepath.Dir(scriptPath))
 	}
@@ -74,19 +74,19 @@ func referencesScript(content, scriptPath string) bool {
 		strings.Contains(content, scriptPath)
 }
 
-// rewriteCommitCommand replaces references to the shell script with ja commit.
+// rewriteCommitCommand replaces references to the shell script with jig commit.
 func rewriteCommitCommand(content, scriptPath string) string {
 	// Replace command invocations. The commit.md typically has:
 	//   Run `./scripts/commit.sh $ARGUMENTS`
 	// or similar patterns.
 	result := content
 
-	// Replace ./scripts/commit.sh and scripts/commit.sh with ja commit.
-	result = strings.ReplaceAll(result, "./"+scriptPath, "ja commit")
-	result = strings.ReplaceAll(result, scriptPath, "ja commit")
+	// Replace ./scripts/commit.sh and scripts/commit.sh with jig commit.
+	result = strings.ReplaceAll(result, "./"+scriptPath, "jig commit")
+	result = strings.ReplaceAll(result, scriptPath, "jig commit")
 
-	// Clean up doubled "ja commit $ARGUMENTS" → "ja commit $ARGUMENTS" (already fine)
-	// but fix "ja commit $ARGUMENTS" since ja commit takes [push] not $ARGUMENTS.
+	// Clean up doubled "jig commit $ARGUMENTS" → "jig commit $ARGUMENTS" (already fine)
+	// but fix "jig commit $ARGUMENTS" since jig commit takes [push] not $ARGUMENTS.
 
 	return result
 }

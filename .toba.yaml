@@ -4,7 +4,7 @@ todo:
   default_type: task
   sync:
     github:
-      repo: toba/skill
+      repo: toba/jig
 
 companions:
-  brew: https://github.com/toba/homebrew-ja.git
+  brew: https://github.com/toba/homebrew-jig.git
