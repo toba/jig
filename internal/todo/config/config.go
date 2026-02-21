@@ -8,12 +8,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/toba/jig/internal/constants"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	// ConfigFileName is the name of the config file at project root
-	ConfigFileName = ".jig.yaml"
+	// ConfigFileName is the name of the config file at project root.
+	ConfigFileName = constants.ConfigFileName
 	// LegacyTobaConfigFileName is the old .toba.yaml config file name
 	LegacyTobaConfigFileName = ".toba.yaml"
 	// LegacyConfigFileName is the old config file name (pre-migration)

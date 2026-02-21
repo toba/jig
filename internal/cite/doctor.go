@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/toba/jig/internal/config"
 	"github.com/toba/jig/internal/github"
+	"golang.org/x/sync/errgroup"
 )
 
 // DoctorOpts holds the inputs for cite doctor.
@@ -34,6 +36,12 @@ var licenseFiles = []string{
 	"THIRD-PARTY-NOTICES.md",
 	"THIRD-PARTY-NOTICES.txt",
 	"COPYING",
+}
+
+// attributionResult holds the outcome of a single attribution check.
+type attributionResult struct {
+	msg    string
+	passed bool
 }
 
 // RunDoctor checks that each configured citation has attribution in local
@@ -64,9 +72,31 @@ func RunDoctor(opts DoctorOpts) int {
 		contents = append(contents, strings.ToLower(string(data)))
 	}
 
+	// Run attribution checks concurrently with bounded parallelism.
+	results := make([]attributionResult, len(opts.Sources))
+	var mu sync.Mutex
+	g := new(errgroup.Group)
+	g.SetLimit(5)
+
+	for i, src := range opts.Sources {
+		g.Go(func() error {
+			msg, passed := checkAttribution(src, contents, opts.Client)
+			mu.Lock()
+			results[i] = attributionResult{msg: msg, passed: passed}
+			mu.Unlock()
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+
+	// Display results in original order.
 	ok := true
-	for _, src := range opts.Sources {
-		ok = checkAttribution(src, contents, opts.Client) && ok
+	for _, r := range results {
+		fmt.Fprintln(os.Stderr, r.msg)
+		if !r.passed {
+			ok = false
+		}
 	}
 
 	if !ok {
@@ -76,7 +106,8 @@ func RunDoctor(opts DoctorOpts) int {
 }
 
 // checkAttribution verifies a single citation is mentioned in license files.
-func checkAttribution(src config.Source, contents []string, client github.Client) bool {
+// Returns the diagnostic message and whether the check passed.
+func checkAttribution(src config.Source, contents []string, client github.Client) (string, bool) {
 	// Build search terms from the repo slug.
 	owner, repo := splitRepo(src.Repo)
 	terms := []string{strings.ToLower(src.Repo)}
@@ -104,8 +135,7 @@ func checkAttribution(src config.Source, contents []string, client github.Client
 				if licenseName != "" {
 					msg += fmt.Sprintf(" (upstream: %s)", licenseName)
 				}
-				fmt.Fprintln(os.Stderr, msg)
-				return true
+				return msg, true
 			}
 		}
 	}
@@ -115,8 +145,7 @@ func checkAttribution(src config.Source, contents []string, client github.Client
 	if licenseName != "" {
 		msg += fmt.Sprintf(" (upstream license: %s)", licenseName)
 	}
-	fmt.Fprintln(os.Stderr, msg)
-	return false
+	return msg, false
 }
 
 // discoverLicenseFiles returns paths to license-related files in the

@@ -1,16 +1,15 @@
 package github
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/toba/jig/internal/todo/integration/syncutil"
 )
 
 const baseURL = "https://api.github.com"
@@ -77,16 +76,7 @@ func (c *Client) getRetryConfig() RetryConfig {
 
 // newJSONRequest creates an HTTP request with a JSON-encoded body.
 func (c *Client) newJSONRequest(ctx context.Context, method, url string, payload any) (*http.Request, error) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling request: %w", err)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	return req, nil
+	return syncutil.NewJSONRequest(ctx, method, url, payload)
 }
 
 // NewClient creates a new GitHub client.
@@ -289,69 +279,17 @@ func (c *Client) AddSubIssue(ctx context.Context, parentNumber, childIssueID int
 }
 
 // doRequest executes an HTTP request and decodes the response.
-// It automatically retries on rate limit errors and transient errors with exponential backoff.
+// It delegates to syncutil.DoWithRetry with GitHub-specific auth and error handling.
 func (c *Client) doRequest(req *http.Request, result any) error {
 	cfg := c.getRetryConfig()
 
-	// We need to be able to retry the request, so we need to save the body
-	var bodyBytes []byte
-	if req.Body != nil {
-		var err error
-		bodyBytes, err = io.ReadAll(req.Body)
-		if err != nil {
-			return fmt.Errorf("reading request body: %w", err)
-		}
-		_ = req.Body.Close()
-	}
-
-	// Reset the body after reading so the first attempt has a valid body
-	if bodyBytes != nil {
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-	}
-
-	var lastErr error
-	for attempt := 0; attempt <= cfg.MaxRetries; attempt++ {
-		if attempt > 0 {
-			// Calculate delay with exponential backoff and jitter
-			delay := min(cfg.BaseRetryDelay*time.Duration(1<<(attempt-1)), cfg.MaxRetryDelay)
-			// Add jitter (0-25% of delay)
-			jitter := time.Duration(rand.Int64N(int64(delay / 4)))
-			delay += jitter
-
-			select {
-			case <-req.Context().Done():
-				return req.Context().Err()
-			case <-time.After(delay):
-			}
-
-			// Reset the body for retry
-			if bodyBytes != nil {
-				req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-			}
-		}
-
-		req.Header.Set("Authorization", "Bearer "+c.token)
-		req.Header.Set("Accept", "application/vnd.github+json")
-		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			// Check for transient network errors
-			if isTransientNetworkError(err) {
-				lastErr = &TransientError{Message: err.Error()}
-				continue // Retry
-			}
-			return fmt.Errorf("executing request: %w", err)
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		if err != nil {
-			return fmt.Errorf("reading response: %w", err)
-		}
-
-		if resp.StatusCode >= 400 {
-			// Check for rate limit errors
+	hooks := syncutil.RequestHooks{
+		SetAuth: func(r *http.Request) {
+			r.Header.Set("Authorization", "Bearer "+c.token)
+			r.Header.Set("Accept", "application/vnd.github+json")
+			r.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+		},
+		HandleRateLimit: func(resp *http.Response, body []byte) error {
 			if resp.StatusCode == 429 || (resp.StatusCode == 403 && resp.Header.Get("X-RateLimit-Remaining") == "0") {
 				retryAfter := 60 * time.Second // default
 				if ra := resp.Header.Get("Retry-After"); ra != "" {
@@ -359,71 +297,25 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 						retryAfter = time.Duration(seconds) * time.Second
 					}
 				}
-				lastErr = &RateLimitError{
+				return &RateLimitError{
 					Message:    string(body),
 					RetryAfter: retryAfter,
 				}
-				continue // Retry
 			}
-
-			// Check for transient HTTP errors (5xx)
-			if isTransientHTTPError(resp.StatusCode, body) {
-				lastErr = &TransientError{Message: fmt.Sprintf("HTTP %d", resp.StatusCode)}
-				continue // Retry
-			}
-
+			return nil
+		},
+		HandleAPIError: func(statusCode int, body []byte) error {
 			var errResp errorResponse
 			if err := json.Unmarshal(body, &errResp); err == nil && errResp.Message != "" {
-				return fmt.Errorf("API error (HTTP %d): %s", resp.StatusCode, errResp.Message)
+				return fmt.Errorf("API error (HTTP %d): %s", statusCode, errResp.Message)
 			}
-
-			return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-		}
-
-		if result != nil && len(body) > 0 {
-			if err := json.Unmarshal(body, result); err != nil {
-				return fmt.Errorf("decoding response: %w", err)
-			}
-		}
-
-		return nil
+			return nil
+		},
 	}
 
-	// All retries exhausted
-	return fmt.Errorf("max retries exceeded: %w", lastErr)
-}
-
-// isTransientNetworkError checks if an error is a transient network error that should be retried.
-func isTransientNetworkError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errStr := err.Error()
-	if strings.Contains(errStr, "stream error") || strings.Contains(errStr, "INTERNAL_ERROR") {
-		return true
-	}
-	if strings.Contains(errStr, "connection reset") || strings.Contains(errStr, "connection refused") {
-		return true
-	}
-	if strings.Contains(errStr, "EOF") {
-		return true
-	}
-	if strings.Contains(errStr, "timeout") || strings.Contains(errStr, "Timeout") {
-		return true
-	}
-	return false
-}
-
-// isTransientHTTPError checks if an HTTP error is transient and should be retried.
-func isTransientHTTPError(statusCode int, body []byte) bool {
-	if statusCode >= 500 && statusCode < 600 {
-		return true
-	}
-	if statusCode == 502 || statusCode == 503 || statusCode == 504 {
-		bodyStr := string(body)
-		if strings.Contains(bodyStr, "try again") || strings.Contains(bodyStr, "Try again") {
-			return true
-		}
-	}
-	return false
+	return syncutil.DoWithRetry(c.httpClient, req, syncutil.RetryConfig{
+		MaxRetries:     cfg.MaxRetries,
+		BaseRetryDelay: cfg.BaseRetryDelay,
+		MaxRetryDelay:  cfg.MaxRetryDelay,
+	}, hooks, result)
 }

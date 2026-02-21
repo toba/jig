@@ -7,8 +7,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/toba/jig/internal/companion"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 )
 
@@ -39,45 +41,79 @@ func RunDoctor(opts DoctorOpts) int {
 		ok = checkGoreleaser(opts.Tool) && ok
 	}
 
-	// 3. tap repo exists on GitHub
-	cmd := exec.Command("gh", "repo", "view", opts.Tap)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: tap repo %s not found on GitHub: %s\n", opts.Tap, strings.TrimSpace(string(out)))
-		ok = false
-	} else {
-		fmt.Fprintf(os.Stderr, "OK:   tap repo exists: %s\n", opts.Tap)
+	// Checks 3, 4, 5: independent gh calls — run concurrently.
+	type checkResult struct {
+		msg    string
+		passed bool
 	}
+	results := make([]checkResult, 3)
+	var mu sync.Mutex
+	setResult := func(i int, msg string, passed bool) {
+		mu.Lock()
+		results[i] = checkResult{msg: msg, passed: passed}
+		mu.Unlock()
+	}
+
+	tag := ""
+	g := new(errgroup.Group)
+	g.SetLimit(3)
+
+	// 3. tap repo exists on GitHub
+	g.Go(func() error {
+		cmd := exec.Command("gh", "repo", "view", opts.Tap)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			setResult(0, fmt.Sprintf("FAIL: tap repo %s not found on GitHub: %s", opts.Tap, strings.TrimSpace(string(out))), false)
+		} else {
+			setResult(0, fmt.Sprintf("OK:   tap repo exists: %s", opts.Tap), true)
+		}
+		return nil
+	})
 
 	// 4. formula exists in tap
-	formulaPath := fmt.Sprintf("repos/%s/contents/Formula/%s.rb", opts.Tap, opts.Tool)
-	cmd = exec.Command("gh", "api", formulaPath)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: formula not found at Formula/%s.rb in %s: %s\n", opts.Tool, opts.Tap, strings.TrimSpace(string(out)))
-		ok = false
-	} else {
-		fmt.Fprintf(os.Stderr, "OK:   formula exists: Formula/%s.rb\n", opts.Tool)
-	}
+	g.Go(func() error {
+		formulaPath := fmt.Sprintf("repos/%s/contents/Formula/%s.rb", opts.Tap, opts.Tool)
+		cmd := exec.Command("gh", "api", formulaPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			setResult(1, fmt.Sprintf("FAIL: formula not found at Formula/%s.rb in %s: %s", opts.Tool, opts.Tap, strings.TrimSpace(string(out))), false)
+		} else {
+			setResult(1, fmt.Sprintf("OK:   formula exists: Formula/%s.rb", opts.Tool), true)
+		}
+		return nil
+	})
 
 	// 5. source repo has releases
-	tag := ""
-	cmd = exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName")
-	if out, err := cmd.Output(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: no releases found for %s\n", opts.Repo)
-		ok = false
-	} else {
-		tag = strings.TrimSpace(string(out))
-		if tag == "" {
-			fmt.Fprintf(os.Stderr, "FAIL: no releases found for %s\n", opts.Repo)
-			ok = false
+	g.Go(func() error {
+		cmd := exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName")
+		if out, err := cmd.Output(); err != nil {
+			setResult(2, fmt.Sprintf("FAIL: no releases found for %s", opts.Repo), false)
 		} else {
-			fmt.Fprintf(os.Stderr, "OK:   latest release: %s\n", tag)
+			t := strings.TrimSpace(string(out))
+			if t == "" {
+				setResult(2, fmt.Sprintf("FAIL: no releases found for %s", opts.Repo), false)
+			} else {
+				mu.Lock()
+				tag = t
+				mu.Unlock()
+				setResult(2, fmt.Sprintf("OK:   latest release: %s", t), true)
+			}
+		}
+		return nil
+	})
+
+	_ = g.Wait()
+
+	// Display results in original order.
+	for _, r := range results {
+		fmt.Fprintln(os.Stderr, r.msg)
+		if !r.passed {
+			ok = false
 		}
 	}
 
-	// 6. latest release has darwin arm64 asset
+	// 6. latest release has darwin arm64 asset (depends on tag from check 5)
 	expectedAsset := lang.AssetName(opts.Tool, tag)
 	if tag != "" {
-		cmd = exec.Command("gh", "release", "view", tag, "--repo", opts.Repo, "--json", "assets")
+		cmd := exec.Command("gh", "release", "view", tag, "--repo", opts.Repo, "--json", "assets")
 		if out, err := cmd.Output(); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL: could not fetch release %s assets\n", tag)
 			ok = false
@@ -213,12 +249,8 @@ type goreleaserConfig struct {
 func checkGoreleaser(tool string) bool {
 	ok := true
 
-	data, err := os.ReadFile(".goreleaser.yaml")
-	if err != nil {
-		// Try alternate extension.
-		data, err = os.ReadFile(".goreleaser.yml")
-	}
-	if err != nil {
+	data, _, found := companion.CheckGoreleaserExists()
+	if !found {
 		fmt.Fprintf(os.Stderr, "FAIL: .goreleaser.yaml not found\n")
 		return false
 	}

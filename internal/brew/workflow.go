@@ -3,7 +3,6 @@ package brew
 import (
 	"cmp"
 	"fmt"
-	"strings"
 
 	"github.com/toba/jig/internal/companion"
 )
@@ -91,22 +90,8 @@ func GenerateWorkflowJob(p WorkflowParams) string {
 // InjectWorkflowJob appends the update-homebrew job to an existing workflow file.
 // It returns the modified content or an error if the job already exists.
 func InjectWorkflowJob(content string, p WorkflowParams) (string, error) {
-	if strings.Contains(content, "update-homebrew:") {
-		return "", fmt.Errorf("workflow already contains an update-homebrew job")
-	}
-
-	// Detect the "needs" job name from the existing workflow.
-	// Look for the last top-level job name (lines matching "  <name>:" under "jobs:").
-	if p.Needs == "" {
-		p.Needs = companion.DetectLastJob(content)
-	}
-
-	job := GenerateWorkflowJob(p)
-
-	// Ensure the file ends with a newline before appending.
-	if !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	return content + job, nil
+	return companion.InjectJob(content, "update-homebrew:", &p.Needs, func() string {
+		return GenerateWorkflowJob(p)
+	})
 }
 

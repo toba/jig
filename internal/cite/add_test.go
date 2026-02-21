@@ -1,6 +1,7 @@
 package cite
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/toba/jig/internal/config"
@@ -123,27 +124,14 @@ func TestFormatSourceYAML(t *testing.T) {
 		t.Fatal("expected non-empty output")
 	}
 	// Verify flow sequence format.
-	if !contains(got, `["**/*.go"]`) {
+	if !strings.Contains(got, `["**/*.go"]`) {
 		t.Errorf("expected flow sequence for high paths, got:\n%s", got)
 	}
 	for _, want := range []string{"repo: toba/jig", "branch: main", "notes: Multi-tool CLI", `"**/*.go"`, "go.mod"} {
-		if !contains(got, want) {
+		if !strings.Contains(got, want) {
 			t.Errorf("output missing %q:\n%s", want, got)
 		}
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStr(s, substr))
-}
-
-func containsStr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }
 
 func TestExtractRepoSlug(t *testing.T) {

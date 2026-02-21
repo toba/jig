@@ -93,7 +93,7 @@ func RenderText(w io.Writer, results []SourceResult) {
 			fmt.Fprintln(w, "  "+label)
 			for _, c := range commits {
 				short := c.SHA[:min(7, len(c.SHA))]
-				msg := truncate(c.Message, 50)
+				msg := Truncate(c.Message, 50)
 				line := fmt.Sprintf("    %s  %s  %s  %s",
 					shaStyle.Render(short),
 					msg,
@@ -139,7 +139,8 @@ func groupCommitsByLevel(commits []CommitResult) map[classify.Level][]CommitResu
 	return grouped
 }
 
-func truncate(s string, n int) string {
+// Truncate shortens s to at most n characters, appending "..." if truncated.
+func Truncate(s string, n int) string {
 	s = strings.TrimSpace(s)
 	if len(s) <= n {
 		return s

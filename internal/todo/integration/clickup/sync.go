@@ -18,7 +18,7 @@ type SyncResult struct {
 	IssueTitle string
 	TaskID     string
 	TaskURL    string
-	Action     string // Matches integration.Action* constants
+	Action     string // Matches syncutil.Action* constants
 	Error      error
 }
 
@@ -153,7 +153,7 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			idx := issueIndex[b.ID]
 			results[idx] = result
 
-			if result.Error == nil && result.Action != "skipped" && result.TaskID != "" {
+			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.TaskID != "" {
 				mu.Lock()
 				s.issueToTaskID[b.ID] = result.TaskID
 				mu.Unlock()
@@ -170,7 +170,7 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			idx := issueIndex[b.ID]
 			results[idx] = result
 
-			if result.Error == nil && result.Action != "skipped" && result.TaskID != "" {
+			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.TaskID != "" {
 				mu.Lock()
 				s.issueToTaskID[b.ID] = result.TaskID
 				mu.Unlock()
@@ -224,7 +224,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 		// Check if issue has changed since last sync
 		if !s.opts.Force && !s.needsSync(b) {
-			result.Action = "skipped"
+			result.Action = syncutil.ActionSkipped
 			return result
 		}
 
@@ -236,7 +236,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 				s.syncStore.Clear(b.ID)
 				// Fall through to create new task below
 			} else {
-				result.Action = "error"
+				result.Action = syncutil.ActionError
 				result.Error = fmt.Errorf("fetching task %s: %w", *taskID, err)
 				return result
 			}
@@ -245,7 +245,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 			result.TaskURL = task.URL
 
 			if s.opts.DryRun {
-				result.Action = "would update"
+				result.Action = syncutil.ActionWouldUpdate
 				return result
 			}
 
@@ -264,7 +264,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 			if update.hasChanges() {
 				updatedTask, err := s.client.UpdateTask(ctx, *taskID, update)
 				if err != nil {
-					result.Action = "error"
+					result.Action = syncutil.ActionError
 					result.Error = fmt.Errorf("updating task: %w", err)
 					return result
 				}
@@ -281,9 +281,9 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 			s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
 
 			if update.hasChanges() || customFieldsUpdated || tagsChanged {
-				result.Action = "updated"
+				result.Action = syncutil.ActionUpdated
 			} else {
-				result.Action = "unchanged"
+				result.Action = syncutil.ActionUnchanged
 			}
 			return result
 		}
@@ -291,7 +291,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 	// Create new task
 	if s.opts.DryRun {
-		result.Action = "would create"
+		result.Action = syncutil.ActionWouldCreate
 		return result
 	}
 
@@ -321,7 +321,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 	task, err := s.client.CreateTask(ctx, s.opts.ListID, createReq)
 	if err != nil {
-		result.Action = "error"
+		result.Action = syncutil.ActionError
 		result.Error = fmt.Errorf("creating task: %w", err)
 		return result
 	}
@@ -346,7 +346,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	s.syncStore.SetTaskID(b.ID, task.ID)
 	s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
 
-	result.Action = "created"
+	result.Action = syncutil.ActionCreated
 	return result
 }
 
@@ -479,7 +479,7 @@ func (s *Syncer) buildUpdateRequest(current *TaskInfo, b *issue.Issue, descripti
 	// Only include due date if changed
 	newDueMillis := issueDueToMillis(b.Due)
 	currentDueMillis := clickUpDueToMillis(current.DueDate)
-	if !int64PtrEqual(currentDueMillis, newDueMillis) {
+	if !ptrEqual(currentDueMillis, newDueMillis) {
 		if newDueMillis != nil {
 			update.DueDate = newDueMillis
 			update.DueDatetime = new(false)
@@ -492,7 +492,7 @@ func (s *Syncer) buildUpdateRequest(current *TaskInfo, b *issue.Issue, descripti
 
 	// Only include custom item ID if changed
 	newItemID := s.getClickUpCustomItemID(b.Type)
-	if !intPtrEqual(current.CustomItemID, newItemID) {
+	if !ptrEqual(current.CustomItemID, newItemID) {
 		update.CustomItemID = newItemID
 	}
 
@@ -503,7 +503,7 @@ func (s *Syncer) buildUpdateRequest(current *TaskInfo, b *issue.Issue, descripti
 			wantParent = &parentTaskID
 		}
 	}
-	if !stringPtrEqual(current.Parent, wantParent) {
+	if !ptrEqual(current.Parent, wantParent) {
 		update.Parent = wantParent
 	}
 
@@ -521,19 +521,8 @@ func (s *Syncer) priorityEqual(current *TaskPriority, target *int) bool {
 	return current.ID == *target
 }
 
-// stringPtrEqual compares two string pointers for equality.
-func stringPtrEqual(a, b *string) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}
-
-// intPtrEqual compares two int pointers for equality.
-func intPtrEqual(a, b *int) bool {
+// ptrEqual compares two pointers of the same comparable type for equality.
+func ptrEqual[T comparable](a, b *T) bool {
 	if a == nil && b == nil {
 		return true
 	}
@@ -768,13 +757,3 @@ func clickUpDueToMillis(s *string) *int64 {
 	return &millis
 }
 
-// int64PtrEqual compares two int64 pointers for equality.
-func int64PtrEqual(a, b *int64) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}

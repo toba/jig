@@ -3,7 +3,10 @@ package refry
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/toba/jig/internal/testutil"
 )
 
 func TestRewriteStatus(t *testing.T) {
@@ -102,12 +105,12 @@ func TestRun(t *testing.T) {
 		assertFileExists(t, filepath.Join(dir, ".issues", "b", "beans-1xyz--second-issue.md"))
 
 		// Check status was rewritten in first issue
-		content := readFile(t, filepath.Join(dir, ".issues", "b", "beans-0ajg--first-issue.md"))
+		content := testutil.ReadFile(t,filepath.Join(dir, ".issues", "b", "beans-0ajg--first-issue.md"))
 		assertContains(t, content, "status: ready")
 		assertNotContains(t, content, "status: todo")
 
 		// Check second issue status unchanged
-		content2 := readFile(t, filepath.Join(dir, ".issues", "b", "beans-1xyz--second-issue.md"))
+		content2 := testutil.ReadFile(t,filepath.Join(dir, ".issues", "b", "beans-1xyz--second-issue.md"))
 		assertContains(t, content2, "status: in-progress")
 
 		// Check .jig.yaml created
@@ -153,7 +156,7 @@ func TestRun(t *testing.T) {
 		assertFileExists(t, filepath.Join(dir, ".issues", "archive", "beans-bbbb--done.md"))
 
 		// Archived file status rewritten
-		content := readFile(t, filepath.Join(dir, ".issues", "archive", "beans-bbbb--done.md"))
+		content := testutil.ReadFile(t,filepath.Join(dir, ".issues", "archive", "beans-bbbb--done.md"))
 		assertContains(t, content, "status: ready")
 	})
 
@@ -226,13 +229,6 @@ func writeFile(t *testing.T, path, content string) {
 	must(t, os.WriteFile(path, []byte(content), 0644))
 }
 
-func readFile(t *testing.T, path string) string {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	must(t, err)
-	return string(data)
-}
-
 func must(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
@@ -256,27 +252,14 @@ func assertFileNotExists(t *testing.T, path string) {
 
 func assertContains(t *testing.T, s, substr string) {
 	t.Helper()
-	if !contains(s, substr) {
+	if !strings.Contains(s, substr) {
 		t.Errorf("expected %q to contain %q", s, substr)
 	}
 }
 
 func assertNotContains(t *testing.T, s, substr string) {
 	t.Helper()
-	if contains(s, substr) {
+	if strings.Contains(s, substr) {
 		t.Errorf("expected %q to not contain %q", s, substr)
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"cmp"
 	"errors"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/toba/jig/internal/config"
+	"github.com/toba/jig/internal/constants"
 	"github.com/toba/jig/internal/nope"
 )
 
@@ -32,8 +34,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		var exitErr nope.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[nope.ExitError](err); ok {
 			os.Exit(exitErr.Code)
 		}
 		os.Exit(1)
@@ -41,8 +42,5 @@ func Execute() {
 }
 
 func configPath() string {
-	if cfgPath != "" {
-		return cfgPath
-	}
-	return ".jig.yaml"
+	return cmp.Or(cfgPath, constants.ConfigFileName)
 }

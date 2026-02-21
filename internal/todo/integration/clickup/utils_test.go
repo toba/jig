@@ -28,9 +28,9 @@ func TestIsTransientNetworkError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isTransientNetworkError(tt.err)
+			got := syncutil.IsTransientNetworkError(tt.err)
 			if got != tt.want {
-				t.Errorf("isTransientNetworkError(%v) = %v, want %v", tt.err, got, tt.want)
+				t.Errorf("IsTransientNetworkError(%v) = %v, want %v", tt.err, got, tt.want)
 			}
 		})
 	}
@@ -58,15 +58,15 @@ func TestIsTransientHTTPError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isTransientHTTPError(tt.statusCode, tt.body)
+			got := syncutil.IsTransientHTTPError(tt.statusCode, tt.body)
 			if got != tt.want {
-				t.Errorf("isTransientHTTPError(%d, %q) = %v, want %v", tt.statusCode, tt.body, got, tt.want)
+				t.Errorf("IsTransientHTTPError(%d, %q) = %v, want %v", tt.statusCode, tt.body, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestIntPtrEqual(t *testing.T) {
+func TestPtrEqual(t *testing.T) {
 	intPtr := func(v int) *int { return &v }
 
 	tests := []struct {
@@ -84,15 +84,15 @@ func TestIntPtrEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := intPtrEqual(tt.a, tt.b)
+			got := ptrEqual(tt.a, tt.b)
 			if got != tt.want {
-				t.Errorf("intPtrEqual(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
+				t.Errorf("ptrEqual(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestInt64PtrEqual(t *testing.T) {
+func TestPtrEqualInt64(t *testing.T) {
 	int64Ptr := func(v int64) *int64 { return &v }
 
 	tests := []struct {
@@ -110,9 +110,9 @@ func TestInt64PtrEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := int64PtrEqual(tt.a, tt.b)
+			got := ptrEqual(tt.a, tt.b)
 			if got != tt.want {
-				t.Errorf("int64PtrEqual(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
+				t.Errorf("ptrEqual(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
 			}
 		})
 	}

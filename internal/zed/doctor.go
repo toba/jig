@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/toba/jig/internal/companion"
+	"golang.org/x/sync/errgroup"
 )
 
 // DoctorOpts holds the inputs for zed doctor.
@@ -37,54 +39,90 @@ func RunDoctor(opts DoctorOpts) int {
 	}
 	fmt.Fprintf(os.Stderr, "OK:   companions.zed configured: %s\n", opts.Ext)
 
-	// 2. extension repo exists on GitHub
-	cmd := exec.Command("gh", "repo", "view", opts.Ext)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: extension repo %s not found on GitHub: %s\n", opts.Ext, strings.TrimSpace(string(out)))
-		ok = false
-	} else {
-		fmt.Fprintf(os.Stderr, "OK:   extension repo exists: %s\n", opts.Ext)
+	// Checks 2-6: independent gh API calls — run concurrently.
+	type checkResult struct {
+		msg    string
+		passed bool
 	}
+	results := make([]checkResult, 5)
+	var mu sync.Mutex
+	setResult := func(i int, msg string, passed bool) {
+		mu.Lock()
+		results[i] = checkResult{msg: msg, passed: passed}
+		mu.Unlock()
+	}
+
+	g := new(errgroup.Group)
+	g.SetLimit(5)
+
+	// 2. extension repo exists on GitHub
+	g.Go(func() error {
+		cmd := exec.Command("gh", "repo", "view", opts.Ext)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			setResult(0, fmt.Sprintf("FAIL: extension repo %s not found on GitHub: %s", opts.Ext, strings.TrimSpace(string(out))), false)
+		} else {
+			setResult(0, fmt.Sprintf("OK:   extension repo exists: %s", opts.Ext), true)
+		}
+		return nil
+	})
 
 	// 3. extension.toml exists in extension repo
-	cmd = exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/extension.toml", opts.Ext))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: extension.toml not found in %s: %s\n", opts.Ext, strings.TrimSpace(string(out)))
-		ok = false
-	} else {
-		fmt.Fprintf(os.Stderr, "OK:   extension.toml exists in %s\n", opts.Ext)
-	}
+	g.Go(func() error {
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/extension.toml", opts.Ext))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			setResult(1, fmt.Sprintf("FAIL: extension.toml not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
+		} else {
+			setResult(1, fmt.Sprintf("OK:   extension.toml exists in %s", opts.Ext), true)
+		}
+		return nil
+	})
 
 	// 4. Cargo.toml exists in extension repo
-	cmd = exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/Cargo.toml", opts.Ext))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: Cargo.toml not found in %s: %s\n", opts.Ext, strings.TrimSpace(string(out)))
-		ok = false
-	} else {
-		fmt.Fprintf(os.Stderr, "OK:   Cargo.toml exists in %s\n", opts.Ext)
-	}
+	g.Go(func() error {
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/Cargo.toml", opts.Ext))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			setResult(2, fmt.Sprintf("FAIL: Cargo.toml not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
+		} else {
+			setResult(2, fmt.Sprintf("OK:   Cargo.toml exists in %s", opts.Ext), true)
+		}
+		return nil
+	})
 
 	// 5. bump-version.yml workflow exists in extension repo
-	cmd = exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/.github/workflows/bump-version.yml", opts.Ext))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: bump-version.yml workflow not found in %s: %s\n", opts.Ext, strings.TrimSpace(string(out)))
-		ok = false
-	} else {
-		fmt.Fprintf(os.Stderr, "OK:   bump-version.yml workflow exists in %s\n", opts.Ext)
-	}
+	g.Go(func() error {
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/.github/workflows/bump-version.yml", opts.Ext))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			setResult(3, fmt.Sprintf("FAIL: bump-version.yml workflow not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
+		} else {
+			setResult(3, fmt.Sprintf("OK:   bump-version.yml workflow exists in %s", opts.Ext), true)
+		}
+		return nil
+	})
 
 	// 6. scripts/bump-version.sh exists in extension repo
-	cmd = exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/scripts/bump-version.sh", opts.Ext))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: scripts/bump-version.sh not found in %s: %s\n", opts.Ext, strings.TrimSpace(string(out)))
-		ok = false
-	} else {
-		fmt.Fprintf(os.Stderr, "OK:   scripts/bump-version.sh exists in %s\n", opts.Ext)
+	g.Go(func() error {
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/scripts/bump-version.sh", opts.Ext))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			setResult(4, fmt.Sprintf("FAIL: scripts/bump-version.sh not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
+		} else {
+			setResult(4, fmt.Sprintf("OK:   scripts/bump-version.sh exists in %s", opts.Ext), true)
+		}
+		return nil
+	})
+
+	_ = g.Wait()
+
+	// Display results in original order.
+	for _, r := range results {
+		fmt.Fprintln(os.Stderr, r.msg)
+		if !r.passed {
+			ok = false
+		}
 	}
 
 	// 7. source repo has releases
 	tag := ""
-	cmd = exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName")
+	cmd := exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName")
 	if out, err := cmd.Output(); err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL: no releases found for %s\n", opts.Repo)
 		ok = false
@@ -100,7 +138,7 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 8. extension repo has a matching tag
 	if tag != "" {
-		cmd = exec.Command("gh", "api", fmt.Sprintf("repos/%s/git/ref/tags/%s", opts.Ext, tag))
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/git/ref/tags/%s", opts.Ext, tag))
 		if _, err := cmd.Output(); err != nil {
 			fmt.Fprintf(os.Stderr, "WARN: extension repo %s missing tag %s (may not have synced yet)\n", opts.Ext, tag)
 		} else {
@@ -216,14 +254,11 @@ func checkReleaseAssets(repo, tag, tool string, ok *bool) {
 
 // checkGoreleaserExists verifies .goreleaser.yaml or .goreleaser.yml exists.
 func checkGoreleaserExists() bool {
-	if _, err := os.Stat(".goreleaser.yaml"); err == nil {
-		fmt.Fprintf(os.Stderr, "OK:   .goreleaser.yaml exists\n")
-		return true
+	_, name, found := companion.CheckGoreleaserExists()
+	if !found {
+		fmt.Fprintf(os.Stderr, "FAIL: .goreleaser.yaml not found\n")
+		return false
 	}
-	if _, err := os.Stat(".goreleaser.yml"); err == nil {
-		fmt.Fprintf(os.Stderr, "OK:   .goreleaser.yml exists\n")
-		return true
-	}
-	fmt.Fprintf(os.Stderr, "FAIL: .goreleaser.yaml not found\n")
-	return false
+	fmt.Fprintf(os.Stderr, "OK:   %s exists\n", name)
+	return true
 }

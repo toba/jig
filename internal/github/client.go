@@ -132,7 +132,11 @@ func (c *GHClient) GetLicense(repo string) (*LicenseInfo, error) {
 	return &info, nil
 }
 
-func gh(args ...string) ([]byte, error) {
+// ghExec is the function used to execute gh CLI commands.
+// It is a variable so tests can replace it.
+var ghExec = ghDefault
+
+func ghDefault(args ...string) ([]byte, error) {
 	cmd := exec.Command("gh", args...)
 	out, err := cmd.Output()
 	if err != nil {
@@ -142,4 +146,8 @@ func gh(args ...string) ([]byte, error) {
 		return nil, fmt.Errorf("gh %s: %w", strings.Join(args, " "), err)
 	}
 	return out, nil
+}
+
+func gh(args ...string) ([]byte, error) {
+	return ghExec(args...)
 }

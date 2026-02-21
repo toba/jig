@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/toba/jig/internal/todo/core"
+	"github.com/toba/jig/internal/todo/integration/syncutil"
 	"github.com/toba/jig/internal/todo/issue"
 )
 
@@ -41,27 +42,27 @@ type UnlinkResult struct {
 	ExternalID string // previous ID if unlinked
 }
 
-// Sync action constants identify the outcome of syncing a single issue.
+// Sync action constants re-exported from syncutil to avoid import cycles.
 const (
-	ActionCreated     = "created"
-	ActionUpdated     = "updated"
-	ActionSkipped     = "skipped"
-	ActionError       = "error"
-	ActionUnchanged   = "unchanged"
-	ActionWouldCreate = "would create"
-	ActionWouldUpdate = "would update"
+	ActionCreated     = syncutil.ActionCreated
+	ActionUpdated     = syncutil.ActionUpdated
+	ActionSkipped     = syncutil.ActionSkipped
+	ActionError       = syncutil.ActionError
+	ActionUnchanged   = syncutil.ActionUnchanged
+	ActionWouldCreate = syncutil.ActionWouldCreate
+	ActionWouldUpdate = syncutil.ActionWouldUpdate
 )
 
-// Link/unlink action constants.
+// Link/unlink action constants re-exported from syncutil.
 const (
-	ActionLinked        = "linked"
-	ActionAlreadyLinked = "already_linked"
-	ActionUnlinked      = "unlinked"
-	ActionNotLinked     = "not_linked"
+	ActionLinked        = syncutil.ActionLinked
+	ActionAlreadyLinked = syncutil.ActionAlreadyLinked
+	ActionUnlinked      = syncutil.ActionUnlinked
+	ActionNotLinked     = syncutil.ActionNotLinked
 )
 
 // SyncKeySyncedAt is the common key used in sync metadata for the last sync timestamp.
-const SyncKeySyncedAt = "synced_at"
+const SyncKeySyncedAt = syncutil.SyncKeySyncedAt
 
 // CheckStatus represents the result of a single check.
 type CheckStatus string

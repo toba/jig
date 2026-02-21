@@ -7,8 +7,12 @@ import (
 	"regexp"
 	"slices"
 
+	"github.com/toba/jig/internal/constants"
 	"gopkg.in/yaml.v3"
 )
+
+// DefaultToolName is the tool name used when no tool is specified.
+const DefaultToolName = "Bash"
 
 // Builtin rule names.
 const (
@@ -21,6 +25,7 @@ const (
 	BuiltinExfiltration   = "exfiltration"
 	BuiltinEnvHijack      = "env-hijack"
 	BuiltinInlineSecrets  = "inline-secrets"
+	BuiltinVarCommand     = "var-command"
 )
 
 // NopeConfig is the nope section of .jig.yaml.
@@ -88,7 +93,7 @@ func FindConfigPath() (string, error) {
 		return "", fmt.Errorf("getwd: %w", err)
 	}
 	for {
-		candidate := filepath.Join(dir, ".jig.yaml")
+		candidate := filepath.Join(dir, constants.ConfigFileName)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate, nil
 		}
@@ -123,7 +128,7 @@ func FindAndLoadConfig() (*NopeConfig, string, error) {
 // A single entry of "*" matches all tools.
 func buildToolMatcher(tools []string) func(string) bool {
 	if len(tools) == 0 {
-		return func(name string) bool { return name == "Bash" }
+		return func(name string) bool { return name == DefaultToolName }
 	}
 	if slices.Contains(tools, "*") {
 		return func(string) bool { return true }
@@ -156,7 +161,7 @@ func CompileRules(defs []RuleDef) ([]CompiledRule, error) {
 		if d.Builtin != "" {
 			// Builtins are Bash-only — reject non-Bash tool scoping
 			for _, t := range d.Tools {
-				if t != "Bash" {
+				if t != DefaultToolName {
 					return nil, fmt.Errorf("rule %q: builtin rules only support Bash tool, got %q", d.Name, t)
 				}
 			}
@@ -179,6 +184,8 @@ func CompileRules(defs []RuleDef) ([]CompiledRule, error) {
 				check = CheckEnvHijack
 			case BuiltinInlineSecrets:
 				check = CheckInlineSecrets
+			case BuiltinVarCommand:
+				check = CheckVarCommand
 			default:
 				return nil, fmt.Errorf("rule %q: unknown builtin %q", d.Name, d.Builtin)
 			}

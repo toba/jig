@@ -1,6 +1,7 @@
 package cite
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/toba/jig/internal/config"
+	"github.com/toba/jig/internal/constants"
 	"github.com/toba/jig/internal/github"
 )
 
@@ -22,6 +24,8 @@ type RepoArg struct {
 	FullURL  string // original URL for non-GitHub repos
 	IsGitHub bool
 }
+
+const defaultHost = "github.com"
 
 var (
 	// owner/repo shorthand
@@ -35,13 +39,13 @@ var (
 // ParseRepoArg extracts repo info from a URL or owner/repo shorthand.
 func ParseRepoArg(arg string) RepoArg {
 	if m := httpsGitHubRe.FindStringSubmatch(arg); m != nil {
-		return RepoArg{Owner: m[1], Repo: m[2], Host: "github.com", IsGitHub: true}
+		return RepoArg{Owner: m[1], Repo: m[2], Host: defaultHost, IsGitHub: true}
 	}
 	if m := sshGitHubRe.FindStringSubmatch(arg); m != nil {
-		return RepoArg{Owner: m[1], Repo: m[2], Host: "github.com", IsGitHub: true}
+		return RepoArg{Owner: m[1], Repo: m[2], Host: defaultHost, IsGitHub: true}
 	}
 	if m := shorthandRe.FindStringSubmatch(arg); m != nil {
-		return RepoArg{Owner: m[1], Repo: m[2], Host: "github.com", IsGitHub: true}
+		return RepoArg{Owner: m[1], Repo: m[2], Host: defaultHost, IsGitHub: true}
 	}
 	return RepoArg{FullURL: arg, IsGitHub: false}
 }
@@ -62,10 +66,7 @@ func inspectGitHub(client github.Client, arg RepoArg) (*config.Source, error) {
 		return nil, fmt.Errorf("fetching repo %s: %w", slug, err)
 	}
 
-	branch := info.DefaultBranch
-	if branch == "" {
-		branch = "main"
-	}
+	branch := cmp.Or(info.DefaultBranch, constants.DefaultBranch)
 
 	tree, err := client.GetTree(slug, branch)
 	if err != nil {
@@ -102,7 +103,7 @@ func inspectGit(arg RepoArg) (*config.Source, error) {
 	}
 
 	// Detect default branch.
-	branch := "main"
+	branch := constants.DefaultBranch
 	out, err := exec.Command("git", "-C", tmpDir, "symbolic-ref", "refs/remotes/origin/HEAD").Output()
 	if err == nil {
 		ref := strings.TrimSpace(string(out))

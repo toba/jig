@@ -6,6 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
+
+	"github.com/toba/jig/internal/constants"
+)
+
+// Settings JSON keys used in .claude/settings.json hook entries.
+const (
+	settingsKeyHooks      = "hooks"
+	settingsKeyPreToolUse = "PreToolUse"
+	settingsKeyMatcher    = "matcher"
 )
 
 // StarterConfig is the default nope rules written to .jig.yaml.
@@ -96,8 +106,8 @@ var StarterConfig = `nope:
 const hookCommand = "jig nope"
 
 var hookEntry = map[string]any{
-	"matcher": ".*",
-	"hooks": []any{
+	settingsKeyMatcher: ".*",
+	settingsKeyHooks: []any{
 		map[string]any{
 			"type":    "command",
 			"command": hookCommand,
@@ -107,7 +117,7 @@ var hookEntry = map[string]any{
 
 // RunInit scaffolds the nope section in .jig.yaml and the hook in .claude/settings.json.
 func RunInit() int {
-	jigPath := ".jig.yaml"
+	jigPath := constants.ConfigFileName
 	claudeDir := ".claude"
 	settingsPath := filepath.Join(claudeDir, "settings.json")
 
@@ -153,22 +163,7 @@ func RunInit() int {
 }
 
 func hasNopeSection(content string) bool {
-	return slices.Contains(splitLines(content), "nope:")
-}
-
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i := range len(s) {
-		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-	return lines
+	return slices.Contains(strings.Split(content, "\n"), "nope:")
 }
 
 func mergeSettings(path string) error {
@@ -181,8 +176,8 @@ func mergeSettings(path string) error {
 		}
 		// File doesn't exist — create fresh
 		settings = map[string]any{
-			"hooks": map[string]any{
-				"PreToolUse": []any{hookEntry},
+			settingsKeyHooks: map[string]any{
+				settingsKeyPreToolUse: []any{hookEntry},
 			},
 		}
 		return writeSettings(path, settings, true)
@@ -207,14 +202,14 @@ func mergeSettings(path string) error {
 	}
 
 	// Ensure hooks.PreToolUse exists and append our entry
-	hooks, _ := settings["hooks"].(map[string]any)
+	hooks, _ := settings[settingsKeyHooks].(map[string]any)
 	if hooks == nil {
 		hooks = map[string]any{}
-		settings["hooks"] = hooks
+		settings[settingsKeyHooks] = hooks
 	}
 
-	preToolUse, _ := hooks["PreToolUse"].([]any)
-	hooks["PreToolUse"] = append(preToolUse, hookEntry)
+	preToolUse, _ := hooks[settingsKeyPreToolUse].([]any)
+	hooks[settingsKeyPreToolUse] = append(preToolUse, hookEntry)
 
 	return writeSettings(path, settings, false)
 }
@@ -239,25 +234,25 @@ func writeSettings(path string, settings map[string]any, created bool) error {
 // migrateNogoMatcher updates existing nope hook entries that have a "Bash"
 // matcher to ".*" so nope runs for all tools. Returns true if any change was made.
 func migrateNogoMatcher(settings map[string]any) bool {
-	hooks, _ := settings["hooks"].(map[string]any)
+	hooks, _ := settings[settingsKeyHooks].(map[string]any)
 	if hooks == nil {
 		return false
 	}
-	preToolUse, _ := hooks["PreToolUse"].([]any)
+	preToolUse, _ := hooks[settingsKeyPreToolUse].([]any)
 	changed := false
 	for _, entry := range preToolUse {
 		m, _ := entry.(map[string]any)
 		if m == nil {
 			continue
 		}
-		if m["matcher"] != "Bash" {
+		if m[settingsKeyMatcher] != DefaultToolName {
 			continue
 		}
-		innerHooks, _ := m["hooks"].([]any)
+		innerHooks, _ := m[settingsKeyHooks].([]any)
 		for _, h := range innerHooks {
 			hm, _ := h.(map[string]any)
 			if hm != nil && isNopeCommand(hm["command"]) {
-				m["matcher"] = ".*"
+				m[settingsKeyMatcher] = ".*"
 				changed = true
 				break
 			}
@@ -269,18 +264,18 @@ func migrateNogoMatcher(settings map[string]any) bool {
 // migrateLegacyCommand updates existing hook entries that use "nogo",
 // "skill nope", or "ja nope" command to use "jig nope" instead. Returns true if any change was made.
 func migrateLegacyCommand(settings map[string]any) bool {
-	hooks, _ := settings["hooks"].(map[string]any)
+	hooks, _ := settings[settingsKeyHooks].(map[string]any)
 	if hooks == nil {
 		return false
 	}
-	preToolUse, _ := hooks["PreToolUse"].([]any)
+	preToolUse, _ := hooks[settingsKeyPreToolUse].([]any)
 	changed := false
 	for _, entry := range preToolUse {
 		m, _ := entry.(map[string]any)
 		if m == nil {
 			continue
 		}
-		innerHooks, _ := m["hooks"].([]any)
+		innerHooks, _ := m[settingsKeyHooks].([]any)
 		for _, h := range innerHooks {
 			hm, _ := h.(map[string]any)
 			if hm == nil {
@@ -298,17 +293,17 @@ func migrateLegacyCommand(settings map[string]any) bool {
 
 // hasNopeHook checks whether settings already contains a nope/nogo hook in PreToolUse.
 func hasNopeHook(settings map[string]any) bool {
-	hooks, _ := settings["hooks"].(map[string]any)
+	hooks, _ := settings[settingsKeyHooks].(map[string]any)
 	if hooks == nil {
 		return false
 	}
-	preToolUse, _ := hooks["PreToolUse"].([]any)
+	preToolUse, _ := hooks[settingsKeyPreToolUse].([]any)
 	for _, entry := range preToolUse {
 		m, _ := entry.(map[string]any)
 		if m == nil {
 			continue
 		}
-		innerHooks, _ := m["hooks"].([]any)
+		innerHooks, _ := m[settingsKeyHooks].([]any)
 		for _, h := range innerHooks {
 			hm, _ := h.(map[string]any)
 			if hm != nil && isNopeCommand(hm["command"]) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -43,7 +44,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		content := string(data)
 		if len(content) > 0 {
 			// Simple check for existing citations section.
-			if slices.Contains(splitLines(content), "citations:") {
+			if slices.Contains(strings.Split(content, "\n"), "citations:") {
 				return fmt.Errorf("%s already contains a 'citations' section", path)
 			}
 			// Append citations section to existing file.
@@ -65,19 +66,4 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("created %s\n", path)
 	return nil
-}
-
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i := range len(s) {
-		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-	return lines
 }

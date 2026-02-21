@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -126,27 +127,13 @@ func TestComputeLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := syncer.computeLabels(tt.issue)
-			if !labelsMatch(got, tt.wantLabels) {
+			if !slices.Equal(got, tt.wantLabels) {
 				t.Errorf("computeLabels() = %v, want %v", got, tt.wantLabels)
 			}
 		})
 	}
 }
 
-func labelsMatch(a, b []string) bool {
-	if len(a) == 0 && len(b) == 0 {
-		return true
-	}
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
 
 func TestBuildIssueBody(t *testing.T) {
 	syncer := &Syncer{config: &Config{}}
@@ -396,7 +383,7 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 
 	// Only tags should appear as labels
 	expected := []string{"frontend"}
-	if !labelsMatch(receivedLabels, expected) {
+	if !slices.Equal(receivedLabels, expected) {
 		t.Errorf("labels = %v, want %v", receivedLabels, expected)
 	}
 
@@ -434,7 +421,7 @@ func TestFilterIssuesNeedingSync(t *testing.T) {
 	expected := []string{"test-new", "test-stale"}
 	sort.Strings(expected)
 
-	if !labelsMatch(ids, expected) {
+	if !slices.Equal(ids, expected) {
 		t.Errorf("syncutil.FilterIssuesNeedingSync() = %v, want %v", ids, expected)
 	}
 }

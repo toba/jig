@@ -3,6 +3,7 @@ package brew
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -79,13 +80,13 @@ func TestFormulaUpdate(t *testing.T) {
 	}
 
 	// Verify non-formula content is preserved.
-	if !contains(updated, `desc "Issue tracker`) {
+	if !strings.Contains(updated, `desc "Issue tracker`) {
 		t.Error("desc line was lost")
 	}
-	if !contains(updated, `bin.install "todo"`) {
+	if !strings.Contains(updated, `bin.install "todo"`) {
 		t.Error("install block was lost")
 	}
-	if !contains(updated, `depends_on :macos`) {
+	if !strings.Contains(updated, `depends_on :macos`) {
 		t.Error("depends_on was lost")
 	}
 }
@@ -125,7 +126,7 @@ func TestGenerateFormula(t *testing.T) {
 		`assert_match "todo"`,
 	}
 	for _, want := range checks {
-		if !contains(got, want) {
+		if !strings.Contains(got, want) {
 			t.Errorf("formula missing %q", want)
 		}
 	}
@@ -148,16 +149,3 @@ func TestFormulaClassName(t *testing.T) {
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) > 0 && len(substr) > 0 && // avoid trivial matches
-		findSubstring(s, substr)
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i+len(substr) <= len(s); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

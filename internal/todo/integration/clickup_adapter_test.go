@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/toba/jig/internal/todo/config"
@@ -161,12 +162,12 @@ func TestCheckMappingKeys(t *testing.T) {
 				t.Errorf("unexpected CheckWarn: %s", warnMsg)
 			}
 			if tt.wantFailSubstr != "" && hasFail {
-				if !contains(failMsg, tt.wantFailSubstr) {
+				if !strings.Contains(failMsg, tt.wantFailSubstr) {
 					t.Errorf("fail message %q does not contain %q", failMsg, tt.wantFailSubstr)
 				}
 			}
 			if tt.wantWarnSubstr != "" && hasWarn {
-				if !contains(warnMsg, tt.wantWarnSubstr) {
+				if !strings.Contains(warnMsg, tt.wantWarnSubstr) {
 					t.Errorf("warn message %q does not contain %q", warnMsg, tt.wantWarnSubstr)
 				}
 			}
@@ -174,15 +175,3 @@ func TestCheckMappingKeys(t *testing.T) {
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/toba/jig/internal/constants"
 	"gopkg.in/yaml.v3"
 )
 
@@ -71,7 +72,7 @@ func Load(path string) (*Document, *Config, error) {
 	// Default branch to "main" if not set.
 	for i := range cfg {
 		if cfg[i].Branch == "" {
-			cfg[i].Branch = "main"
+			cfg[i].Branch = constants.DefaultBranch
 		}
 	}
 

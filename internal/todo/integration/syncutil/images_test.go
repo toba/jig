@@ -3,6 +3,7 @@ package syncutil
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -226,11 +227,8 @@ func TestImageFileName(t *testing.T) {
 	if filepath.Base(name) != name {
 		t.Error("ImageFileName() should not contain path separators")
 	}
-	if !contains(name, "screenshot.png") {
+	if !strings.Contains(name, "screenshot.png") {
 		t.Errorf("ImageFileName() = %q, should contain original filename", name)
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[len(s)-len(substr):] == substr
-}

@@ -246,6 +246,80 @@ func TestCheckExfiltrationCompoundSegments(t *testing.T) {
 	}
 }
 
+func TestCheckVarCommand(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		// Positive — variable in command position
+		{"$cmd", jsonCmd("$cmd args"), true},
+		{"${cmd}", jsonCmd("${cmd} args"), true},
+		{"$CMD uppercase", jsonCmd("$CMD arg1 arg2"), true},
+		{"${CMD_NAME}", jsonCmd("${CMD_NAME} --flag"), true},
+		{"$_cmd underscore", jsonCmd("$_cmd arg"), true},
+
+		// After wrappers
+		{"sudo $cmd", jsonCmd("sudo $cmd arg"), true},
+		{"env $cmd", jsonCmd("env $cmd arg"), true},
+		{"env VAR=val $cmd", jsonCmd("env FOO=bar $cmd"), true},
+
+		// After pipe/chain operators
+		{"piped var cmd", jsonCmd("echo hi | $cmd"), true},
+		{"chained var cmd", jsonCmd("echo hi && $cmd arg"), true},
+
+		// Negative — variable NOT in command position
+		{"var as argument", jsonCmd("echo $var"), false},
+		{"var in flag value", jsonCmd("cmd --flag=$var"), false},
+		{"quoted var in cmd position", jsonCmd(`'$cmd' arg`), false},
+
+		// Negative — not a variable
+		{"plain command", jsonCmd("echo hello"), false},
+		{"dollar number", jsonCmd("$1 arg"), false},
+		{"dollar special", jsonCmd("$? arg"), false},
+
+		// Edge cases
+		{"empty", "", false},
+		{"no command", `{"file_path":"foo"}`, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CheckVarCommand(tt.input); got != tt.want {
+				t.Errorf("CheckVarCommand = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCheckVarCommandCompoundSegments(t *testing.T) {
+	rules, err := CompileRules([]RuleDef{
+		{Name: "var-command", Builtin: "var-command", Message: "var command blocked"},
+	})
+	if err != nil {
+		t.Fatalf("CompileRules: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		wantHit bool
+	}{
+		{"var cmd after echo", jsonCmd("echo hi && $cmd arg"), true},
+		{"no var cmd", jsonCmd("echo hi && ls -la"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := CheckRules(rules, "Bash", tt.input, nil)
+			if tt.wantHit && msg == "" {
+				t.Error("expected block, got allow")
+			}
+			if !tt.wantHit && msg != "" {
+				t.Errorf("expected allow, got block: %s", msg)
+			}
+		})
+	}
+}
+
 func TestCheckInlineSecrets(t *testing.T) {
 	tests := []struct {
 		name  string

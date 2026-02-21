@@ -11,6 +11,7 @@ import (
 	"github.com/toba/jig/internal/config"
 	"github.com/toba/jig/internal/display"
 	"github.com/toba/jig/internal/github"
+	"github.com/toba/jig/internal/todo/issue"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -176,7 +177,7 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 			SHA:     c.SHA,
 			Message: c.Message,
 			Author:  c.Author,
-			Date:    c.Date.Format("2006-01-02"),
+			Date:    c.Date.Format(issue.DueDateFormat),
 			Level:   level,
 		})
 	}

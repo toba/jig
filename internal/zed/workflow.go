@@ -3,7 +3,6 @@ package zed
 import (
 	"cmp"
 	"fmt"
-	"strings"
 
 	"github.com/toba/jig/internal/companion"
 )
@@ -36,21 +35,8 @@ func GenerateSyncExtensionJob(p WorkflowParams) string {
 // InjectSyncExtensionJob appends the sync-extension job to an existing workflow file.
 // It returns the modified content or an error if the job already exists.
 func InjectSyncExtensionJob(content string, p WorkflowParams) (string, error) {
-	if strings.Contains(content, "sync-extension:") {
-		return "", fmt.Errorf("workflow already contains a sync-extension job")
-	}
-
-	// Detect the "needs" job name from the existing workflow.
-	if p.Needs == "" {
-		p.Needs = companion.DetectLastJob(content)
-	}
-
-	job := GenerateSyncExtensionJob(p)
-
-	// Ensure the file ends with a newline before appending.
-	if !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	return content + job, nil
+	return companion.InjectJob(content, "sync-extension:", &p.Needs, func() string {
+		return GenerateSyncExtensionJob(p)
+	})
 }
 

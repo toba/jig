@@ -100,16 +100,7 @@ func ParseConfig(m map[string]any) (*Config, error) {
 	// Parse priority_mapping
 	if v, ok := m["priority_mapping"]; ok {
 		if pm, ok := v.(map[string]any); ok {
-			mapping := make(map[string]int, len(pm))
-			for k, val := range pm {
-				switch n := val.(type) {
-				case int:
-					mapping[k] = n
-				case float64:
-					mapping[k] = int(n)
-				}
-			}
-			if len(mapping) > 0 {
+			if mapping := parseIntMapping(pm); len(mapping) > 0 {
 				cfg.PriorityMapping = mapping
 			}
 		}
@@ -118,16 +109,7 @@ func ParseConfig(m map[string]any) (*Config, error) {
 	// Parse type_mapping
 	if v, ok := m["type_mapping"]; ok {
 		if tm, ok := v.(map[string]any); ok {
-			mapping := make(map[string]int, len(tm))
-			for k, val := range tm {
-				switch n := val.(type) {
-				case int:
-					mapping[k] = n
-				case float64:
-					mapping[k] = int(n)
-				}
-			}
-			if len(mapping) > 0 {
+			if mapping := parseIntMapping(tm); len(mapping) > 0 {
 				cfg.TypeMapping = mapping
 			}
 		}
@@ -167,6 +149,21 @@ func ParseConfig(m map[string]any) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// parseIntMapping converts a map[string]any (from YAML/JSON) into a map[string]int,
+// accepting both int and float64 values.
+func parseIntMapping(m map[string]any) map[string]int {
+	result := make(map[string]int, len(m))
+	for k, val := range m {
+		switch n := val.(type) {
+		case int:
+			result[k] = n
+		case float64:
+			result[k] = int(n)
+		}
+	}
+	return result
 }
 
 // GetStatusMapping returns the effective status mapping.

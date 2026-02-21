@@ -476,6 +476,55 @@ func CheckInlineSecrets(input string) bool {
 	return false
 }
 
+// isVarRef returns true if the string looks like a shell variable reference
+// ($var, ${var}, or ${var...} with parameter expansion operators).
+func isVarRef(s string) bool {
+	if len(s) < 2 || s[0] != '$' {
+		return false
+	}
+	// ${ ... } form
+	if s[1] == '{' {
+		return true
+	}
+	// $LETTER or $_ form (valid variable name start)
+	c := s[1]
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+}
+
+// CheckVarCommand returns true if a variable reference ($var, ${var}) appears
+// in command position. Since the guard cannot know what the variable resolves to,
+// this is treated as potential evasion.
+func CheckVarCommand(input string) bool {
+	cmd := ExtractCommand(input)
+	if cmd == "" {
+		return false
+	}
+	tokens := ShellTokenize(cmd)
+
+	// Split into segments at pipe/chain operators and check each.
+	var segment []Token
+	check := func() bool {
+		unwrapped := SkipWrappers(segment)
+		if len(unwrapped) == 0 {
+			return false
+		}
+		t := unwrapped[0]
+		return !t.Operator && !t.Quoted && isVarRef(t.Value)
+	}
+
+	for _, t := range tokens {
+		if t.Operator && (t.Value == "|" || t.Value == "&&" || t.Value == "||" || t.Value == ";") {
+			if check() {
+				return true
+			}
+			segment = segment[:0]
+			continue
+		}
+		segment = append(segment, t)
+	}
+	return check()
+}
+
 // CheckNetwork returns true if a network tool is found in command position.
 // Command position is the first token or the first token after a pipe/chain operator,
 // after stripping wrapper commands (sudo, timeout, etc.) and env var assignments.

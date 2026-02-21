@@ -111,7 +111,7 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			idx := issueIndex[b.ID]
 			results[idx] = result
 
-			if result.Error == nil && result.Action != "skipped" && result.ExternalID != "" {
+			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.ExternalID != "" {
 				s.mu.Lock()
 				var n int
 				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
@@ -131,7 +131,7 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			idx := issueIndex[b.ID]
 			results[idx] = result
 
-			if result.Error == nil && result.Action != "skipped" && result.ExternalID != "" {
+			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.ExternalID != "" {
 				s.mu.Lock()
 				var n int
 				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
@@ -188,7 +188,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 		// Check if issue has changed since last sync
 		if !s.opts.Force && !s.needsSync(b) {
-			result.Action = "skipped"
+			result.Action = syncutil.ActionSkipped
 			return result
 		}
 
@@ -199,7 +199,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 				s.syncStore.Clear(b.ID)
 				// Fall through to create new issue
 			} else {
-				result.Action = "error"
+				result.Action = syncutil.ActionError
 				result.Error = fmt.Errorf("fetching issue #%d: %w", *issueNumber, err)
 				return result
 			}
@@ -208,7 +208,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 			result.ExternalURL = ghIssue.HTMLURL
 
 			if s.opts.DryRun {
-				result.Action = "would update"
+				result.Action = syncutil.ActionWouldUpdate
 				return result
 			}
 
@@ -217,14 +217,14 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 			if update.hasChanges() {
 				updatedIssue, err := s.client.UpdateIssue(ctx, *issueNumber, update)
 				if err != nil {
-					result.Action = "error"
+					result.Action = syncutil.ActionError
 					result.Error = fmt.Errorf("updating issue: %w", err)
 					return result
 				}
 				result.ExternalURL = updatedIssue.HTMLURL
-				result.Action = "updated"
+				result.Action = syncutil.ActionUpdated
 			} else {
-				result.Action = "unchanged"
+				result.Action = syncutil.ActionUnchanged
 			}
 
 			// Update synced_at timestamp
@@ -235,7 +235,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 	// Create new issue
 	if s.opts.DryRun {
-		result.Action = "would create"
+		result.Action = syncutil.ActionWouldCreate
 		return result
 	}
 
@@ -249,7 +249,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 
 	ghIssue, err := s.client.CreateIssue(ctx, createReq)
 	if err != nil {
-		result.Action = "error"
+		result.Action = syncutil.ActionError
 		result.Error = fmt.Errorf("creating issue: %w", err)
 		return result
 	}
@@ -285,7 +285,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	s.syncStore.SetIssueNumber(b.ID, ghIssue.Number)
 	s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
 
-	result.Action = "created"
+	result.Action = syncutil.ActionCreated
 	return result
 }
 

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/toba/jig/internal/display"
 	"github.com/toba/jig/internal/todo/integration"
 	"github.com/toba/jig/internal/todo/issue"
 )
@@ -158,13 +159,6 @@ func outputSyncJSON(results []integration.SyncResult) error {
 	return enc.Encode(jsonResults)
 }
 
-func truncateTitle(title string, maxLen int) string {
-	if len(title) <= maxLen {
-		return title
-	}
-	return title[:maxLen] + "\u2026"
-}
-
 func outputSyncText(results []integration.SyncResult) error {
 	var created, updated, unchanged, skipped, errors int
 
@@ -172,10 +166,10 @@ func outputSyncText(results []integration.SyncResult) error {
 		switch r.Action {
 		case integration.ActionCreated:
 			created++
-			fmt.Printf("  Created: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, truncateTitle(r.IssueTitle, 20))
+			fmt.Printf("  Created: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, display.Truncate(r.IssueTitle, 20))
 		case integration.ActionUpdated:
 			updated++
-			fmt.Printf("  Updated: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, truncateTitle(r.IssueTitle, 20))
+			fmt.Printf("  Updated: %s \u2192 %s \"%s\"\n", r.IssueID, r.ExternalURL, display.Truncate(r.IssueTitle, 20))
 		case integration.ActionUnchanged:
 			unchanged++
 		case integration.ActionSkipped:

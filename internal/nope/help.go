@@ -47,6 +47,7 @@ BUILTINS
   exfiltration      Block uploading sensitive files over the network (curl -d @.env, scp keys, /dev/tcp).
   env-hijack        Block dangerous environment variable assignments (LD_PRELOAD, DYLD_INSERT_LIBRARIES, NODE_OPTIONS, etc.).
   inline-secrets    Block commands containing inline secrets (AWS keys, GitHub tokens, API keys, passwords).
+  var-command       Block variable references ($var, ${var}) in command position (potential evasion).
 
 TOOL SCOPING
   By default, rules only match the Bash tool. Use the tools field to guard

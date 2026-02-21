@@ -1,10 +1,10 @@
-# Jig
+# 👾 Jig
 
 <img src="./assets/dad.jpg" align="right" width="100"/>
 
 My dad was a cabinet maker. His perpetually sawdusted workshop was dotted with contrivances that I sometimes mistook for junk (some stories there!) that actually were thoughtful, if scrappy, efforts to make some task simpler or safer.
 
-Jig is a multi-tool CLI that bundles citation monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
+Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
 
 - [Install](#install)
 - [Configuration](#configuration)

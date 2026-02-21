@@ -3,6 +3,8 @@ package github
 import (
 	"errors"
 	"testing"
+
+	"github.com/toba/jig/internal/todo/integration/syncutil"
 )
 
 func TestIsTransientNetworkError(t *testing.T) {
@@ -60,9 +62,9 @@ func TestIsTransientNetworkError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isTransientNetworkError(tt.err)
+			got := syncutil.IsTransientNetworkError(tt.err)
 			if got != tt.want {
-				t.Errorf("isTransientNetworkError(%v) = %v, want %v", tt.err, got, tt.want)
+				t.Errorf("IsTransientNetworkError(%v) = %v, want %v", tt.err, got, tt.want)
 			}
 		})
 	}
@@ -133,9 +135,9 @@ func TestIsTransientHTTPError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isTransientHTTPError(tt.statusCode, tt.body)
+			got := syncutil.IsTransientHTTPError(tt.statusCode, tt.body)
 			if got != tt.want {
-				t.Errorf("isTransientHTTPError(%d, %q) = %v, want %v", tt.statusCode, tt.body, got, tt.want)
+				t.Errorf("IsTransientHTTPError(%d, %q) = %v, want %v", tt.statusCode, tt.body, got, tt.want)
 			}
 		})
 	}

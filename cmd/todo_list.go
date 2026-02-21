@@ -244,13 +244,6 @@ func sortIssues(issues []*issue.Issue, sortBy string, cfg *todoconfig.Config) {
 	}
 }
 
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
-}
-
 func init() {
 	listCmd.Flags().BoolVar(&listJSON, "json", false, "Output as JSON")
 	listCmd.Flags().StringVarP(&listSearch, "search", "S", "", "Full-text search in title and body")

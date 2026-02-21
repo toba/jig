@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -175,10 +176,10 @@ func TestSyncTags_SetDiff(t *testing.T) {
 			sort.Strings(gotAdds)
 			sort.Strings(gotRemoves)
 
-			if !slicesEqual(gotAdds, tt.wantAdds) {
+			if !slices.Equal(gotAdds, tt.wantAdds) {
 				t.Errorf("added tags = %v, want %v", gotAdds, tt.wantAdds)
 			}
-			if !slicesEqual(gotRemoves, tt.wantRemoves) {
+			if !slices.Equal(gotRemoves, tt.wantRemoves) {
 				t.Errorf("removed tags = %v, want %v", gotRemoves, tt.wantRemoves)
 			}
 		})
@@ -246,7 +247,7 @@ func TestSyncIssue_CreateWithTags(t *testing.T) {
 	expectedCalls := []string{"POST frontend", "POST urgent"}
 	sort.Strings(expectedCalls)
 
-	if !slicesEqual(tagCalls, expectedCalls) {
+	if !slices.Equal(tagCalls, expectedCalls) {
 		t.Errorf("tag calls = %v, want %v", tagCalls, expectedCalls)
 	}
 }
@@ -316,7 +317,7 @@ func TestSyncIssue_UpdateWithTagChanges(t *testing.T) {
 	expectedCalls := []string{"DELETE old-tag", "POST new-tag"}
 	sort.Strings(expectedCalls)
 
-	if !slicesEqual(tagCalls, expectedCalls) {
+	if !slices.Equal(tagCalls, expectedCalls) {
 		t.Errorf("tag calls = %v, want %v", tagCalls, expectedCalls)
 	}
 }
@@ -376,7 +377,7 @@ func TestSyncTags_EnsureSpaceTagBeforeAdd(t *testing.T) {
 
 	// Verify space tag creation happens before task tag addition
 	expected := []string{"space-create", "task-add:new-tag"}
-	if !slicesEqual(calls, expected) {
+	if !slices.Equal(calls, expected) {
 		t.Errorf("calls = %v, want %v", calls, expected)
 	}
 }
@@ -780,17 +781,3 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 	}
 }
 
-func slicesEqual(a, b []string) bool {
-	if len(a) == 0 && len(b) == 0 {
-		return true
-	}
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}

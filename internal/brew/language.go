@@ -3,6 +3,8 @@ package brew
 import (
 	"fmt"
 	"os"
+
+	"github.com/toba/jig/internal/constants"
 )
 
 // Language describes the project language and its release conventions.
@@ -14,7 +16,7 @@ type Language struct {
 // the detected project language. Falls back to Go if nothing matches.
 func DetectLanguage() Language {
 	// .goreleaser.yaml/.yml or go.mod → Go
-	for _, f := range []string{".goreleaser.yaml", ".goreleaser.yml", "go.mod"} {
+	for _, f := range []string{constants.GoreleaserYAML, constants.GoreleaserYML, "go.mod"} {
 		if _, err := os.Stat(f); err == nil {
 			return Language{Name: "go"}
 		}
