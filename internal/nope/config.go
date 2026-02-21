@@ -10,6 +10,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Builtin rule names.
+const (
+	BuiltinMultiline      = "multiline"
+	BuiltinPipe           = "pipe"
+	BuiltinChained        = "chained"
+	BuiltinRedirect       = "redirect"
+	BuiltinSubshell       = "subshell"
+	BuiltinCredentialRead = "credential-read"
+	BuiltinNetwork        = "network"
+)
+
 // NopeConfig is the nope section of .jig.yaml.
 type NopeConfig struct {
 	Debug string    `yaml:"debug"` // path to debug log file (empty = disabled)
@@ -148,19 +159,19 @@ func CompileRules(defs []RuleDef) ([]CompiledRule, error) {
 				}
 			}
 			switch d.Builtin {
-			case "multiline":
+			case BuiltinMultiline:
 				check = CheckMultiline
-			case "pipe":
+			case BuiltinPipe:
 				check = CheckPipe
-			case "chained":
+			case BuiltinChained:
 				check = CheckChained
-			case "redirect":
+			case BuiltinRedirect:
 				check = CheckRedirect
-			case "subshell":
+			case BuiltinSubshell:
 				check = CheckSubshell
-			case "credential-read":
+			case BuiltinCredentialRead:
 				check = CheckCredentialRead
-			case "network":
+			case BuiltinNetwork:
 				check = CheckNetwork
 			default:
 				return nil, fmt.Errorf("rule %q: unknown builtin %q", d.Name, d.Builtin)

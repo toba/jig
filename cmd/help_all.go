@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -42,8 +43,8 @@ func printCommandTree(cmd *cobra.Command, prefix string) {
 
 	// Print usage if it has args beyond the command name.
 	use := cmd.Use
-	if i := strings.IndexByte(use, ' '); i >= 0 {
-		argSpec := use[i+1:]
+	if _, after, ok := strings.Cut(use, " "); ok {
+		argSpec := after
 		fmt.Printf("  usage: %s %s\n", name, argSpec)
 	}
 
@@ -55,7 +56,7 @@ func printCommandTree(cmd *cobra.Command, prefix string) {
 
 	// Recurse into subcommands.
 	subs := cmd.Commands()
-	sort.Slice(subs, func(i, j int) bool { return subs[i].Name() < subs[j].Name() })
+	slices.SortFunc(subs, func(a, b *cobra.Command) int { return cmp.Compare(a.Name(), b.Name()) })
 	for _, sub := range subs {
 		printCommandTree(sub, name)
 	}

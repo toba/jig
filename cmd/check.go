@@ -11,6 +11,7 @@ import (
 	"github.com/toba/jig/internal/config"
 	"github.com/toba/jig/internal/display"
 	"github.com/toba/jig/internal/github"
+	"golang.org/x/sync/errgroup"
 )
 
 var checkCmd = &cobra.Command{
@@ -46,9 +47,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	var wg sync.WaitGroup
 
 	for i, src := range sources {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			result, headSHA, err := checkSource(client, src)
 			if err != nil {
 				mu.Lock()
@@ -58,7 +57,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 				return
 			}
 			results[i] = checkResult{display: *result, headSHA: headSHA}
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -107,16 +106,8 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 			return nil, "", fmt.Errorf("fetching commits: %w", err)
 		}
 
-		// Fetch file details for the most recent 5 commits only.
-		limit := min(5, len(commits))
-		for i := range limit {
-			detail, err := client.GetCommitDetail(src.Repo, commits[i].SHA)
-			if err != nil {
-				continue
-			}
-			commits[i].Files = detail.Files
-			aggregateFiles = append(aggregateFiles, detail.Files...)
-		}
+		// Fetch file details for the most recent 5 commits in parallel.
+		aggregateFiles = fetchCommitDetails(client, src.Repo, commits, min(5, len(commits)))
 	} else {
 		// Compare since last checked SHA.
 		cmp, err := client.Compare(src.Repo, src.LastCheckedSHA, src.Branch)
@@ -127,16 +118,8 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 				if err != nil {
 					return nil, "", fmt.Errorf("fetching commits since date: %w", err)
 				}
-				// Fetch file details for up to 5 commits.
-				limit := min(5, len(commits))
-				for i := range limit {
-					detail, derr := client.GetCommitDetail(src.Repo, commits[i].SHA)
-					if derr != nil {
-						continue
-					}
-					commits[i].Files = detail.Files
-					aggregateFiles = append(aggregateFiles, detail.Files...)
-				}
+				// Fetch file details for up to 5 commits in parallel.
+				aggregateFiles = fetchCommitDetails(client, src.Repo, commits, min(5, len(commits)))
 			} else {
 				return nil, "", fmt.Errorf("comparing: %w", err)
 			}
@@ -193,4 +176,40 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 	}
 
 	return result, headSHA, nil
+}
+
+// fetchCommitDetails fetches file details for up to limit commits in parallel,
+// setting each commit's Files field and returning the aggregate file list.
+func fetchCommitDetails(client github.Client, repo string, commits []github.Commit, limit int) []github.File {
+	type indexedFiles struct {
+		idx   int
+		files []github.File
+	}
+
+	var g errgroup.Group
+	ch := make(chan indexedFiles, limit)
+
+	for i := range limit {
+		g.Go(func() error {
+			detail, err := client.GetCommitDetail(repo, commits[i].SHA)
+			if err != nil {
+				return nil // non-fatal
+			}
+			ch <- indexedFiles{idx: i, files: detail.Files}
+			return nil
+		})
+	}
+
+	go func() {
+		_ = g.Wait()
+		close(ch)
+	}()
+
+	var aggregateFiles []github.File
+	for result := range ch {
+		commits[result.idx].Files = result.files
+		aggregateFiles = append(aggregateFiles, result.files...)
+	}
+
+	return aggregateFiles
 }

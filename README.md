@@ -1,4 +1,6 @@
-# jig
+# Jig
+
+My dad was a cabinet maker. His perpetually sawdusted workshop 
 
 An agent multi-tool for little things.
 

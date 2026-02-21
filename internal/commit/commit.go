@@ -18,7 +18,7 @@ func GitignoreCandidates() ([]string, error) {
 	}
 
 	var candidates []string
-	for _, file := range strings.Split(raw, "\n") {
+	for file := range strings.SplitSeq(raw, "\n") {
 		if matchesGitignorePattern(file) {
 			candidates = append(candidates, file)
 		}
