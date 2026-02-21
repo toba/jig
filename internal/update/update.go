@@ -46,7 +46,13 @@ func Run(tobaPath string) error {
 		fmt.Fprintf(os.Stderr, "update: migrated %s → %s (upstream section)\n", upPath, tobaPath)
 	}
 
-	if len(hits) == 0 && !upMigrated {
+	// Migrate commit command (scripts/commit.sh → skill commit).
+	commitMigrated, err := migrateCommitCommand(tobaPath)
+	if err != nil {
+		return fmt.Errorf("commit command migration: %w", err)
+	}
+
+	if len(hits) == 0 && !upMigrated && !commitMigrated {
 		fmt.Fprintln(os.Stderr, "update: no legacy config files found")
 		return nil
 	}

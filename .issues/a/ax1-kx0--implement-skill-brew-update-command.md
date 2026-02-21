@@ -3,8 +3,13 @@
 title: Implement skill brew update command
 status: in-progress
 type: feature
+priority: normal
 created_at: 2026-02-21T02:54:41Z
 updated_at: 2026-02-21T02:54:41Z
+sync:
+    github:
+        issue_number: "1"
+        synced_at: "2026-02-21T03:40:28Z"
 ---
 
 Implement `skill brew update` CLI command to automate Homebrew tap formula updates after a release.

@@ -61,7 +61,7 @@ func Load(path string) (*Document, *Config, error) {
 		return nil, nil, err
 	}
 
-	upstreamNode := findKey(doc.Root, "upstream")
+	upstreamNode := FindKey(doc.Root, "upstream")
 	if upstreamNode == nil {
 		return nil, nil, fmt.Errorf("no 'upstream' section found in %s", path)
 	}
@@ -90,7 +90,7 @@ func Save(doc *Document, cfg *Config) error {
 	}
 
 	// Find and replace the upstream value node in the document tree.
-	if !replaceKey(doc.Root, "upstream", &newUpstream) {
+	if !ReplaceKey(doc.Root, "upstream", &newUpstream) {
 		return fmt.Errorf("could not find 'upstream' key in document to update")
 	}
 
@@ -135,8 +135,9 @@ func MarkSource(src *Source, sha string) {
 	src.LastCheckedDate = time.Now().UTC().Format(time.RFC3339)
 }
 
-// findKey finds the value node for a given top-level key in a YAML document.
-func findKey(root *yaml.Node, key string) *yaml.Node {
+// FindKey finds the value node for a given key in a YAML mapping node.
+// When root is a DocumentNode, it descends into the first content node.
+func FindKey(root *yaml.Node, key string) *yaml.Node {
 	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
 		root = root.Content[0]
 	}
@@ -151,8 +152,8 @@ func findKey(root *yaml.Node, key string) *yaml.Node {
 	return nil
 }
 
-// replaceKey replaces the value node for a given top-level key.
-func replaceKey(root *yaml.Node, key string, value *yaml.Node) bool {
+// ReplaceKey replaces the value node for a given top-level key.
+func ReplaceKey(root *yaml.Node, key string, value *yaml.Node) bool {
 	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
 		root = root.Content[0]
 	}

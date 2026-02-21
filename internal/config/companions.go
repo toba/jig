@@ -16,7 +16,7 @@ type Companions struct {
 // LoadCompanions extracts the companions section from a Document.
 // Returns nil (no error) if the section doesn't exist.
 func LoadCompanions(doc *Document) *Companions {
-	node := findKey(doc.Root, "companions")
+	node := FindKey(doc.Root, "companions")
 	if node == nil {
 		return nil
 	}
@@ -35,7 +35,7 @@ func SaveCompanions(doc *Document, c *Companions) error {
 		return fmt.Errorf("encoding companions: %w", err)
 	}
 
-	if replaceKey(doc.Root, "companions", &node) {
+	if ReplaceKey(doc.Root, "companions", &node) {
 		// Key already existed, replaced in-place.
 	} else {
 		// Append new key to the mapping.
