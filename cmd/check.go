@@ -25,6 +25,11 @@ func init() {
 	upstreamCmd.AddCommand(checkCmd)
 }
 
+type checkResult struct {
+	display display.SourceResult
+	headSHA string // latest commit SHA from fetched data
+}
+
 func runCheck(cmd *cobra.Command, args []string) error {
 	sources := cfg.Sources
 	if len(args) > 0 {
@@ -36,7 +41,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	client := github.NewClient()
-	results := make([]display.SourceResult, len(sources))
+	results := make([]checkResult, len(sources))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
@@ -44,27 +49,51 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			result, err := checkSource(client, src)
+			result, headSHA, err := checkSource(client, src)
 			if err != nil {
 				mu.Lock()
 				fmt.Fprintf(os.Stderr, "warning: %s: %v\n", src.Repo, err)
 				mu.Unlock()
-				results[i] = display.SourceResult{Source: src}
+				results[i] = checkResult{display: display.SourceResult{Source: src}}
 				return
 			}
-			results[i] = *result
+			results[i] = checkResult{display: *result, headSHA: headSHA}
 		}()
 	}
 	wg.Wait()
 
-	if jsonOut {
-		return display.RenderJSON(os.Stdout, results)
+	// Update last_checked for sources that returned data.
+	dirty := false
+	for _, r := range results {
+		if r.headSHA == "" {
+			continue
+		}
+		origSrc := config.FindSource(cfg, r.display.Source.Repo)
+		if origSrc == nil {
+			continue
+		}
+		config.MarkSource(origSrc, r.headSHA)
+		dirty = true
 	}
-	display.RenderText(os.Stdout, results)
+	if dirty {
+		if err := config.Save(cfgDoc, cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: saving last_checked: %v\n", err)
+		}
+	}
+
+	displayResults := make([]display.SourceResult, len(results))
+	for i, r := range results {
+		displayResults[i] = r.display
+	}
+
+	if jsonOut {
+		return display.RenderJSON(os.Stdout, displayResults)
+	}
+	display.RenderText(os.Stdout, displayResults)
 	return nil
 }
 
-func checkSource(client github.Client, src config.Source) (*display.SourceResult, error) {
+func checkSource(client github.Client, src config.Source) (*display.SourceResult, string, error) {
 	result := &display.SourceResult{Source: src}
 
 	var commits []github.Commit
@@ -75,7 +104,7 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 		var err error
 		commits, err = client.GetCommits(src.Repo, src.Branch, 30)
 		if err != nil {
-			return nil, fmt.Errorf("fetching commits: %w", err)
+			return nil, "", fmt.Errorf("fetching commits: %w", err)
 		}
 
 		// Fetch file details for the most recent 5 commits only.
@@ -96,7 +125,7 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 			if strings.Contains(err.Error(), "404") && src.LastCheckedDate != "" {
 				commits, err = client.GetCommitsSince(src.Repo, src.Branch, src.LastCheckedDate, 100)
 				if err != nil {
-					return nil, fmt.Errorf("fetching commits since date: %w", err)
+					return nil, "", fmt.Errorf("fetching commits since date: %w", err)
 				}
 				// Fetch file details for up to 5 commits.
 				limit := min(5, len(commits))
@@ -109,7 +138,7 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 					aggregateFiles = append(aggregateFiles, detail.Files...)
 				}
 			} else {
-				return nil, fmt.Errorf("comparing: %w", err)
+				return nil, "", fmt.Errorf("comparing: %w", err)
 			}
 		} else {
 			commits = cmp.Commits
@@ -118,8 +147,11 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 	}
 
 	if len(commits) == 0 {
-		return result, nil
+		return result, "", nil
 	}
+
+	// The most recent commit SHA becomes the new last_checked reference.
+	headSHA := commits[0].SHA
 
 	// Classify aggregate files.
 	filePaths := make([]string, 0, len(aggregateFiles))
@@ -160,5 +192,5 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 		})
 	}
 
-	return result, nil
+	return result, headSHA, nil
 }
