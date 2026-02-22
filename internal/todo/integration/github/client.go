@@ -317,6 +317,147 @@ func (c *Client) GetParentIssue(ctx context.Context, issueNumber int) (*Issue, e
 	return &resp, nil
 }
 
+// ListBlockedBy fetches the list of issues blocking the given issue.
+func (c *Client) ListBlockedBy(ctx context.Context, issueNumber int) ([]BlockingDependency, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/dependencies/blocked_by", baseURL, c.owner, c.repo, issueNumber)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	var resp []BlockingDependency
+	if err := c.doRequest(req, &resp); err != nil {
+		return nil, fmt.Errorf("listing blocked-by: %w", err)
+	}
+
+	return resp, nil
+}
+
+// AddBlockedBy adds a blocked-by dependency to an issue.
+func (c *Client) AddBlockedBy(ctx context.Context, issueNumber, blockerIssueID int) error {
+	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/dependencies/blocked_by", baseURL, c.owner, c.repo, issueNumber)
+
+	req, err := c.newJSONRequest(ctx, "POST", url, &AddBlockedByRequest{IssueID: blockerIssueID})
+	if err != nil {
+		return err
+	}
+
+	if err := c.doRequest(req, nil); err != nil {
+		return fmt.Errorf("adding blocked-by: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveBlockedBy removes a blocked-by dependency from an issue.
+func (c *Client) RemoveBlockedBy(ctx context.Context, issueNumber, blockerIssueID int) error {
+	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/dependencies/blocked_by/%d", baseURL, c.owner, c.repo, issueNumber, blockerIssueID)
+
+	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	if err := c.doRequest(req, nil); err != nil {
+		return fmt.Errorf("removing blocked-by: %w", err)
+	}
+
+	return nil
+}
+
+// ListBlocking fetches the list of issues that the given issue is blocking.
+func (c *Client) ListBlocking(ctx context.Context, issueNumber int) ([]BlockingDependency, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/dependencies/blocking", baseURL, c.owner, c.repo, issueNumber)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	var resp []BlockingDependency
+	if err := c.doRequest(req, &resp); err != nil {
+		return nil, fmt.Errorf("listing blocking: %w", err)
+	}
+
+	return resp, nil
+}
+
+// CreateMilestone creates a new milestone.
+func (c *Client) CreateMilestone(ctx context.Context, milestone *CreateMilestoneRequest) (*Milestone, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/milestones", baseURL, c.owner, c.repo)
+
+	req, err := c.newJSONRequest(ctx, "POST", url, milestone)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp Milestone
+	if err := c.doRequest(req, &resp); err != nil {
+		return nil, fmt.Errorf("creating milestone: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// UpdateMilestone updates an existing milestone.
+func (c *Client) UpdateMilestone(ctx context.Context, number int, update *UpdateMilestoneRequest) (*Milestone, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/milestones/%d", baseURL, c.owner, c.repo, number)
+
+	req, err := c.newJSONRequest(ctx, "PATCH", url, update)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp Milestone
+	if err := c.doRequest(req, &resp); err != nil {
+		return nil, fmt.Errorf("updating milestone: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// GetMilestone fetches a milestone by number.
+func (c *Client) GetMilestone(ctx context.Context, number int) (*Milestone, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/milestones/%d", baseURL, c.owner, c.repo, number)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	var resp Milestone
+	if err := c.doRequest(req, &resp); err != nil {
+		return nil, fmt.Errorf("getting milestone: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// ListMilestones fetches all milestones with the given state filter.
+func (c *Client) ListMilestones(ctx context.Context, state string) ([]Milestone, error) {
+	var allMilestones []Milestone
+	page := 1
+
+	for {
+		url := fmt.Sprintf("%s/repos/%s/%s/milestones?state=%s&per_page=100&page=%d", baseURL, c.owner, c.repo, state, page)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating request: %w", err)
+		}
+
+		var milestones []Milestone
+		if err := c.doRequest(req, &milestones); err != nil {
+			return nil, fmt.Errorf("listing milestones: %w", err)
+		}
+
+		allMilestones = append(allMilestones, milestones...)
+		if len(milestones) < 100 {
+			break
+		}
+		page++
+	}
+
+	return allMilestones, nil
+}
+
 // doRequest executes an HTTP request and decodes the response.
 // It delegates to syncutil.DoWithRetry with GitHub-specific auth and error handling.
 func (c *Client) doRequest(req *http.Request, result any) error {

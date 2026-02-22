@@ -7,9 +7,10 @@ import (
 
 // Sync metadata constants for GitHub.
 const (
-	SyncName          = "github"
-	SyncKeyIssueNumber = "issue_number"
-	SyncKeySyncedAt    = "synced_at"
+	SyncName               = "github"
+	SyncKeyIssueNumber     = "issue_number"
+	SyncKeySyncedAt        = "synced_at"
+	SyncKeyMilestoneNumber = "milestone_number"
 )
 
 // GitHub issue states.
@@ -38,8 +39,7 @@ var DefaultTypeMapping = map[string]string{
 	"bug":       "Bug",
 	"feature":   "Feature",
 	"task":      "Task",
-	"milestone": "Task",
-	"epic":      "Task",
+	"epic": "Task",
 }
 
 // ParseConfig parses GitHub config from a sync config map.

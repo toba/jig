@@ -28,27 +28,34 @@ type Syncer struct {
 	issueToGHNumber map[string]int      // local issue ID -> GitHub issue number
 	issueToGHID     map[string]int      // local issue ID -> GitHub issue ID (for sub-issues API)
 	childrenOf      map[string][]string // parent ID -> child IDs (built during sync)
+
+	// Milestone tracking
+	issueToMilestoneNumber map[string]int // local issue ID -> GitHub milestone number
+	issueTypes             map[string]string // local issue ID -> issue type
 }
 
 // NewSyncer creates a new syncer with the given client and options.
 func NewSyncer(client *Client, cfg *Config, opts SyncOptions, c *core.Core, syncStore SyncStateProvider) *Syncer {
 	return &Syncer{
-		client:          client,
-		config:          cfg,
-		opts:            opts,
-		core:            c,
-		syncStore:       syncStore,
-		issueToGHNumber: make(map[string]int),
-		issueToGHID:     make(map[string]int),
-		childrenOf:      make(map[string][]string),
+		client:                 client,
+		config:                 cfg,
+		opts:                   opts,
+		core:                   c,
+		syncStore:              syncStore,
+		issueToGHNumber:        make(map[string]int),
+		issueToGHID:            make(map[string]int),
+		childrenOf:             make(map[string][]string),
+		issueToMilestoneNumber: make(map[string]int),
+		issueTypes:             make(map[string]string),
 	}
 }
 
 // SyncIssues syncs a list of issues to GitHub issues.
 // Uses a multi-pass approach:
+// 0. Create/update milestones for milestone-type issues
 // 1. Create/update parent issues (issues without parents, or parents not in this sync)
 // 2. Create/update child issues with sub-issue relationships
-// 3. Update relationship references in issue bodies (Parent, Children, Blocks, Blocked by)
+// 3. Sync native blocking/blocked-by relationships via GitHub dependencies API
 func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncResult, error) {
 	// Pre-fetch authenticated user to avoid per-issue API calls
 	if _, err := s.client.GetAuthenticatedUser(ctx); err != nil {
@@ -63,11 +70,20 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	// Ensure all labels that will be needed exist
 	s.ensureAllLabels(ctx, issues)
 
+	// Build type index for parent lookups
+	for _, b := range issues {
+		s.issueTypes[b.ID] = b.Type
+	}
+
 	// Pre-populate mapping with already-synced issues from sync store
 	for _, b := range issues {
 		issueNumber := s.syncStore.GetIssueNumber(b.ID)
 		if issueNumber != nil && *issueNumber != 0 {
 			s.issueToGHNumber[b.ID] = *issueNumber
+		}
+		milestoneNumber := s.syncStore.GetMilestoneNumber(b.ID)
+		if milestoneNumber != nil && *milestoneNumber != 0 {
+			s.issueToMilestoneNumber[b.ID] = *milestoneNumber
 		}
 	}
 
@@ -82,9 +98,20 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 		}
 	}
 
-	// Separate issues into layers: parents first, then children
-	var parents, children []*issue.Issue
+	// Separate milestone-type issues from regular issues
+	var milestones []*issue.Issue
+	var regularIssues []*issue.Issue
 	for _, b := range issues {
+		if b.Type == "milestone" {
+			milestones = append(milestones, b)
+		} else {
+			regularIssues = append(regularIssues, b)
+		}
+	}
+
+	// Separate regular issues into layers: parents first, then children
+	var parents, children []*issue.Issue
+	for _, b := range regularIssues {
 		if b.Parent == "" || !syncingIDs[b.Parent] {
 			parents = append(parents, b)
 		} else {
@@ -111,6 +138,14 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			s.mu.Unlock()
 			s.opts.OnProgress(result, current, total)
 		}
+	}
+
+	// Pass 0: Create/update milestones
+	for _, b := range milestones {
+		result := s.syncMilestone(ctx, b)
+		idx := issueIndex[b.ID]
+		results[idx] = result
+		reportProgress(result)
 	}
 
 	// Pass 1: Create/update parent issues in parallel
@@ -153,19 +188,141 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	}
 	wg.Wait()
 
-	// Pass 3: Update relationship references in issue bodies (if not disabled)
+	// Pass 3: Sync native blocking relationships (if not disabled)
 	if !s.opts.NoRelationships && !s.opts.DryRun {
-		for _, b := range issues {
+		for _, b := range regularIssues {
+			if len(b.Blocking) == 0 && len(b.BlockedBy) == 0 {
+				continue
+			}
 			wg.Go(func() {
-				if err := s.syncRelationships(ctx, b); err != nil {
-					_ = err // Best-effort
-				}
+				s.syncBlockingRelationships(ctx, b)
 			})
 		}
 		wg.Wait()
 	}
 
 	return results, nil
+}
+
+// syncMilestone syncs a milestone-type issue to a GitHub milestone.
+func (s *Syncer) syncMilestone(ctx context.Context, b *issue.Issue) SyncResult {
+	result := SyncResult{
+		IssueID:    b.ID,
+		IssueTitle: b.Title,
+	}
+
+	state := s.getGitHubState(b.Status)
+	// GitHub milestones use "open"/"closed" just like issues
+	milestoneState := state
+
+	var dueOn string
+	if b.Due != nil {
+		dueOn = b.Due.Time.Format(time.RFC3339)
+	}
+
+	// Check if already linked
+	milestoneNumber := s.syncStore.GetMilestoneNumber(b.ID)
+	if milestoneNumber != nil && *milestoneNumber != 0 {
+		result.ExternalID = fmt.Sprintf("milestone:%d", *milestoneNumber)
+
+		if !s.opts.Force && !s.needsSync(b) {
+			result.Action = syncutil.ActionSkipped
+			return result
+		}
+
+		// Verify milestone still exists
+		ghMilestone, err := s.client.GetMilestone(ctx, *milestoneNumber)
+		if err != nil {
+			if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "Not Found") {
+				s.syncStore.Clear(b.ID)
+				// Fall through to create
+			} else {
+				result.Action = syncutil.ActionError
+				result.Error = fmt.Errorf("fetching milestone #%d: %w", *milestoneNumber, err)
+				return result
+			}
+		} else {
+			result.ExternalURL = ghMilestone.HTMLURL
+			s.issueToMilestoneNumber[b.ID] = ghMilestone.Number
+
+			if s.opts.DryRun {
+				result.Action = syncutil.ActionWouldUpdate
+				return result
+			}
+
+			// Build update request
+			update := &UpdateMilestoneRequest{}
+			if ghMilestone.Title != b.Title {
+				update.Title = &b.Title
+			}
+			body := s.buildMilestoneDescription(b)
+			if ghMilestone.Description != body {
+				update.Description = &body
+			}
+			if ghMilestone.State != milestoneState {
+				update.State = &milestoneState
+			}
+			if dueOn != "" && ghMilestone.DueOn != dueOn {
+				update.DueOn = &dueOn
+			}
+
+			if update.hasChanges() {
+				updated, err := s.client.UpdateMilestone(ctx, *milestoneNumber, update)
+				if err != nil {
+					result.Action = syncutil.ActionError
+					result.Error = fmt.Errorf("updating milestone: %w", err)
+					return result
+				}
+				result.ExternalURL = updated.HTMLURL
+				result.Action = syncutil.ActionUpdated
+			} else {
+				result.Action = syncutil.ActionUnchanged
+			}
+
+			s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
+			return result
+		}
+	}
+
+	// Create new milestone
+	if s.opts.DryRun {
+		result.Action = syncutil.ActionWouldCreate
+		return result
+	}
+
+	createReq := &CreateMilestoneRequest{
+		Title:       b.Title,
+		Description: s.buildMilestoneDescription(b),
+		State:       milestoneState,
+		DueOn:       dueOn,
+	}
+
+	ghMilestone, err := s.client.CreateMilestone(ctx, createReq)
+	if err != nil {
+		result.Action = syncutil.ActionError
+		result.Error = fmt.Errorf("creating milestone: %w", err)
+		return result
+	}
+
+	result.ExternalID = fmt.Sprintf("milestone:%d", ghMilestone.Number)
+	result.ExternalURL = ghMilestone.HTMLURL
+	s.issueToMilestoneNumber[b.ID] = ghMilestone.Number
+
+	s.syncStore.SetMilestoneNumber(b.ID, ghMilestone.Number)
+	s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
+
+	result.Action = syncutil.ActionCreated
+	return result
+}
+
+// buildMilestoneDescription builds the GitHub milestone description from a local issue.
+func (s *Syncer) buildMilestoneDescription(b *issue.Issue) string {
+	var parts []string
+	if b.Body != "" {
+		parts = append(parts, b.Body)
+	}
+	parts = append(parts, fmt.Sprintf("<!-- todo:%s -->", b.ID))
+	return strings.Join(parts, "\n\n")
 }
 
 // syncIssue syncs a single issue to a GitHub issue.
@@ -189,6 +346,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	state := s.getGitHubState(b.Status)
 	ghType := s.getGitHubType(b.Type)
 	body := s.buildIssueBody(b)
+	milestoneNumber := s.getMilestoneForIssue(b)
 
 	// Check if already linked (from sync store)
 	issueNumber := s.syncStore.GetIssueNumber(b.ID)
@@ -226,7 +384,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 				return result
 			}
 
-			update := s.buildUpdateRequest(ghIssue, b, body, state, ghType, labels)
+			update := s.buildUpdateRequest(ghIssue, b, body, state, ghType, labels, milestoneNumber)
 
 			if update.hasChanges() {
 				updatedIssue, err := s.client.UpdateIssue(ctx, *issueNumber, update)
@@ -262,6 +420,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 		Labels:    labels,
 		Assignees: s.getAssignees(ctx),
 		Type:      ghType,
+		Milestone: milestoneNumber,
 	}
 
 	ghIssue, err := s.client.CreateIssue(ctx, createReq)
@@ -374,8 +533,30 @@ func (s *Syncer) getAssignees(ctx context.Context) []string {
 	return []string{user.Login}
 }
 
+// getMilestoneForIssue returns the GitHub milestone number if the issue's parent is a milestone-type issue.
+func (s *Syncer) getMilestoneForIssue(b *issue.Issue) *int {
+	if b.Parent == "" {
+		return nil
+	}
+	// Check if parent is a milestone-type issue
+	if parentType, ok := s.issueTypes[b.Parent]; ok && parentType == "milestone" {
+		if milestoneNum, ok := s.issueToMilestoneNumber[b.Parent]; ok {
+			return &milestoneNum
+		}
+	}
+	return nil
+}
+
+// relationshipPrefixes are the bold-label prefixes used for legacy relationship lines in issue bodies.
+var relationshipPrefixes = []string{
+	"**Parent:**",
+	"**Children:**",
+	"**Blocks:**",
+	"**Blocked by:**",
+}
+
 // buildUpdateRequest builds an UpdateIssueRequest containing only fields that differ from current.
-func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state, ghType string, labels []string) *UpdateIssueRequest {
+func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state, ghType string, labels []string, milestone *int) *UpdateIssueRequest {
 	update := &UpdateIssueRequest{}
 
 	// Only include title if changed
@@ -383,8 +564,9 @@ func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state,
 		update.Title = &b.Title
 	}
 
-	// Only include body if changed
-	if current.Body != body {
+	// Strip stale relationship lines from current body before comparing
+	currentBody := stripRelationshipLines(current.Body)
+	if currentBody != body {
 		update.Body = &body
 	}
 
@@ -415,11 +597,25 @@ func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state,
 		update.Type = &ghType
 	}
 
+	// Only include milestone if changed
+	currentMilestone := 0
+	if current.Milestone != nil {
+		currentMilestone = current.Milestone.Number
+	}
+	wantMilestone := 0
+	if milestone != nil {
+		wantMilestone = *milestone
+	}
+	if currentMilestone != wantMilestone {
+		update.Milestone = &wantMilestone
+	}
+
 	return update
 }
 
 // syncSubIssueLink ensures the GitHub sub-issue relationship matches the local parent field.
 // It handles adding, removing, and re-parenting sub-issues.
+// Skips if parent is a milestone-type issue (those use milestone assignment instead).
 // The GitHub sub-issues API requires issue IDs (not numbers) for the sub_issue_id field.
 func (s *Syncer) syncSubIssueLink(ctx context.Context, b *issue.Issue, ghNumber int) {
 	if s.opts.NoRelationships {
@@ -429,6 +625,10 @@ func (s *Syncer) syncSubIssueLink(ctx context.Context, b *issue.Issue, ghNumber 
 	// Look up desired parent's GitHub number
 	wantParentNumber := 0
 	if b.Parent != "" {
+		// Skip sub-issue linking if parent is a milestone-type (use milestone assignment instead)
+		if parentType, ok := s.issueTypes[b.Parent]; ok && parentType == "milestone" {
+			return
+		}
 		s.mu.RLock()
 		if n, ok := s.issueToGHNumber[b.Parent]; ok {
 			wantParentNumber = n
@@ -472,103 +672,82 @@ func (s *Syncer) syncSubIssueLink(ctx context.Context, b *issue.Issue, ghNumber 
 	}
 }
 
-// relationshipPrefixes are the bold-label prefixes used for relationship lines in issue bodies.
-var relationshipPrefixes = []string{
-	"**Parent:**",
-	"**Children:**",
-	"**Blocks:**",
-	"**Blocked by:**",
-}
-
-// syncRelationships updates relationship reference lines in the GitHub issue body.
-// Writes Parent, Children, Blocks, and Blocked-by lines as clickable #N links.
-// Removes stale lines when relationships are removed locally.
-func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) error {
-	ghNumber, ok := s.issueToGHNumber[b.ID]
-	if !ok {
-		return nil
-	}
-
-	// Build all relationship lines
-	var relLines []string
-
-	// Parent
-	if b.Parent != "" {
-		if parentNumber, ok := s.issueToGHNumber[b.Parent]; ok {
-			relLines = append(relLines, fmt.Sprintf("**Parent:** #%d", parentNumber))
-		}
-	}
-
-	// Children
+// syncBlockingRelationships syncs native blocking/blocked-by relationships for an issue.
+// It diffs the current GitHub state against the desired state and adds/removes as needed.
+func (s *Syncer) syncBlockingRelationships(ctx context.Context, b *issue.Issue) {
 	s.mu.RLock()
-	childIDs := s.childrenOf[b.ID]
+	ghNumber, ok := s.issueToGHNumber[b.ID]
 	s.mu.RUnlock()
-	if len(childIDs) > 0 {
-		var childRefs []string
-		for _, childID := range childIDs {
-			if childNumber, ok := s.issueToGHNumber[childID]; ok {
-				childRefs = append(childRefs, fmt.Sprintf("#%d", childNumber))
+	if !ok {
+		return
+	}
+
+	// Build desired blocked-by set from both BlockedBy and inverse of Blocking
+	// For this issue: it is blocked by items in b.BlockedBy
+	// We sync blocked-by on *this* issue for b.BlockedBy entries
+	wantBlockedBy := make(map[int]bool)
+	for _, blockerID := range b.BlockedBy {
+		s.mu.RLock()
+		if blockerGHID, ok := s.issueToGHID[blockerID]; ok {
+			wantBlockedBy[blockerGHID] = true
+		}
+		s.mu.RUnlock()
+	}
+
+	// For b.Blocking entries: this issue blocks those, so we add blocked-by on the *other* issues
+	for _, blockedID := range b.Blocking {
+		s.mu.RLock()
+		blockedGHNumber, hasNumber := s.issueToGHNumber[blockedID]
+		thisGHID, hasThisID := s.issueToGHID[b.ID]
+		s.mu.RUnlock()
+		if !hasNumber || !hasThisID {
+			continue
+		}
+		// Add this issue as a blocker on the blocked issue
+		currentBlockedBy, err := s.client.ListBlockedBy(ctx, blockedGHNumber)
+		if err != nil {
+			continue
+		}
+		alreadyBlocked := false
+		for _, dep := range currentBlockedBy {
+			if dep.ID == thisGHID {
+				alreadyBlocked = true
+				break
 			}
 		}
-		if len(childRefs) > 0 {
-			relLines = append(relLines, fmt.Sprintf("**Children:** %s", strings.Join(childRefs, ", ")))
+		if !alreadyBlocked {
+			_ = s.client.AddBlockedBy(ctx, blockedGHNumber, thisGHID)
 		}
 	}
 
-	// Blocks
-	if len(b.Blocking) > 0 {
-		var blockRefs []string
-		for _, blockedID := range b.Blocking {
-			if blockedNumber, ok := s.issueToGHNumber[blockedID]; ok {
-				blockRefs = append(blockRefs, fmt.Sprintf("#%d", blockedNumber))
-			}
-		}
-		if len(blockRefs) > 0 {
-			relLines = append(relLines, fmt.Sprintf("**Blocks:** %s", strings.Join(blockRefs, ", ")))
-		}
-	}
-
-	// Blocked by
-	if len(b.BlockedBy) > 0 {
-		var blockedByRefs []string
-		for _, blockerID := range b.BlockedBy {
-			if blockerNumber, ok := s.issueToGHNumber[blockerID]; ok {
-				blockedByRefs = append(blockedByRefs, fmt.Sprintf("#%d", blockerNumber))
-			}
-		}
-		if len(blockedByRefs) > 0 {
-			relLines = append(relLines, fmt.Sprintf("**Blocked by:** %s", strings.Join(blockedByRefs, ", ")))
-		}
-	}
-
-	// Get current issue body
-	ghIssue, err := s.client.GetIssue(ctx, ghNumber)
+	// Sync blocked-by on this issue
+	currentBlockedBy, err := s.client.ListBlockedBy(ctx, ghNumber)
 	if err != nil {
-		return err
+		return
 	}
 
-	// Strip all existing relationship lines from the body
-	newBody := stripRelationshipLines(ghIssue.Body)
+	// Build current set
+	currentSet := make(map[int]bool)
+	for _, dep := range currentBlockedBy {
+		currentSet[dep.ID] = true
+	}
 
-	// Insert new relationship lines before the todo comment
-	if len(relLines) > 0 {
-		block := strings.Join(relLines, "\n")
-		if idx := strings.Index(newBody, "<!-- todo:"); idx >= 0 {
-			newBody = newBody[:idx] + block + "\n\n" + newBody[idx:]
-		} else {
-			newBody = newBody + "\n\n" + block
+	// Add missing
+	for ghID := range wantBlockedBy {
+		if !currentSet[ghID] {
+			_ = s.client.AddBlockedBy(ctx, ghNumber, ghID)
 		}
 	}
 
-	if newBody != ghIssue.Body {
-		_, err := s.client.UpdateIssue(ctx, ghNumber, &UpdateIssueRequest{Body: &newBody})
-		return err
+	// Remove stale
+	for _, dep := range currentBlockedBy {
+		if !wantBlockedBy[dep.ID] {
+			_ = s.client.RemoveBlockedBy(ctx, ghNumber, dep.ID)
+		}
 	}
-
-	return nil
 }
 
-// stripRelationshipLines removes all relationship-prefixed lines from a body string.
+// stripRelationshipLines removes all legacy relationship-prefixed lines from a body string.
 func stripRelationshipLines(body string) string {
 	lines := strings.Split(body, "\n")
 	var filtered []string
@@ -587,5 +766,3 @@ func stripRelationshipLines(body string) string {
 	}
 	return strings.Join(filtered, "\n")
 }
-
-

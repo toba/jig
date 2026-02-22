@@ -17,6 +17,50 @@ type Issue struct {
 	Labels    []Label    `json:"labels"`
 	Assignees []User     `json:"assignees"`
 	Type      *IssueType `json:"type,omitempty"`
+	Milestone *Milestone `json:"milestone,omitempty"`
+}
+
+// Milestone represents a GitHub milestone.
+type Milestone struct {
+	ID          int    `json:"id"`
+	Number      int    `json:"number"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	State       string `json:"state"` // "open" or "closed"
+	HTMLURL     string `json:"html_url"`
+	DueOn       string `json:"due_on,omitempty"`
+}
+
+// CreateMilestoneRequest is the request body for creating a milestone.
+type CreateMilestoneRequest struct {
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	State       string `json:"state,omitempty"`
+	DueOn       string `json:"due_on,omitempty"`
+}
+
+// UpdateMilestoneRequest is the request body for updating a milestone.
+type UpdateMilestoneRequest struct {
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	State       *string `json:"state,omitempty"`
+	DueOn       *string `json:"due_on,omitempty"`
+}
+
+// hasChanges returns true if any field in the update milestone request is set.
+func (u *UpdateMilestoneRequest) hasChanges() bool {
+	return u.Title != nil || u.Description != nil || u.State != nil || u.DueOn != nil
+}
+
+// BlockingDependency represents a blocking/blocked-by relationship on GitHub.
+type BlockingDependency struct {
+	ID     int `json:"id"`
+	Number int `json:"number"`
+}
+
+// AddBlockedByRequest is the request body for adding a blocked-by dependency.
+type AddBlockedByRequest struct {
+	IssueID int `json:"issue_id"`
 }
 
 // Label represents a GitHub label.
@@ -46,6 +90,7 @@ type CreateIssueRequest struct {
 	Labels    []string `json:"labels,omitempty"`
 	Assignees []string `json:"assignees,omitempty"`
 	Type      string   `json:"type,omitempty"`
+	Milestone *int     `json:"milestone,omitempty"`
 }
 
 // UpdateIssueRequest is the request body for updating an issue.
@@ -56,6 +101,7 @@ type UpdateIssueRequest struct {
 	Labels    []string `json:"labels,omitempty"`
 	Assignees []string `json:"assignees,omitempty"`
 	Type      *string  `json:"type,omitempty"`
+	Milestone *int     `json:"milestone,omitempty"`
 }
 
 // hasChanges returns true if any field in the update request is set.
@@ -65,7 +111,8 @@ func (u *UpdateIssueRequest) hasChanges() bool {
 		u.State != nil ||
 		u.Labels != nil ||
 		u.Assignees != nil ||
-		u.Type != nil
+		u.Type != nil ||
+		u.Milestone != nil
 }
 
 // SubIssueRequest is the request body for adding a sub-issue.

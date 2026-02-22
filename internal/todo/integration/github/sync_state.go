@@ -14,16 +14,19 @@ import (
 type SyncStateProvider interface {
 	GetIssueNumber(issueID string) *int
 	GetSyncedAt(issueID string) *time.Time
+	GetMilestoneNumber(issueID string) *int
 	SetIssueNumber(issueID string, number int)
 	SetSyncedAt(issueID string, t time.Time)
+	SetMilestoneNumber(issueID string, number int)
 	Clear(issueID string)
 	Flush() error
 }
 
 // extensionCache holds cached sync state for a single issue.
 type extensionCache struct {
-	issueNumber int
-	syncedAt    *time.Time
+	issueNumber    int
+	milestoneNumber int
+	syncedAt       *time.Time
 }
 
 // pendingOp represents a pending write operation.
@@ -50,12 +53,14 @@ func NewSyncStateStore(store *core.Core, issues []*issue.Issue) *SyncStateStore 
 
 	for _, b := range issues {
 		issueNumber, hasNumber := GetSyncInt(b, SyncKeyIssueNumber)
+		milestoneNumber, hasMilestone := GetSyncInt(b, SyncKeyMilestoneNumber)
 		syncedAt := GetSyncTime(b, SyncKeySyncedAt)
 
-		if hasNumber || syncedAt != nil {
+		if hasNumber || hasMilestone || syncedAt != nil {
 			p.cache[b.ID] = &extensionCache{
-				issueNumber: issueNumber,
-				syncedAt:    syncedAt,
+				issueNumber:    issueNumber,
+				milestoneNumber: milestoneNumber,
+				syncedAt:       syncedAt,
 			}
 		}
 	}
@@ -109,6 +114,29 @@ func (p *SyncStateStore) SetSyncedAt(issueID string, t time.Time) {
 	p.ops = append(p.ops, pendingOp{issueID: issueID, isSet: true})
 }
 
+func (p *SyncStateStore) GetMilestoneNumber(issueID string) *int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	c, ok := p.cache[issueID]
+	if !ok || c.milestoneNumber == 0 {
+		return nil
+	}
+	n := c.milestoneNumber
+	return &n
+}
+
+func (p *SyncStateStore) SetMilestoneNumber(issueID string, number int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.cache[issueID] == nil {
+		p.cache[issueID] = &extensionCache{}
+	}
+	p.cache[issueID].milestoneNumber = number
+	p.ops = append(p.ops, pendingOp{issueID: issueID, isSet: true})
+}
+
 func (p *SyncStateStore) Clear(issueID string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -152,8 +180,12 @@ func (p *SyncStateStore) Flush() error {
 				continue
 			}
 
-			data := map[string]any{
-				SyncKeyIssueNumber: fmt.Sprintf("%d", c.issueNumber),
+			data := map[string]any{}
+			if c.issueNumber != 0 {
+				data[SyncKeyIssueNumber] = fmt.Sprintf("%d", c.issueNumber)
+			}
+			if c.milestoneNumber != 0 {
+				data[SyncKeyMilestoneNumber] = fmt.Sprintf("%d", c.milestoneNumber)
 			}
 			if c.syncedAt != nil {
 				data[SyncKeySyncedAt] = c.syncedAt.Format(time.RFC3339)
