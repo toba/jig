@@ -91,7 +91,13 @@ Use `--tag` when creating or updating issues. Prefer these project tags:
 {{range .Tags}}
 - **{{.Name}}**{{if .Description}}: {{.Description}}{{end}}
 {{- end}}
+
 {{end}}
+## Tag Management
+
+`jig todo tags import` — import GitHub labels as project tags into `.jig.yaml` (requires GitHub sync config and `GITHUB_TOKEN`)
+`jig todo tags import --replace` — clear existing tags before importing
+
 ## Body Modifications
 
 Replace text (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)
@@ -139,6 +145,7 @@ jig todo query --json '{ issue(id: "abc") { title body parent { title } children
 `jig cite review [source]` — check cited repos for upstream changes
 `jig commit gather` — stage all changes and output commit context for review
 `jig commit apply -m "message" [--push]` — commit staged changes (optionally push)
+`jig todo tags import` — import GitHub labels as project tags (requires GitHub sync config)
 `jig doctor` — run all health checks (nope, brew, zed, cite)
 `jig init` — initialize all jig tools in a project
 
