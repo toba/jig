@@ -1060,18 +1060,22 @@ func TestValidateTag(t *testing.T) {
 		{"urgent2", false},
 		{"wont-fix", false},
 		{"a-b-c", false},
-		{"", true},         // empty
-		{"Frontend", true}, // uppercase
-		{"URGENT", true},   // all uppercase
-		{"123", true},      // starts with number
-		{"123abc", true},   // starts with number
-		{"my tag", true},   // contains space
-		{"my_tag", true},   // contains underscore
-		{"my--tag", true},  // consecutive hyphens
-		{"-tag", true},     // starts with hyphen
-		{"tag-", true},     // ends with hyphen
-		{"my.tag", true},   // contains dot
-		{"my/tag", true},   // contains slash
+		{"Frontend", false},          // mixed case now valid
+		{"URGENT", false},            // all uppercase now valid
+		{"123", false},               // starts with number now valid
+		{"123abc", false},            // starts with number now valid
+		{"my tag", false},            // contains space now valid
+		{"my_tag", false},            // contains underscore now valid
+		{"my--tag", false},           // consecutive hyphens now valid
+		{"-tag", false},              // starts with hyphen now valid
+		{"tag-", false},              // ends with hyphen now valid
+		{"my.tag", false},            // contains dot now valid
+		{"my/tag", false},            // contains slash now valid
+		{"Good First Issue", false},  // spaces and mixed case
+		{"P1: Critical", false},      // colons and spaces
+		{"won't fix", false},         // apostrophes
+		{"", true},                   // empty
+		{"   ", true},                // whitespace only
 	}
 
 	for _, tt := range tests {
@@ -1146,9 +1150,17 @@ func TestIssueTagMethods(t *testing.T) {
 			t.Errorf("expected 2 tags (no duplicate), got %d", len(b.Tags))
 		}
 
-		// Adding invalid tag should error
-		if err := b.AddTag("Invalid Tag"); err == nil {
-			t.Error("expected AddTag('Invalid Tag') to error")
+		// Tags with spaces are now valid
+		if err := b.AddTag("Good First Issue"); err != nil {
+			t.Errorf("AddTag('Good First Issue') error: %v", err)
+		}
+		if len(b.Tags) != 3 {
+			t.Errorf("expected 3 tags, got %d", len(b.Tags))
+		}
+
+		// Adding empty tag should error
+		if err := b.AddTag(""); err == nil {
+			t.Error("expected AddTag('') to error")
 		}
 	})
 

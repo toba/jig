@@ -17,6 +17,7 @@ type promptData struct {
 	Types      []todoconfig.TypeConfig
 	Statuses   []todoconfig.StatusConfig
 	Priorities []todoconfig.PriorityConfig
+	Tags       []todoconfig.TagConfig
 	HasSync    bool
 	SyncNames  []string
 }
@@ -52,6 +53,10 @@ var primeCmd = &cobra.Command{
 			Types:      todoconfig.DefaultTypes,
 			Statuses:   todoconfig.DefaultStatuses,
 			Priorities: todoconfig.DefaultPriorities,
+		}
+
+		if primeCfg != nil && len(primeCfg.Tags) > 0 {
+			data.Tags = primeCfg.Tags
 		}
 
 		if primeCfg != nil && primeCfg.Sync != nil {

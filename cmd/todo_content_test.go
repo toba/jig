@@ -40,16 +40,22 @@ func TestApplyTags(t *testing.T) {
 			wantTags: []string{"existing"},
 		},
 		{
-			name:    "invalid tag with spaces",
+			name:    "empty tag is invalid",
 			initial: nil,
-			toAdd:   []string{"invalid tag"},
+			toAdd:   []string{""},
 			wantErr: true,
 		},
 		{
-			name:     "uppercase tag gets normalized",
+			name:     "tag with spaces is valid",
+			initial:  nil,
+			toAdd:    []string{"good first issue"},
+			wantTags: []string{"good first issue"},
+		},
+		{
+			name:     "uppercase tag preserved",
 			initial:  nil,
 			toAdd:    []string{"InvalidTag"},
-			wantTags: []string{"invalidtag"},
+			wantTags: []string{"InvalidTag"},
 		},
 	}
 

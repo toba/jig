@@ -70,7 +70,7 @@ Track your work alongside your code and supercharge your coding agent with
 a full view of your project.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip core initialization for init, prime, and refry commands
-		if cmd.Name() == "init" || cmd.Name() == "prime" || cmd.Name() == "refry" {
+		if cmd.Name() == "init" || cmd.Name() == "prime" || cmd.Name() == "refry" || cmd.Name() == "import" {
 			return nil
 		}
 		return initTodoCore(cmd)

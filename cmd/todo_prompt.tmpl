@@ -84,6 +84,14 @@ Use `-p` when creating, `--priority` when updating. Unset = normal.
 - **{{.Name}}**{{if .Description}}: {{.Description}}{{end}}
 {{- end}}
 
+{{if .Tags}}
+## Tags
+
+Use `--tag` when creating or updating issues. Prefer these project tags:
+{{range .Tags}}
+- **{{.Name}}**{{if .Description}}: {{.Description}}{{end}}
+{{- end}}
+{{end}}
 ## Body Modifications
 
 Replace text (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)

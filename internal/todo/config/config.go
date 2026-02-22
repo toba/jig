@@ -114,6 +114,12 @@ type PriorityConfig struct {
 	Description string `yaml:"description,omitempty"`
 }
 
+// TagConfig defines a project tag with an optional description.
+type TagConfig struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description,omitempty"`
+}
+
 // Config holds the todo configuration.
 // Note: Statuses are no longer stored in config - they are hardcoded like types.
 type Config struct {
@@ -123,7 +129,8 @@ type Config struct {
 	DefaultType    string `yaml:"default_type,omitempty"`
 	DefaultSort    string `yaml:"default_sort,omitempty"`
 	Editor         string `yaml:"editor,omitempty"`
-	RequireIfMatch bool   `yaml:"require_if_match,omitempty"`
+	RequireIfMatch bool         `yaml:"require_if_match,omitempty"`
+	Tags           []TagConfig  `yaml:"tags,omitempty"`
 	Sync map[string]map[string]any `yaml:"sync,omitempty"`
 
 	// configDir is the directory containing the config file (not serialized)
@@ -407,7 +414,25 @@ func replaceOrAppendKey(root *yaml.Node, key string, value *yaml.Node) bool {
 
 // named is a constraint for config types that have a Name field.
 type named interface {
-	StatusConfig | TypeConfig | PriorityConfig
+	StatusConfig | TypeConfig | PriorityConfig | TagConfig
+}
+
+func tagName(t *TagConfig) string { return t.Name }
+
+// GetTag returns the TagConfig for a given tag name (case-insensitive), or nil if not found.
+func (c *Config) GetTag(name string) *TagConfig {
+	lower := strings.ToLower(name)
+	for i := range c.Tags {
+		if strings.ToLower(c.Tags[i].Name) == lower {
+			return &c.Tags[i]
+		}
+	}
+	return nil
+}
+
+// TagNames returns a slice of tag names from the tag registry.
+func (c *Config) TagNames() []string {
+	return configNames(c.Tags, tagName)
 }
 
 // configNames extracts name strings from a slice of config items.

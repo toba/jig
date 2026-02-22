@@ -921,6 +921,154 @@ func TestGetDefaultSort(t *testing.T) {
 	})
 }
 
+func TestTagConfig(t *testing.T) {
+	t.Run("save and load tags with special characters", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &Config{
+			Path:        ".issues",
+			DefaultType: "task",
+			Tags: []TagConfig{
+				{Name: "Bug", Description: "Something isn't working"},
+				{Name: "good first issue", Description: "Good for newcomers"},
+				{Name: "P1: Critical", Description: "Urgent priority"},
+				{Name: "won't fix", Description: ""},
+			},
+		}
+		cfg.SetConfigDir(tmpDir)
+
+		if err := cfg.Save(tmpDir); err != nil {
+			t.Fatalf("Save() error = %v", err)
+		}
+
+		configPath := filepath.Join(tmpDir, ConfigFileName)
+		loaded, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		if len(loaded.Tags) != 4 {
+			t.Fatalf("len(Tags) = %d, want 4", len(loaded.Tags))
+		}
+
+		// Verify names preserved verbatim
+		if loaded.Tags[0].Name != "Bug" {
+			t.Errorf("Tags[0].Name = %q, want \"Bug\"", loaded.Tags[0].Name)
+		}
+		if loaded.Tags[1].Name != "good first issue" {
+			t.Errorf("Tags[1].Name = %q, want \"good first issue\"", loaded.Tags[1].Name)
+		}
+		if loaded.Tags[2].Name != "P1: Critical" {
+			t.Errorf("Tags[2].Name = %q, want \"P1: Critical\"", loaded.Tags[2].Name)
+		}
+		if loaded.Tags[3].Name != "won't fix" {
+			t.Errorf("Tags[3].Name = %q, want \"won't fix\"", loaded.Tags[3].Name)
+		}
+
+		// Verify descriptions
+		if loaded.Tags[0].Description != "Something isn't working" {
+			t.Errorf("Tags[0].Description = %q, want \"Something isn't working\"", loaded.Tags[0].Description)
+		}
+		if loaded.Tags[3].Description != "" {
+			t.Errorf("Tags[3].Description = %q, want empty", loaded.Tags[3].Description)
+		}
+	})
+
+	t.Run("GetTag case-insensitive", func(t *testing.T) {
+		cfg := &Config{
+			Tags: []TagConfig{
+				{Name: "Bug", Description: "Something isn't working"},
+				{Name: "enhancement", Description: "New feature"},
+			},
+		}
+
+		tag := cfg.GetTag("bug")
+		if tag == nil {
+			t.Fatal("GetTag(\"bug\") = nil, want non-nil")
+		}
+		if tag.Name != "Bug" {
+			t.Errorf("Name = %q, want \"Bug\"", tag.Name)
+		}
+
+		tag = cfg.GetTag("BUG")
+		if tag == nil {
+			t.Fatal("GetTag(\"BUG\") = nil, want non-nil")
+		}
+
+		tag = cfg.GetTag("nonexistent")
+		if tag != nil {
+			t.Errorf("GetTag(\"nonexistent\") = %v, want nil", tag)
+		}
+	})
+
+	t.Run("TagNames", func(t *testing.T) {
+		cfg := &Config{
+			Tags: []TagConfig{
+				{Name: "Bug"},
+				{Name: "enhancement"},
+			},
+		}
+		names := cfg.TagNames()
+		if len(names) != 2 {
+			t.Fatalf("len(TagNames()) = %d, want 2", len(names))
+		}
+		if names[0] != "Bug" {
+			t.Errorf("TagNames()[0] = %q, want \"Bug\"", names[0])
+		}
+		if names[1] != "enhancement" {
+			t.Errorf("TagNames()[1] = %q, want \"enhancement\"", names[1])
+		}
+	})
+
+	t.Run("tags preserved alongside other config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, ConfigFileName)
+
+		// Write config with nope section and todo section
+		initialYAML := `nope:
+    rules:
+        - pattern: "*.secret"
+todo:
+    path: .issues
+    sync:
+        github:
+            repo: owner/repo
+`
+		if err := os.WriteFile(configPath, []byte(initialYAML), 0644); err != nil {
+			t.Fatalf("WriteFile error = %v", err)
+		}
+
+		// Load, add tags, save
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		cfg.Tags = []TagConfig{
+			{Name: "imported-label", Description: "From GitHub"},
+		}
+		if err := cfg.Save(""); err != nil {
+			t.Fatalf("Save() error = %v", err)
+		}
+
+		// Reload and verify
+		reloaded, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() after save error = %v", err)
+		}
+		if len(reloaded.Tags) != 1 {
+			t.Fatalf("len(Tags) = %d, want 1", len(reloaded.Tags))
+		}
+		if reloaded.Tags[0].Name != "imported-label" {
+			t.Errorf("Tags[0].Name = %q, want \"imported-label\"", reloaded.Tags[0].Name)
+		}
+
+		// Verify sync config still present
+		if reloaded.SyncConfig("github") == nil {
+			t.Error("GitHub sync config was lost after save")
+		}
+	})
+}
+
 func TestSyncConfig(t *testing.T) {
 	t.Run("returns nil for default config", func(t *testing.T) {
 		cfg := Default()

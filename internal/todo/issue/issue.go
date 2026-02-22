@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -16,17 +15,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// tagPattern matches valid tags: lowercase letters, numbers, and hyphens.
-// Must start with a letter, can contain hyphens but not consecutively or at the end.
-var tagPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
-
-// ValidateTag checks if a tag is valid (lowercase, URL-safe, single word).
+// ValidateTag checks if a tag is valid (any non-empty string).
 func ValidateTag(tag string) error {
-	if tag == "" {
+	if strings.TrimSpace(tag) == "" {
 		return fmt.Errorf("tag cannot be empty")
-	}
-	if !tagPattern.MatchString(tag) {
-		return fmt.Errorf("invalid tag %q: must be lowercase, start with a letter, and contain only letters, numbers, and hyphens", tag)
 	}
 	return nil
 }
@@ -43,14 +35,15 @@ func (b *Issue) HasTag(tag string) bool {
 }
 
 // AddTag adds a tag to the issue if it doesn't already exist.
+// The tag is stored as given (after trim); dedup uses case-insensitive comparison.
 // Returns an error if the tag is invalid.
 func (b *Issue) AddTag(tag string) error {
-	normalized := NormalizeTag(tag)
-	if err := ValidateTag(normalized); err != nil {
+	trimmed := strings.TrimSpace(tag)
+	if err := ValidateTag(trimmed); err != nil {
 		return err
 	}
-	if !b.HasTag(normalized) {
-		b.Tags = append(b.Tags, normalized)
+	if !b.HasTag(trimmed) {
+		b.Tags = append(b.Tags, trimmed)
 	}
 	return nil
 }

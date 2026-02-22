@@ -21,8 +21,9 @@ type Issue struct {
 
 // Label represents a GitHub label.
 type Label struct {
-	Name  string `json:"name"`
-	Color string `json:"color,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Color       string `json:"color,omitempty"`
 }
 
 // User represents a GitHub user.
