@@ -72,16 +72,22 @@ func LatestTag() (string, error) {
 	return parts[len(parts)-1], nil
 }
 
-// LogSinceTag returns the oneline log of commits since the given tag.
-// If tag is empty, returns the last 10 commits.
-func LogSinceTag(tag string) (string, error) {
-	var cmd *exec.Cmd
-	if tag == "" {
-		cmd = exec.Command("git", "log", "--oneline", "-10")
-	} else {
-		cmd = exec.Command("git", "log", tag+"..HEAD", "--oneline")
+// RecentCommits returns recent commits for style reference.
+// If a tag is provided and there are commits since it, returns those.
+// Otherwise returns the last 20 commits so agents always have style context.
+func RecentCommits(tag string) (string, error) {
+	if tag != "" {
+		cmd := exec.Command("git", "log", tag+"..HEAD", "--format=%h %s")
+		out, err := cmd.Output()
+		if err != nil {
+			return "", fmt.Errorf("git log: %w", err)
+		}
+		if result := strings.TrimRight(string(out), "\n"); result != "" {
+			return result, nil
+		}
 	}
-	out, err := cmd.Output()
+	// No tag or no commits since tag — show recent commits for style reference.
+	out, err := exec.Command("git", "log", "--format=%h %s", "-20").Output()
 	if err != nil {
 		return "", fmt.Errorf("git log: %w", err)
 	}

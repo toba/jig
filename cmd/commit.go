@@ -18,7 +18,7 @@ var gatherCmd = &cobra.Command{
 	Use:   "gather",
 	Short: "Stage changes and output context for commit message authoring",
 	Long: `Stages all changes (git add -A), checks for gitignore candidates,
-then outputs staged files, diff, latest tag, and recent log.
+then outputs staged files, diff, latest version tag, and recent commits.
 
 Exit codes:
   0  Success — context printed
@@ -61,25 +61,25 @@ Exit codes:
 			fmt.Println(diff)
 		}
 
-		// 4. Latest tag.
+		// 4. Latest version tag.
 		tag, err := commitpkg.LatestTag()
 		if err != nil {
 			return err
 		}
 		fmt.Println()
 		if tag == "" {
-			fmt.Println("LATEST_TAG: (none)")
+			fmt.Println("LATEST_VERSION: (none)")
 		} else {
-			fmt.Println("LATEST_TAG:", tag)
+			fmt.Println("LATEST_VERSION:", tag)
 		}
 
-		// 5. Log since tag.
-		log, err := commitpkg.LogSinceTag(tag)
+		// 5. Recent commits (for commit message style reference).
+		log, err := commitpkg.RecentCommits(tag)
 		if err != nil {
 			return err
 		}
 		fmt.Println()
-		fmt.Println("LOG_SINCE_TAG:")
+		fmt.Println("RECENT_COMMITS:")
 		if log != "" {
 			fmt.Println(log)
 		}

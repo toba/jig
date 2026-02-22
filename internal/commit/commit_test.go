@@ -222,20 +222,20 @@ func TestLatestTag(t *testing.T) {
 	})
 }
 
-func TestLogSinceTag(t *testing.T) {
+func TestRecentCommits(t *testing.T) {
 	t.Run("empty tag returns recent commits", func(t *testing.T) {
 		setupGitRepo(t)
 
-		log, err := LogSinceTag("")
+		log, err := RecentCommits("")
 		if err != nil {
-			t.Fatalf("LogSinceTag(\"\") error: %v", err)
+			t.Fatalf("RecentCommits(\"\") error: %v", err)
 		}
 		if !strings.Contains(log, "initial commit") {
-			t.Errorf("LogSinceTag(\"\") = %q, expected 'initial commit'", log)
+			t.Errorf("RecentCommits(\"\") = %q, expected 'initial commit'", log)
 		}
 	})
 
-	t.Run("with tag", func(t *testing.T) {
+	t.Run("with tag and new commits", func(t *testing.T) {
 		dir := setupGitRepo(t)
 
 		// Tag the initial commit.
@@ -266,15 +266,34 @@ func TestLogSinceTag(t *testing.T) {
 			}
 		}
 
-		log, err := LogSinceTag("v1.0.0")
+		log, err := RecentCommits("v1.0.0")
 		if err != nil {
-			t.Fatalf("LogSinceTag(\"v1.0.0\") error: %v", err)
+			t.Fatalf("RecentCommits(\"v1.0.0\") error: %v", err)
 		}
 		if !strings.Contains(log, "post-tag commit") {
-			t.Errorf("LogSinceTag(\"v1.0.0\") = %q, expected 'post-tag commit'", log)
+			t.Errorf("RecentCommits(\"v1.0.0\") = %q, expected 'post-tag commit'", log)
 		}
 		if strings.Contains(log, "initial commit") {
-			t.Errorf("LogSinceTag(\"v1.0.0\") should not contain 'initial commit'")
+			t.Errorf("RecentCommits(\"v1.0.0\") should not contain 'initial commit'")
+		}
+	})
+
+	t.Run("with tag but no new commits falls back to recent", func(t *testing.T) {
+		dir := setupGitRepo(t)
+
+		// Tag HEAD — no commits after tag.
+		cmd := exec.Command("git", "tag", "v1.0.0")
+		cmd.Dir = dir
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		log, err := RecentCommits("v1.0.0")
+		if err != nil {
+			t.Fatalf("RecentCommits(\"v1.0.0\") error: %v", err)
+		}
+		if !strings.Contains(log, "initial commit") {
+			t.Errorf("RecentCommits(\"v1.0.0\") = %q, expected fallback to recent commits", log)
 		}
 	})
 }
