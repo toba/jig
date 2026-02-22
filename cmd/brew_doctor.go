@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -16,7 +17,8 @@ var brewDoctorCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		tap, err := resolveTap("", configPath())
 		if err != nil {
-			return err
+			fmt.Fprintf(os.Stderr, "OK:   companions.brew not configured (nothing to check)\n")
+			return nil
 		}
 
 		// Detect source repo.

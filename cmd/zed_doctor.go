@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -19,7 +20,8 @@ var zedDoctorCmd = &cobra.Command{
 			return err
 		}
 		if ext == "" {
-			return fmt.Errorf("companions.zed not configured in %s", configPath())
+			fmt.Fprintf(os.Stderr, "OK:   companions.zed not configured (nothing to check)\n")
+			return nil
 		}
 
 		// Detect source repo.
