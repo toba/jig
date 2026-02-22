@@ -68,6 +68,12 @@ func (u *UpdateIssueRequest) hasChanges() bool {
 
 // SubIssueRequest is the request body for adding a sub-issue.
 type SubIssueRequest struct {
+	SubIssueID    int  `json:"sub_issue_id"`
+	ReplaceParent bool `json:"replace_parent,omitempty"`
+}
+
+// RemoveSubIssueRequest is the request body for removing a sub-issue.
+type RemoveSubIssueRequest struct {
 	SubIssueID int `json:"sub_issue_id"`
 }
 

@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -76,6 +77,7 @@ func newTestSyncer(t *testing.T, client *Client) *Syncer {
 		opts:            SyncOptions{},
 		syncStore:       newMemorySyncProvider(),
 		issueToGHNumber: make(map[string]int),
+		childrenOf:      make(map[string][]string),
 	}
 }
 
@@ -553,6 +555,298 @@ func TestBuildUpdateRequest_TypeChange(t *testing.T) {
 		})
 	}
 }
+func TestStripRelationshipLines(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "strips all relationship lines",
+			body: "Description\n\n**Parent:** #1\n**Children:** #2, #3\n**Blocks:** #4\n**Blocked by:** #5\n\n<!-- todo:test -->",
+			want: "Description\n\n\n<!-- todo:test -->",
+		},
+		{
+			name: "no relationship lines",
+			body: "Just a description\n\n<!-- todo:test -->",
+			want: "Just a description\n\n<!-- todo:test -->",
+		},
+		{
+			name: "only blocks line",
+			body: "Body\n\n**Blocks:** #10, #20\n\n<!-- todo:test -->",
+			want: "Body\n\n\n<!-- todo:test -->",
+		},
+		{
+			name: "empty body",
+			body: "",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stripRelationshipLines(tt.body)
+			if got != tt.want {
+				t.Errorf("stripRelationshipLines() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSyncRelationships_AllTypes(t *testing.T) {
+	var updatedBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.Contains(r.URL.Path, "/issues/") {
+			resp := Issue{
+				Number:  10,
+				Body:    "Description\n\n" + syncutil.SyncFooter + "\n\n<!-- todo:issue-a -->",
+				HTMLURL: "https://github.com/test/repo/issues/10",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+			return
+		}
+		if r.Method == "PATCH" && strings.Contains(r.URL.Path, "/issues/") {
+			var req UpdateIssueRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if req.Body != nil {
+				updatedBody = *req.Body
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(Issue{Number: 10})
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+
+	client := &Client{
+		token: "test", owner: "test-owner", repo: "test-repo",
+		httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}},
+	}
+
+	syncer := &Syncer{
+		client: client,
+		config: &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:   SyncOptions{},
+		issueToGHNumber: map[string]int{
+			"issue-a":  10,
+			"issue-b":  20,
+			"issue-c":  30,
+			"issue-d":  40,
+			"parent-1": 50,
+		},
+		childrenOf: map[string][]string{
+			"issue-a": {"issue-c", "issue-d"},
+		},
+	}
+
+	b := &issue.Issue{
+		ID:        "issue-a",
+		Parent:    "parent-1",
+		Blocking:  []string{"issue-b"},
+		BlockedBy: []string{"issue-c"},
+	}
+
+	err := syncer.syncRelationships(context.Background(), b)
+	if err != nil {
+		t.Fatalf("syncRelationships() error: %v", err)
+	}
+
+	// Check that all relationship lines are present
+	if !strings.Contains(updatedBody, "**Parent:** #50") {
+		t.Errorf("missing Parent line in body: %s", updatedBody)
+	}
+	if !strings.Contains(updatedBody, "**Children:** #30, #40") {
+		t.Errorf("missing Children line in body: %s", updatedBody)
+	}
+	if !strings.Contains(updatedBody, "**Blocks:** #20") {
+		t.Errorf("missing Blocks line in body: %s", updatedBody)
+	}
+	if !strings.Contains(updatedBody, "**Blocked by:** #30") {
+		t.Errorf("missing Blocked-by line in body: %s", updatedBody)
+	}
+
+	// Relationship lines should come before the todo comment
+	todoIdx := strings.Index(updatedBody, "<!-- todo:")
+	blocksIdx := strings.Index(updatedBody, "**Blocks:**")
+	if blocksIdx > todoIdx {
+		t.Error("relationship lines should come before <!-- todo: --> comment")
+	}
+}
+
+func TestSyncRelationships_CleansStaleLines(t *testing.T) {
+	var updatedBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.Contains(r.URL.Path, "/issues/") {
+			// Body has old relationship lines that should be removed
+			resp := Issue{
+				Number: 10,
+				Body:   "Description\n\n**Blocks:** #99\n**Blocked by:** #88\n\n" + syncutil.SyncFooter + "\n\n<!-- todo:issue-a -->",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+			return
+		}
+		if r.Method == "PATCH" && strings.Contains(r.URL.Path, "/issues/") {
+			var req UpdateIssueRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if req.Body != nil {
+				updatedBody = *req.Body
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(Issue{Number: 10})
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+
+	client := &Client{
+		token: "test", owner: "test-owner", repo: "test-repo",
+		httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}},
+	}
+
+	syncer := &Syncer{
+		client:          client,
+		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:            SyncOptions{},
+		issueToGHNumber: map[string]int{"issue-a": 10},
+		childrenOf:      make(map[string][]string),
+	}
+
+	// Issue with no relationships (all removed)
+	b := &issue.Issue{ID: "issue-a"}
+
+	err := syncer.syncRelationships(context.Background(), b)
+	if err != nil {
+		t.Fatalf("syncRelationships() error: %v", err)
+	}
+
+	// Old relationship lines should be removed
+	if strings.Contains(updatedBody, "**Blocks:**") {
+		t.Errorf("stale Blocks line should be removed: %s", updatedBody)
+	}
+	if strings.Contains(updatedBody, "**Blocked by:**") {
+		t.Errorf("stale Blocked-by line should be removed: %s", updatedBody)
+	}
+	// Description and footer should remain
+	if !strings.Contains(updatedBody, "Description") {
+		t.Errorf("description should be preserved: %s", updatedBody)
+	}
+}
+
+func TestSyncSubIssueLink_AddParent(t *testing.T) {
+	var addedSubIssue bool
+	var addedParentNumber int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// GetParentIssue returns 404 (no current parent)
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/parent") {
+			w.WriteHeader(404)
+			_, _ = w.Write([]byte(`{"message":"Not Found"}`))
+			return
+		}
+		// AddSubIssue
+		if r.Method == "POST" && strings.Contains(r.URL.Path, "/sub_issues") {
+			addedSubIssue = true
+			// Extract parent number from URL
+			parts := strings.Split(r.URL.Path, "/")
+			for i, p := range parts {
+				if p == "issues" && i+1 < len(parts) {
+					fmt.Sscanf(parts[i+1], "%d", &addedParentNumber)
+					break
+				}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(Issue{Number: 50})
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+
+	client := &Client{
+		token: "test", owner: "test-owner", repo: "test-repo",
+		httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}},
+	}
+
+	syncer := &Syncer{
+		client:          client,
+		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:            SyncOptions{},
+		issueToGHNumber: map[string]int{"parent-1": 50, "child-1": 10},
+		childrenOf:      make(map[string][]string),
+	}
+
+	b := &issue.Issue{ID: "child-1", Parent: "parent-1"}
+	syncer.syncSubIssueLink(context.Background(), b, 10)
+
+	if !addedSubIssue {
+		t.Error("expected AddSubIssue to be called")
+	}
+	if addedParentNumber != 50 {
+		t.Errorf("expected parent number 50, got %d", addedParentNumber)
+	}
+}
+
+func TestSyncSubIssueLink_RemoveParent(t *testing.T) {
+	var removedSubIssue bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// GetParentIssue returns a parent (issue has one on GitHub)
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/parent") {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(Issue{Number: 50})
+			return
+		}
+		// RemoveSubIssue
+		if r.Method == "DELETE" && strings.Contains(r.URL.Path, "/sub_issue") {
+			removedSubIssue = true
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(Issue{Number: 50})
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+
+	client := &Client{
+		token: "test", owner: "test-owner", repo: "test-repo",
+		httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}},
+	}
+
+	syncer := &Syncer{
+		client:          client,
+		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:            SyncOptions{},
+		issueToGHNumber: map[string]int{"child-1": 10},
+		childrenOf:      make(map[string][]string),
+	}
+
+	// Issue with no parent locally (removed)
+	b := &issue.Issue{ID: "child-1"}
+	syncer.syncSubIssueLink(context.Background(), b, 10)
+
+	if !removedSubIssue {
+		t.Error("expected RemoveSubIssue to be called")
+	}
+}
+
+func TestSyncSubIssueLink_NoRelationships(t *testing.T) {
+	syncer := &Syncer{
+		opts:            SyncOptions{NoRelationships: true},
+		issueToGHNumber: map[string]int{"child-1": 10, "parent-1": 50},
+	}
+
+	// Should return immediately without making any API calls
+	b := &issue.Issue{ID: "child-1", Parent: "parent-1"}
+	syncer.syncSubIssueLink(context.Background(), b, 10)
+	// If it tried to call the client, it would panic (client is nil)
+}
+
 // redirectTransport redirects all requests to the test server.
 type redirectTransport struct {
 	target string

@@ -25,7 +25,8 @@ type Syncer struct {
 
 	// Tracking for relationship pass
 	mu              sync.RWMutex
-	issueToGHNumber map[string]int // local issue ID -> GitHub issue number
+	issueToGHNumber map[string]int      // local issue ID -> GitHub issue number
+	childrenOf      map[string][]string // parent ID -> child IDs (built during sync)
 }
 
 // NewSyncer creates a new syncer with the given client and options.
@@ -37,6 +38,7 @@ func NewSyncer(client *Client, cfg *Config, opts SyncOptions, c *core.Core, sync
 		core:            c,
 		syncStore:       syncStore,
 		issueToGHNumber: make(map[string]int),
+		childrenOf:      make(map[string][]string),
 	}
 }
 
@@ -44,7 +46,7 @@ func NewSyncer(client *Client, cfg *Config, opts SyncOptions, c *core.Core, sync
 // Uses a multi-pass approach:
 // 1. Create/update parent issues (issues without parents, or parents not in this sync)
 // 2. Create/update child issues with sub-issue relationships
-// 3. Update blocking references in issue bodies
+// 3. Update relationship references in issue bodies (Parent, Children, Blocks, Blocked by)
 func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncResult, error) {
 	// Pre-fetch authenticated user to avoid per-issue API calls
 	if _, err := s.client.GetAuthenticatedUser(ctx); err != nil {
@@ -67,10 +69,15 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 		}
 	}
 
-	// Build a set of issue IDs being synced
+	// Build a set of issue IDs being synced and a children index
 	syncingIDs := make(map[string]bool)
 	for _, b := range issues {
 		syncingIDs[b.ID] = true
+	}
+	for _, b := range issues {
+		if b.Parent != "" && syncingIDs[b.Parent] {
+			s.childrenOf[b.Parent] = append(s.childrenOf[b.Parent], b.ID)
+		}
 	}
 
 	// Separate issues into layers: parents first, then children
@@ -144,7 +151,7 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	}
 	wg.Wait()
 
-	// Pass 3: Update blocking references in issue bodies (if not disabled)
+	// Pass 3: Update relationship references in issue bodies (if not disabled)
 	if !s.opts.NoRelationships && !s.opts.DryRun {
 		for _, b := range issues {
 			wg.Go(func() {
@@ -227,6 +234,9 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 				result.Action = syncutil.ActionUnchanged
 			}
 
+			// Sync sub-issue link (handles add, remove, and re-parent)
+			s.syncSubIssueLink(ctx, b, *issueNumber)
+
 			// Update synced_at timestamp
 			s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
 			return result
@@ -270,16 +280,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	}
 
 	// Link as sub-issue if parent is synced
-	if b.Parent != "" {
-		s.mu.RLock()
-		parentNumber, ok := s.issueToGHNumber[b.Parent]
-		s.mu.RUnlock()
-		if ok {
-			if err := s.client.AddSubIssue(ctx, parentNumber, ghIssue.Number); err != nil {
-				_ = err // Best-effort
-			}
-		}
-	}
+	s.syncSubIssueLink(ctx, b, ghIssue.Number)
 
 	// Store issue number and sync timestamp
 	s.syncStore.SetIssueNumber(b.ID, ghIssue.Number)
@@ -409,56 +410,137 @@ func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state,
 	return update
 }
 
-// syncRelationships updates blocking references in issue bodies.
-func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) error {
-	if len(b.Blocking) == 0 {
-		return nil
+// syncSubIssueLink ensures the GitHub sub-issue relationship matches the local parent field.
+// It handles adding, removing, and re-parenting sub-issues.
+func (s *Syncer) syncSubIssueLink(ctx context.Context, b *issue.Issue, ghNumber int) {
+	if s.opts.NoRelationships {
+		return
 	}
 
+	wantParent := ""
+	if b.Parent != "" {
+		s.mu.RLock()
+		if n, ok := s.issueToGHNumber[b.Parent]; ok {
+			wantParent = fmt.Sprintf("%d", n)
+		}
+		s.mu.RUnlock()
+	}
+
+	// Check current parent on GitHub
+	currentParent, err := s.client.GetParentIssue(ctx, ghNumber)
+	if err != nil {
+		return // Best-effort
+	}
+
+	currentParentNumber := 0
+	if currentParent != nil {
+		currentParentNumber = currentParent.Number
+	}
+
+	wantParentNumber := 0
+	if wantParent != "" {
+		fmt.Sscanf(wantParent, "%d", &wantParentNumber)
+	}
+
+	if currentParentNumber == wantParentNumber {
+		return // Already correct
+	}
+
+	if wantParentNumber != 0 {
+		// Add or re-parent (replace_parent handles both cases)
+		_ = s.client.AddSubIssue(ctx, wantParentNumber, ghNumber, true)
+	} else if currentParentNumber != 0 {
+		// Parent removed locally — unlink
+		_ = s.client.RemoveSubIssue(ctx, currentParentNumber, ghNumber)
+	}
+}
+
+// relationshipPrefixes are the bold-label prefixes used for relationship lines in issue bodies.
+var relationshipPrefixes = []string{
+	"**Parent:**",
+	"**Children:**",
+	"**Blocks:**",
+	"**Blocked by:**",
+}
+
+// syncRelationships updates relationship reference lines in the GitHub issue body.
+// Writes Parent, Children, Blocks, and Blocked-by lines as clickable #N links.
+// Removes stale lines when relationships are removed locally.
+func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) error {
 	ghNumber, ok := s.issueToGHNumber[b.ID]
 	if !ok {
 		return nil
 	}
 
-	// Build blocking references
-	var refs []string
-	for _, blockedID := range b.Blocking {
-		if blockedNumber, ok := s.issueToGHNumber[blockedID]; ok {
-			refs = append(refs, fmt.Sprintf("#%d", blockedNumber))
+	// Build all relationship lines
+	var relLines []string
+
+	// Parent
+	if b.Parent != "" {
+		if parentNumber, ok := s.issueToGHNumber[b.Parent]; ok {
+			relLines = append(relLines, fmt.Sprintf("**Parent:** #%d", parentNumber))
 		}
 	}
 
-	if len(refs) == 0 {
-		return nil
+	// Children
+	s.mu.RLock()
+	childIDs := s.childrenOf[b.ID]
+	s.mu.RUnlock()
+	if len(childIDs) > 0 {
+		var childRefs []string
+		for _, childID := range childIDs {
+			if childNumber, ok := s.issueToGHNumber[childID]; ok {
+				childRefs = append(childRefs, fmt.Sprintf("#%d", childNumber))
+			}
+		}
+		if len(childRefs) > 0 {
+			relLines = append(relLines, fmt.Sprintf("**Children:** %s", strings.Join(childRefs, ", ")))
+		}
 	}
 
-	// Get current issue to check body
+	// Blocks
+	if len(b.Blocking) > 0 {
+		var blockRefs []string
+		for _, blockedID := range b.Blocking {
+			if blockedNumber, ok := s.issueToGHNumber[blockedID]; ok {
+				blockRefs = append(blockRefs, fmt.Sprintf("#%d", blockedNumber))
+			}
+		}
+		if len(blockRefs) > 0 {
+			relLines = append(relLines, fmt.Sprintf("**Blocks:** %s", strings.Join(blockRefs, ", ")))
+		}
+	}
+
+	// Blocked by
+	if len(b.BlockedBy) > 0 {
+		var blockedByRefs []string
+		for _, blockerID := range b.BlockedBy {
+			if blockerNumber, ok := s.issueToGHNumber[blockerID]; ok {
+				blockedByRefs = append(blockedByRefs, fmt.Sprintf("#%d", blockerNumber))
+			}
+		}
+		if len(blockedByRefs) > 0 {
+			relLines = append(relLines, fmt.Sprintf("**Blocked by:** %s", strings.Join(blockedByRefs, ", ")))
+		}
+	}
+
+	// Get current issue body
 	ghIssue, err := s.client.GetIssue(ctx, ghNumber)
 	if err != nil {
 		return err
 	}
 
-	// Build the blocking line
-	blockingLine := fmt.Sprintf("**Blocks:** %s", strings.Join(refs, ", "))
+	// Strip all existing relationship lines from the body
+	newBody := stripRelationshipLines(ghIssue.Body)
 
-	// Check if body already contains the blocking line
-	newBody := ghIssue.Body
-
-	// Remove any existing Blocks line
-	lines := strings.Split(newBody, "\n")
-	var filtered []string
-	for _, line := range lines {
-		if !strings.HasPrefix(strings.TrimSpace(line), "**Blocks:**") {
-			filtered = append(filtered, line)
+	// Insert new relationship lines before the todo comment
+	if len(relLines) > 0 {
+		block := strings.Join(relLines, "\n")
+		if idx := strings.Index(newBody, "<!-- todo:"); idx >= 0 {
+			newBody = newBody[:idx] + block + "\n\n" + newBody[idx:]
+		} else {
+			newBody = newBody + "\n\n" + block
 		}
-	}
-	newBody = strings.Join(filtered, "\n")
-
-	// Append before the issue ID comment
-	if idx := strings.Index(newBody, "<!-- todo:"); idx >= 0 {
-		newBody = newBody[:idx] + blockingLine + "\n\n" + newBody[idx:]
-	} else {
-		newBody = newBody + "\n\n" + blockingLine
 	}
 
 	if newBody != ghIssue.Body {
@@ -467,6 +549,26 @@ func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) error {
 	}
 
 	return nil
+}
+
+// stripRelationshipLines removes all relationship-prefixed lines from a body string.
+func stripRelationshipLines(body string) string {
+	lines := strings.Split(body, "\n")
+	var filtered []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		isRel := false
+		for _, prefix := range relationshipPrefixes {
+			if strings.HasPrefix(trimmed, prefix) {
+				isRel = true
+				break
+			}
+		}
+		if !isRel {
+			filtered = append(filtered, line)
+		}
+	}
+	return strings.Join(filtered, "\n")
 }
 
 

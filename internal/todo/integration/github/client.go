@@ -263,10 +263,12 @@ func (c *Client) EnsureLabel(ctx context.Context, name, color string) error {
 }
 
 // AddSubIssue adds a sub-issue to a parent issue using the GitHub sub-issues API.
-func (c *Client) AddSubIssue(ctx context.Context, parentNumber, childIssueID int) error {
+// If replaceParent is true, it will re-parent the child even if it already has a parent.
+func (c *Client) AddSubIssue(ctx context.Context, parentNumber, childIssueID int, replaceParent bool) error {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/sub_issues", baseURL, c.owner, c.repo, parentNumber)
 
-	req, err := c.newJSONRequest(ctx, "POST", url, &SubIssueRequest{SubIssueID: childIssueID})
+	body := &SubIssueRequest{SubIssueID: childIssueID, ReplaceParent: replaceParent}
+	req, err := c.newJSONRequest(ctx, "POST", url, body)
 	if err != nil {
 		return err
 	}
@@ -276,6 +278,43 @@ func (c *Client) AddSubIssue(ctx context.Context, parentNumber, childIssueID int
 	}
 
 	return nil
+}
+
+// RemoveSubIssue removes a sub-issue from a parent issue.
+func (c *Client) RemoveSubIssue(ctx context.Context, parentNumber, childIssueID int) error {
+	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/sub_issue", baseURL, c.owner, c.repo, parentNumber)
+
+	req, err := c.newJSONRequest(ctx, "DELETE", url, &RemoveSubIssueRequest{SubIssueID: childIssueID})
+	if err != nil {
+		return err
+	}
+
+	if err := c.doRequest(req, nil); err != nil {
+		return fmt.Errorf("removing sub-issue: %w", err)
+	}
+
+	return nil
+}
+
+// GetParentIssue fetches the parent issue of a given issue, if any.
+// Returns nil, nil if the issue has no parent.
+func (c *Client) GetParentIssue(ctx context.Context, issueNumber int) (*Issue, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/parent", baseURL, c.owner, c.repo, issueNumber)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	var resp Issue
+	if err := c.doRequest(req, &resp); err != nil {
+		// 404 means no parent
+		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "Not Found") {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("getting parent issue: %w", err)
+	}
+
+	return &resp, nil
 }
 
 // doRequest executes an HTTP request and decodes the response.
