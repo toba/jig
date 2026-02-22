@@ -26,6 +26,7 @@ type Syncer struct {
 	// Tracking for relationship pass
 	mu              sync.RWMutex
 	issueToGHNumber map[string]int      // local issue ID -> GitHub issue number
+	issueToGHID     map[string]int      // local issue ID -> GitHub issue ID (for sub-issues API)
 	childrenOf      map[string][]string // parent ID -> child IDs (built during sync)
 }
 
@@ -38,6 +39,7 @@ func NewSyncer(client *Client, cfg *Config, opts SyncOptions, c *core.Core, sync
 		core:            c,
 		syncStore:       syncStore,
 		issueToGHNumber: make(map[string]int),
+		issueToGHID:     make(map[string]int),
 		childrenOf:      make(map[string][]string),
 	}
 }
@@ -214,6 +216,11 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 			// Issue exists - update it
 			result.ExternalURL = ghIssue.HTMLURL
 
+			// Track GitHub issue ID for sub-issues API
+			s.mu.Lock()
+			s.issueToGHID[b.ID] = ghIssue.ID
+			s.mu.Unlock()
+
 			if s.opts.DryRun {
 				result.Action = syncutil.ActionWouldUpdate
 				return result
@@ -268,6 +275,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	result.ExternalURL = ghIssue.HTMLURL
 	s.mu.Lock()
 	s.issueToGHNumber[b.ID] = ghIssue.Number
+	s.issueToGHID[b.ID] = ghIssue.ID
 	s.mu.Unlock()
 
 	// Close issue if state should be closed (can't create closed issues directly)
@@ -412,16 +420,18 @@ func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state,
 
 // syncSubIssueLink ensures the GitHub sub-issue relationship matches the local parent field.
 // It handles adding, removing, and re-parenting sub-issues.
+// The GitHub sub-issues API requires issue IDs (not numbers) for the sub_issue_id field.
 func (s *Syncer) syncSubIssueLink(ctx context.Context, b *issue.Issue, ghNumber int) {
 	if s.opts.NoRelationships {
 		return
 	}
 
-	wantParent := ""
+	// Look up desired parent's GitHub number
+	wantParentNumber := 0
 	if b.Parent != "" {
 		s.mu.RLock()
 		if n, ok := s.issueToGHNumber[b.Parent]; ok {
-			wantParent = fmt.Sprintf("%d", n)
+			wantParentNumber = n
 		}
 		s.mu.RUnlock()
 	}
@@ -437,21 +447,28 @@ func (s *Syncer) syncSubIssueLink(ctx context.Context, b *issue.Issue, ghNumber 
 		currentParentNumber = currentParent.Number
 	}
 
-	wantParentNumber := 0
-	if wantParent != "" {
-		fmt.Sscanf(wantParent, "%d", &wantParentNumber)
-	}
-
 	if currentParentNumber == wantParentNumber {
 		return // Already correct
 	}
 
 	if wantParentNumber != 0 {
-		// Add or re-parent (replace_parent handles both cases)
-		_ = s.client.AddSubIssue(ctx, wantParentNumber, ghNumber, true)
+		// The sub-issues API requires the child's issue ID (not number)
+		s.mu.RLock()
+		childID, hasChildID := s.issueToGHID[b.ID]
+		s.mu.RUnlock()
+		if !hasChildID {
+			return // Can't link without the child's GitHub ID
+		}
+		_ = s.client.AddSubIssue(ctx, wantParentNumber, childID, true)
 	} else if currentParentNumber != 0 {
-		// Parent removed locally — unlink
-		_ = s.client.RemoveSubIssue(ctx, currentParentNumber, ghNumber)
+		// Parent removed locally — unlink (also needs issue ID)
+		s.mu.RLock()
+		childID, hasChildID := s.issueToGHID[b.ID]
+		s.mu.RUnlock()
+		if !hasChildID {
+			return
+		}
+		_ = s.client.RemoveSubIssue(ctx, currentParentNumber, childID)
 	}
 }
 

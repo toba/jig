@@ -77,6 +77,7 @@ func newTestSyncer(t *testing.T, client *Client) *Syncer {
 		opts:            SyncOptions{},
 		syncStore:       newMemorySyncProvider(),
 		issueToGHNumber: make(map[string]int),
+		issueToGHID:     make(map[string]int),
 		childrenOf:      make(map[string][]string),
 	}
 }
@@ -299,6 +300,7 @@ func TestSyncIssue_Update(t *testing.T) {
 		opts:            SyncOptions{Force: true},
 		syncStore:       store,
 		issueToGHNumber: make(map[string]int),
+		issueToGHID:     make(map[string]int),
 	}
 
 	now := time.Now()
@@ -363,6 +365,7 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 		opts:            SyncOptions{},
 		syncStore:       newMemorySyncProvider(),
 		issueToGHNumber: make(map[string]int),
+		issueToGHID:     make(map[string]int),
 	}
 
 	now := time.Now()
@@ -453,6 +456,7 @@ func TestSyncIssue_DryRun_Create(t *testing.T) {
 		opts:            SyncOptions{DryRun: true},
 		syncStore:       newMemorySyncProvider(),
 		issueToGHNumber: make(map[string]int),
+		issueToGHID:     make(map[string]int),
 	}
 
 	b := &issue.Issue{
@@ -637,6 +641,7 @@ func TestSyncRelationships_AllTypes(t *testing.T) {
 			"issue-d":  40,
 			"parent-1": 50,
 		},
+		issueToGHID: make(map[string]int),
 		childrenOf: map[string][]string{
 			"issue-a": {"issue-c", "issue-d"},
 		},
@@ -714,6 +719,7 @@ func TestSyncRelationships_CleansStaleLines(t *testing.T) {
 		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
 		opts:            SyncOptions{},
 		issueToGHNumber: map[string]int{"issue-a": 10},
+		issueToGHID:     make(map[string]int),
 		childrenOf:      make(map[string][]string),
 	}
 
@@ -741,6 +747,7 @@ func TestSyncRelationships_CleansStaleLines(t *testing.T) {
 func TestSyncSubIssueLink_AddParent(t *testing.T) {
 	var addedSubIssue bool
 	var addedParentNumber int
+	var addedChildIssueID int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// GetParentIssue returns 404 (no current parent)
 		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/parent") {
@@ -759,6 +766,10 @@ func TestSyncSubIssueLink_AddParent(t *testing.T) {
 					break
 				}
 			}
+			// Extract sub_issue_id from request body
+			var body SubIssueRequest
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			addedChildIssueID = body.SubIssueID
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(Issue{Number: 50})
 			return
@@ -778,6 +789,7 @@ func TestSyncSubIssueLink_AddParent(t *testing.T) {
 		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
 		opts:            SyncOptions{},
 		issueToGHNumber: map[string]int{"parent-1": 50, "child-1": 10},
+		issueToGHID:     map[string]int{"child-1": 100010},
 		childrenOf:      make(map[string][]string),
 	}
 
@@ -789,6 +801,9 @@ func TestSyncSubIssueLink_AddParent(t *testing.T) {
 	}
 	if addedParentNumber != 50 {
 		t.Errorf("expected parent number 50, got %d", addedParentNumber)
+	}
+	if addedChildIssueID != 100010 {
+		t.Errorf("expected child issue ID 100010 (not number 10), got %d", addedChildIssueID)
 	}
 }
 
@@ -823,6 +838,7 @@ func TestSyncSubIssueLink_RemoveParent(t *testing.T) {
 		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
 		opts:            SyncOptions{},
 		issueToGHNumber: map[string]int{"child-1": 10},
+		issueToGHID:     map[string]int{"child-1": 100010},
 		childrenOf:      make(map[string][]string),
 	}
 
@@ -839,6 +855,7 @@ func TestSyncSubIssueLink_NoRelationships(t *testing.T) {
 	syncer := &Syncer{
 		opts:            SyncOptions{NoRelationships: true},
 		issueToGHNumber: map[string]int{"child-1": 10, "parent-1": 50},
+		issueToGHID:     map[string]int{"child-1": 100010},
 	}
 
 	// Should return immediately without making any API calls

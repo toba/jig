@@ -8,6 +8,7 @@ type IssueType struct {
 
 // Issue represents a GitHub issue.
 type Issue struct {
+	ID        int        `json:"id"`
 	Number    int        `json:"number"`
 	Title     string     `json:"title"`
 	Body      string     `json:"body"`
