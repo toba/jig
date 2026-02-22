@@ -124,3 +124,14 @@ This project syncs with: {{range $i, $name := .SyncNames}}{{if $i}}, {{end}}**{{
 jig todo query --json '{ issues(filter: { excludeStatus: ["completed", "scrapped"], isBlocked: false }) { id title status type body } }'
 jig todo query --json '{ issue(id: "abc") { title body parent { title } children { id title status } } }'
 ```
+
+## Other jig Tools
+
+`jig cite add <url> -w` — add a citation source (inspects repo, suggests path globs, writes to .jig.yaml)
+`jig cite review [source]` — check cited repos for upstream changes
+`jig commit gather` — stage all changes and output commit context for review
+`jig commit apply -m "message" [--push]` — commit staged changes (optionally push)
+`jig doctor` — run all health checks (nope, brew, zed, cite)
+`jig init` — initialize all jig tools in a project
+
+Run `jig <command> --help` for full options on any command.
