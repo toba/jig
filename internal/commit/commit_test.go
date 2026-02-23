@@ -298,6 +298,41 @@ func TestRecentCommits(t *testing.T) {
 	})
 }
 
+func TestHasStagedChanges(t *testing.T) {
+	t.Run("no staged changes", func(t *testing.T) {
+		setupGitRepo(t)
+
+		has, err := HasStagedChanges()
+		if err != nil {
+			t.Fatalf("HasStagedChanges() error: %v", err)
+		}
+		if has {
+			t.Error("HasStagedChanges() = true, want false on clean repo")
+		}
+	})
+
+	t.Run("with staged changes", func(t *testing.T) {
+		dir := setupGitRepo(t)
+
+		if err := os.WriteFile(filepath.Join(dir, "new.txt"), []byte("data\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("git", "add", "new.txt")
+		cmd.Dir = dir
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		has, err := HasStagedChanges()
+		if err != nil {
+			t.Fatalf("HasStagedChanges() error: %v", err)
+		}
+		if !has {
+			t.Error("HasStagedChanges() = false, want true with staged file")
+		}
+	})
+}
+
 func TestCommit(t *testing.T) {
 	dir := setupGitRepo(t)
 
@@ -451,6 +486,162 @@ func TestGitignoreCandidates(t *testing.T) {
 			t.Errorf("GitignoreCandidates() = %v, want nil", candidates)
 		}
 	})
+}
+
+// setupGitRepoWithRemote creates a local repo with a bare remote.
+// Returns the working dir and a run helper.
+func setupGitRepoWithRemote(t *testing.T) (dir string, run func(args ...string)) {
+	t.Helper()
+
+	bare := t.TempDir()
+	dir = t.TempDir()
+
+	runIn := func(d string, args ...string) {
+		t.Helper()
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = d
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=Test",
+			"GIT_AUTHOR_EMAIL=test@test.com",
+			"GIT_COMMITTER_NAME=Test",
+			"GIT_COMMITTER_EMAIL=test@test.com",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("command %v failed: %v\n%s", args, err, out)
+		}
+	}
+
+	// Create bare remote.
+	runIn(bare, "git", "init", "--bare")
+
+	// Create working repo.
+	runIn(dir, "git", "init")
+	runIn(dir, "git", "config", "user.email", "test@test.com")
+	runIn(dir, "git", "config", "user.name", "Test")
+	runIn(dir, "git", "remote", "add", "origin", bare)
+
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runIn(dir, "git", "add", "-A")
+	runIn(dir, "git", "commit", "-m", "initial commit")
+	runIn(dir, "git", "push", "-u", "origin", "HEAD")
+
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chdir(orig) })
+
+	return dir, func(args ...string) { runIn(dir, args...) }
+}
+
+func TestUnpushedVersionTags(t *testing.T) {
+	t.Run("no unpushed tags", func(t *testing.T) {
+		setupGitRepoWithRemote(t)
+
+		tags, err := unpushedVersionTags()
+		if err != nil {
+			t.Fatalf("unpushedVersionTags() error: %v", err)
+		}
+		if len(tags) != 0 {
+			t.Errorf("unpushedVersionTags() = %v, want empty", tags)
+		}
+	})
+
+	t.Run("all local tags unpushed", func(t *testing.T) {
+		_, run := setupGitRepoWithRemote(t)
+
+		run("git", "tag", "v1.0.0")
+		run("git", "tag", "v0.9.0")
+		run("git", "tag", "v1.1.0")
+
+		tags, err := unpushedVersionTags()
+		if err != nil {
+			t.Fatalf("unpushedVersionTags() error: %v", err)
+		}
+
+		// Should be sorted by version: v0.9.0, v1.0.0, v1.1.0.
+		want := []string{"v0.9.0", "v1.0.0", "v1.1.0"}
+		if len(tags) != len(want) {
+			t.Fatalf("unpushedVersionTags() = %v, want %v", tags, want)
+		}
+		for i, tag := range tags {
+			if tag != want[i] {
+				t.Errorf("tags[%d] = %q, want %q", i, tag, want[i])
+			}
+		}
+	})
+
+	t.Run("some tags already pushed", func(t *testing.T) {
+		_, run := setupGitRepoWithRemote(t)
+
+		run("git", "tag", "v1.0.0")
+		run("git", "push", "origin", "v1.0.0")
+		run("git", "tag", "v1.1.0")
+		run("git", "tag", "v1.2.0")
+
+		tags, err := unpushedVersionTags()
+		if err != nil {
+			t.Fatalf("unpushedVersionTags() error: %v", err)
+		}
+
+		want := []string{"v1.1.0", "v1.2.0"}
+		if len(tags) != len(want) {
+			t.Fatalf("unpushedVersionTags() = %v, want %v", tags, want)
+		}
+		for i, tag := range tags {
+			if tag != want[i] {
+				t.Errorf("tags[%d] = %q, want %q", i, tag, want[i])
+			}
+		}
+	})
+
+	t.Run("ignores non-version tags", func(t *testing.T) {
+		_, run := setupGitRepoWithRemote(t)
+
+		run("git", "tag", "release-1")
+		run("git", "tag", "v2.0.0")
+
+		tags, err := unpushedVersionTags()
+		if err != nil {
+			t.Fatalf("unpushedVersionTags() error: %v", err)
+		}
+
+		// Only v* tags.
+		if len(tags) != 1 || tags[0] != "v2.0.0" {
+			t.Errorf("unpushedVersionTags() = %v, want [v2.0.0]", tags)
+		}
+	})
+}
+
+func TestPushOrdersTags(t *testing.T) {
+	_, run := setupGitRepoWithRemote(t)
+
+	// Create multiple unpushed tags.
+	run("git", "tag", "v1.0.0")
+	run("git", "tag", "v0.5.0")
+	run("git", "tag", "v1.1.0")
+
+	if err := Push(); err != nil {
+		t.Fatalf("Push() error: %v", err)
+	}
+
+	// Verify all tags made it to the remote.
+	out, err := exec.Command("git", "ls-remote", "--tags", "origin").Output()
+	if err != nil {
+		t.Fatalf("ls-remote: %v", err)
+	}
+	remote := string(out)
+	for _, tag := range []string{"v0.5.0", "v1.0.0", "v1.1.0"} {
+		if !strings.Contains(remote, "refs/tags/"+tag) {
+			t.Errorf("remote missing tag %s", tag)
+		}
+	}
 }
 
 func TestGitignorePatternsCompiled(t *testing.T) {

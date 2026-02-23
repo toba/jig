@@ -108,15 +108,26 @@ and pushes to the remote.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		todoSync := hasTodoSync(configPath())
 
-		// 1. Commit.
-		if err := commitpkg.Commit(applyMessage); err != nil {
+		// 1. Commit (skip if nothing staged and push was requested).
+		staged, err := commitpkg.HasStagedChanges()
+		if err != nil {
 			return err
 		}
-		fmt.Println("Committed.")
+		if staged {
+			if err := commitpkg.Commit(applyMessage); err != nil {
+				return err
+			}
+			fmt.Println("Committed.")
 
-		// Sync todo issues after commit (if configured).
-		if todoSync {
-			commitpkg.TodoSync()
+			// Sync todo issues after commit (if configured).
+			if todoSync {
+				commitpkg.TodoSync()
+			}
+		} else if !applyPush {
+			// Nothing staged and no push — fail like git commit would.
+			return fmt.Errorf("nothing to commit (use --push to push existing commits)")
+		} else {
+			fmt.Println("Nothing to commit.")
 		}
 
 		// 2. Tag if version provided.

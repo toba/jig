@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // GitignoreCandidates returns untracked files that match gitignore patterns.
@@ -94,10 +95,23 @@ func RecentCommits(tag string) (string, error) {
 	return strings.TrimRight(string(out), "\n"), nil
 }
 
+// HasStagedChanges reports whether there are any staged changes to commit.
+func HasStagedChanges() (bool, error) {
+	err := exec.Command("git", "diff", "--cached", "--quiet").Run()
+	if err == nil {
+		return false, nil // exit 0 = no differences
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+		return true, nil // exit 1 = differences exist
+	}
+	return false, fmt.Errorf("git diff --cached --quiet: %w", err)
+}
+
 // Commit creates a git commit with the given message.
 // Stderr is captured and included in the error so hook failures are visible.
 func Commit(message string) error {
 	cmd := exec.Command("git", "commit", "-m", message)
+	cmd.WaitDelay = 10 * time.Second
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		detail := strings.TrimSpace(string(out))
@@ -117,15 +131,64 @@ func Tag(version string) error {
 	return nil
 }
 
-// Push runs git push && git push --tags.
+// Push pushes the current branch, then pushes any unpushed version tags
+// individually in semver order. This prevents out-of-order GitHub releases
+// when multiple tags are pushed simultaneously.
 func Push() error {
 	if err := exec.Command("git", "push").Run(); err != nil {
 		return fmt.Errorf("git push: %w", err)
 	}
-	if err := exec.Command("git", "push", "--tags").Run(); err != nil {
-		return fmt.Errorf("git push --tags: %w", err)
+
+	tags, err := unpushedVersionTags()
+	if err != nil {
+		// Can't determine unpushed tags (e.g. no remote) — push all tags.
+		if err := exec.Command("git", "push", "--tags").Run(); err != nil {
+			return fmt.Errorf("git push --tags: %w", err)
+		}
+		return nil
+	}
+
+	for _, tag := range tags {
+		if err := exec.Command("git", "push", "origin", tag).Run(); err != nil {
+			return fmt.Errorf("git push origin %s: %w", tag, err)
+		}
 	}
 	return nil
+}
+
+// unpushedVersionTags returns local v* tags not present on the remote,
+// sorted in version order (oldest first).
+func unpushedVersionTags() ([]string, error) {
+	// Get local v* tags sorted by version.
+	localOut, err := exec.Command("git", "tag", "-l", "v*", "--sort=version:refname").Output()
+	if err != nil {
+		return nil, fmt.Errorf("listing local tags: %w", err)
+	}
+
+	// Get remote tags.
+	remoteOut, err := exec.Command("git", "ls-remote", "--tags", "origin").Output()
+	if err != nil {
+		return nil, fmt.Errorf("listing remote tags: %w", err)
+	}
+
+	remote := make(map[string]bool)
+	for line := range strings.SplitSeq(strings.TrimSpace(string(remoteOut)), "\n") {
+		// Format: "<sha>\trefs/tags/<name>" (skip ^{} derefs)
+		if _, ref, ok := strings.Cut(line, "\t"); ok {
+			tag := strings.TrimPrefix(ref, "refs/tags/")
+			if !strings.HasSuffix(tag, "^{}") {
+				remote[tag] = true
+			}
+		}
+	}
+
+	var unpushed []string
+	for tag := range strings.SplitSeq(strings.TrimSpace(string(localOut)), "\n") {
+		if tag != "" && !remote[tag] {
+			unpushed = append(unpushed, tag)
+		}
+	}
+	return unpushed, nil
 }
 
 // Status returns the current git status output.
