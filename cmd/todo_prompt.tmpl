@@ -5,6 +5,8 @@ Use `jig todo` CLI for all issue/task tracking. Never use TodoWrite or manual to
 
 All commands support `--json` for machine-readable output.
 
+**NEVER pipe `--json` output to `jq` for filtering.** Use the built-in filter flags instead (`--no-status`, `--no-type`, `-s`, `-t`, `-S`, etc.). The `!=` operator in jq breaks in zsh, and all filtering you need is available via flags.
+
 ## Workflow
 
 BEFORE starting any task:
@@ -21,10 +23,11 @@ AFTER finishing:
 ## CLI Reference
 
 ```bash
-# List
+# List (use built-in flags to filter — NEVER pipe to jq)
 jig todo list --json                         # All issues
 jig todo list --json --ready                 # Ready to start (not blocked/in-progress/completed/scrapped/draft)
 jig todo list --json -t bug -s ready         # Filter by type/status
+jig todo list --json -t bug --no-status completed --no-status scrapped  # Open bugs
 jig todo list --json -S "query"              # Full-text search
 
 # Show (supports multiple IDs)
