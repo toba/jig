@@ -9,7 +9,7 @@ updated_at: 2026-02-21T19:19:47Z
 sync:
     github:
         issue_number: "4"
-        synced_at: "2026-02-21T16:40:37Z"
+        synced_at: "2026-02-23T17:08:12Z"
 ---
 
 \`ja brew doctor\` currently assumes a Go/goreleaser-based release pipeline and fails on non-Go projects that have valid custom release workflows.

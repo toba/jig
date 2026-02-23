@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-22T17:46:06Z
 updated_at: 2026-02-22T17:57:26Z
+sync:
+    github:
+        issue_number: "20"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 Enhance the GitHub issue sync to fully preserve parent/child and blocking/blocked-by relationships using both the sub-issues API and footer links.

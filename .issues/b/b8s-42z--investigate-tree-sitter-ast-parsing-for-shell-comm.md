@@ -3,8 +3,13 @@
 title: Investigate tree-sitter AST parsing for shell commands
 status: draft
 type: task
+priority: normal
 created_at: 2026-02-21T19:50:20Z
 updated_at: 2026-02-21T19:50:20Z
+sync:
+    github:
+        issue_number: "25"
+        synced_at: "2026-02-23T17:08:12Z"
 ---
 
 The guardrails repo uses tree-sitter-bash for AST-based parsing, which catches quote-splitting evasion like r"m" -rf / by reassembling quoted fragments. nope's ShellTokenize handles quoting for token classification but doesn't reassemble fragments to detect the underlying command.

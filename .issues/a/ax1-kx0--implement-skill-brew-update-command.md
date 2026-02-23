@@ -9,7 +9,7 @@ updated_at: 2026-02-21T20:04:21Z
 sync:
     github:
         issue_number: "1"
-        synced_at: "2026-02-21T03:40:28Z"
+        synced_at: "2026-02-23T17:08:12Z"
 ---
 
 Implement `ja brew update` CLI command to automate Homebrew tap formula updates after a release.

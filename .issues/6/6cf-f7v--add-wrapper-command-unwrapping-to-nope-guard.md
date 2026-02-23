@@ -6,6 +6,10 @@ type: feature
 priority: high
 created_at: 2026-02-21T19:50:02Z
 updated_at: 2026-02-21T20:09:57Z
+sync:
+    github:
+        issue_number: "9"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 nope's built-in checks operate on shell tokens but don't strip wrapper prefixes. A command like `sudo timeout 30 curl example.com` won't trigger `CheckNetwork` because `curl` isn't in command position.

@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T19:50:02Z
 updated_at: 2026-02-21T20:34:01Z
+sync:
+    github:
+        issue_number: "19"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 Detect secrets appearing inside command text, e.g. `echo "API_KEY=sk_live_abc123"`. Orthogonal to file-based credential checks.

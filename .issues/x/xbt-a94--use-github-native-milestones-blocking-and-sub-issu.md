@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-22T18:25:36Z
 updated_at: 2026-02-23T16:11:24Z
+sync:
+    github:
+        issue_number: "12"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 GitHub now supports milestones, blocking/blocked-by relationships, and sub-issues (parent/child) natively. The sync should use all three native APIs instead of emulating relationships via footer text links.

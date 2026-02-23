@@ -7,6 +7,10 @@ priority: normal
 created_at: 2026-02-21T20:47:53Z
 updated_at: 2026-02-21T20:54:32Z
 parent: y9c-wny
+sync:
+    github:
+        issue_number: "61"
+        synced_at: "2026-02-23T17:08:16Z"
 ---
 
 ## Description

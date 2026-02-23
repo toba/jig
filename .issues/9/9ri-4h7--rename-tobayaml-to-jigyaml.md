@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-21T16:55:39Z
 updated_at: 2026-02-21T16:57:06Z
+sync:
+    github:
+        issue_number: "18"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 - [ ] Find all references to .toba.yaml in code

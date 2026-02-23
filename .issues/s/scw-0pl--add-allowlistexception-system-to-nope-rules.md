@@ -3,8 +3,13 @@
 title: Add allowlist/exception system to nope rules
 status: draft
 type: feature
+priority: normal
 created_at: 2026-02-21T19:50:20Z
 updated_at: 2026-02-21T19:50:20Z
+sync:
+    github:
+        issue_number: "21"
+        synced_at: "2026-02-23T17:08:12Z"
 ---
 
 Allow users to define exceptions that bypass specific rules for known-safe patterns (e.g., `rm -rf ./node_modules`). The guardrails repo uses an allowlist file checked before security rules as an early exit.

@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-21T19:02:07Z
 updated_at: 2026-02-21T19:06:56Z
+sync:
+    github:
+        issue_number: "24"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 Rename the upstream subcommand to cite (verb) and the YAML config key to citations: (noun, plural). Update all cmd/, internal/config/, internal/update/, internal/nope/ test fixtures, internal/display/, CLAUDE.md, README.md, and schema.json.

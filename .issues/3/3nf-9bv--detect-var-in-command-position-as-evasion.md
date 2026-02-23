@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T19:50:02Z
 updated_at: 2026-02-21T20:37:35Z
+sync:
+    github:
+        issue_number: "16"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 nope's CheckSubshell catches \$() and backticks but doesn't detect plain \$var or \${var} as a command name. If the guard can't know what a variable resolves to, it's safer to block.

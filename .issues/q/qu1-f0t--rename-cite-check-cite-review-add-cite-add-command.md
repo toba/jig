@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T19:25:41Z
 updated_at: 2026-02-21T19:28:57Z
+sync:
+    github:
+        issue_number: "23"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 - [x] Rename checkCmd → reviewCmd in cmd/check.go, add check as alias

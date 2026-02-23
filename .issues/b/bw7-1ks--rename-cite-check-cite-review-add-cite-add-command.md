@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T19:21:01Z
 updated_at: 2026-02-21T20:04:29Z
+sync:
+    github:
+        issue_number: "10"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 Two improvements to the cite subcommand:

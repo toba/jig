@@ -6,6 +6,10 @@ type: bug
 priority: high
 created_at: 2026-02-23T05:40:03Z
 updated_at: 2026-02-23T16:14:27Z
+sync:
+    github:
+        issue_number: "15"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 When `jig commit apply --push` pushes to the remote, it should automatically run `jig todo sync` if `.jig.yaml` has a `sync:` section configured. Currently issues only sync when the user manually runs `jig todo sync`, which means the external tracker (GitHub Issues, etc.) gets out of date after every push.

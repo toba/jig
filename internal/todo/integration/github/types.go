@@ -1,6 +1,30 @@
 // Package github provides GitHub Issues API integration.
 package github
 
+import "encoding/json"
+
+// NullableInt represents an optional integer that can be explicitly null in JSON.
+// When Set is false, the field is omitted from JSON output.
+// When Set is true and Value is 0, it serializes as JSON null (to clear the field).
+// When Set is true and Value is non-zero, it serializes as the integer value.
+type NullableInt struct {
+	Value int
+	Set   bool
+}
+
+// MarshalJSON implements json.Marshaler.
+func (n NullableInt) MarshalJSON() ([]byte, error) {
+	if n.Value == 0 {
+		return json.Marshal(nil)
+	}
+	return json.Marshal(n.Value)
+}
+
+// nullableInt creates a NullableInt that will be included in the JSON output.
+func nullableInt(v int) NullableInt {
+	return NullableInt{Value: v, Set: true}
+}
+
 // IssueType represents a GitHub issue type.
 type IssueType struct {
 	Name string `json:"name"`
@@ -95,13 +119,37 @@ type CreateIssueRequest struct {
 
 // UpdateIssueRequest is the request body for updating an issue.
 type UpdateIssueRequest struct {
-	Title     *string  `json:"title,omitempty"`
-	Body      *string  `json:"body,omitempty"`
-	State     *string  `json:"state,omitempty"`
-	Labels    []string `json:"labels,omitempty"`
-	Assignees []string `json:"assignees,omitempty"`
-	Type      *string  `json:"type,omitempty"`
-	Milestone *int     `json:"milestone,omitempty"`
+	Title     *string     `json:"title,omitempty"`
+	Body      *string     `json:"body,omitempty"`
+	State     *string     `json:"state,omitempty"`
+	Labels    []string    `json:"labels,omitempty"`
+	Assignees []string    `json:"assignees,omitempty"`
+	Type      *string     `json:"type,omitempty"`
+	Milestone NullableInt `json:"-"` // custom marshaling; omitted when !Set, null when Value==0
+}
+
+// MarshalJSON implements json.Marshaler with conditional milestone inclusion.
+func (u *UpdateIssueRequest) MarshalJSON() ([]byte, error) {
+	// Use an alias to avoid infinite recursion.
+	type Alias UpdateIssueRequest
+	raw, err := json.Marshal((*Alias)(u))
+	if err != nil {
+		return nil, err
+	}
+	if !u.Milestone.Set {
+		return raw, nil
+	}
+	// Inject "milestone" into the JSON object.
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, err
+	}
+	milestoneJSON, err := u.Milestone.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	m["milestone"] = milestoneJSON
+	return json.Marshal(m)
 }
 
 // hasChanges returns true if any field in the update request is set.
@@ -112,7 +160,7 @@ func (u *UpdateIssueRequest) hasChanges() bool {
 		u.Labels != nil ||
 		u.Assignees != nil ||
 		u.Type != nil ||
-		u.Milestone != nil
+		u.Milestone.Set
 }
 
 // SubIssueRequest is the request body for adding a sub-issue.

@@ -3,8 +3,13 @@
 title: Remove relationship field from citations config
 status: completed
 type: task
+priority: normal
 created_at: 2026-02-21T19:19:31Z
 updated_at: 2026-02-21T19:19:31Z
+sync:
+    github:
+        issue_number: "6"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 The `relationship` field on citation sources (derived, dependency, watch) was purely cosmetic — only displayed in the `jig cite check` output header. Remove it to simplify the config.

@@ -6,6 +6,10 @@ type: feature
 priority: high
 created_at: 2026-02-21T19:50:02Z
 updated_at: 2026-02-21T20:03:59Z
+sync:
+    github:
+        issue_number: "26"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 nope has `CheckChained` to block `&&`/`||`/`;`, but if that rule is disabled, remaining checks don't analyze each sub-command independently. `echo hi && rm -rf /` should have both parts evaluated against all rules.

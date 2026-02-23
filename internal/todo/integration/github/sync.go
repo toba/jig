@@ -607,7 +607,7 @@ func (s *Syncer) buildUpdateRequest(current *Issue, b *issue.Issue, body, state,
 		wantMilestone = *milestone
 	}
 	if currentMilestone != wantMilestone {
-		update.Milestone = &wantMilestone
+		update.Milestone = nullableInt(wantMilestone) // 0 serializes as null to clear
 	}
 
 	return update

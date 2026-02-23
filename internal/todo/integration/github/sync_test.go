@@ -626,6 +626,100 @@ func TestStripRelationshipLines(t *testing.T) {
 	}
 }
 
+func TestBuildUpdateRequest_MilestoneClear(t *testing.T) {
+	syncer := &Syncer{config: &Config{}, issueTypes: make(map[string]string)}
+
+	// GitHub issue has a milestone, but local issue has no milestone parent
+	current := &Issue{
+		Title:     "Test",
+		Body:      "body\n\n<!-- todo:test-1 -->",
+		State:     "open",
+		Milestone: &Milestone{Number: 1},
+	}
+	b := &issue.Issue{
+		ID:    "test-1",
+		Title: "Test",
+	}
+	update := syncer.buildUpdateRequest(current, b, "body\n\n<!-- todo:test-1 -->", "open", "", nil, nil)
+
+	// Milestone should be set (to clear it)
+	if !update.Milestone.Set {
+		t.Fatal("expected Milestone.Set to be true")
+	}
+	if update.Milestone.Value != 0 {
+		t.Errorf("expected Milestone.Value = 0, got %d", update.Milestone.Value)
+	}
+
+	// Verify JSON serialization produces null, not 0
+	data, err := json.Marshal(update)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	dataStr := string(data)
+	if !strings.Contains(dataStr, `"milestone":null`) {
+		t.Errorf("expected milestone:null in JSON, got %s", dataStr)
+	}
+	if strings.Contains(dataStr, `"milestone":0`) {
+		t.Errorf("milestone must not be 0 in JSON (GitHub rejects it), got %s", dataStr)
+	}
+}
+
+func TestBuildUpdateRequest_MilestoneChange(t *testing.T) {
+	syncer := &Syncer{config: &Config{}, issueTypes: make(map[string]string)}
+
+	milestoneNum := 2
+	current := &Issue{
+		Title:     "Test",
+		Body:      "body\n\n<!-- todo:test-1 -->",
+		State:     "open",
+		Milestone: &Milestone{Number: 1},
+	}
+	b := &issue.Issue{
+		ID:    "test-1",
+		Title: "Test",
+	}
+	update := syncer.buildUpdateRequest(current, b, "body\n\n<!-- todo:test-1 -->", "open", "", nil, &milestoneNum)
+
+	if !update.Milestone.Set {
+		t.Fatal("expected Milestone.Set to be true")
+	}
+	if update.Milestone.Value != 2 {
+		t.Errorf("expected Milestone.Value = 2, got %d", update.Milestone.Value)
+	}
+
+	data, err := json.Marshal(update)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(data), `"milestone":2`) {
+		t.Errorf("expected milestone:2 in JSON, got %s", string(data))
+	}
+}
+
+func TestBuildUpdateRequest_MilestoneUnchanged(t *testing.T) {
+	syncer := &Syncer{config: &Config{}, issueTypes: make(map[string]string)}
+
+	milestoneNum := 1
+	current := &Issue{
+		Title:     "Test",
+		Body:      "body\n\n<!-- todo:test-1 -->",
+		State:     "open",
+		Milestone: &Milestone{Number: 1},
+	}
+	b := &issue.Issue{
+		ID:    "test-1",
+		Title: "Test",
+	}
+	update := syncer.buildUpdateRequest(current, b, "body\n\n<!-- todo:test-1 -->", "open", "", nil, &milestoneNum)
+
+	if update.Milestone.Set {
+		t.Error("expected Milestone.Set to be false when milestone unchanged")
+	}
+	if update.hasChanges() {
+		t.Error("expected no changes when nothing differs")
+	}
+}
+
 func TestBuildUpdateRequest_StripsStaleFooterLinks(t *testing.T) {
 	syncer := &Syncer{
 		config:     &Config{},

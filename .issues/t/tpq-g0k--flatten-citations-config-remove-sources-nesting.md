@@ -3,8 +3,13 @@
 title: 'Flatten citations config: remove sources nesting'
 status: completed
 type: task
+priority: normal
 created_at: 2026-02-21T19:19:18Z
 updated_at: 2026-02-21T19:19:18Z
+sync:
+    github:
+        issue_number: "13"
+        synced_at: "2026-02-23T17:08:13Z"
 ---
 
 Remove the unnecessary `sources:` key nesting in the citations config. The YAML format changes from:
