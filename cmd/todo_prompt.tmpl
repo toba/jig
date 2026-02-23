@@ -100,6 +100,8 @@ Use `--tag` when creating or updating issues. Prefer these project tags:
 
 ## Body Modifications
 
+Backticks in JSON output are NOT escaped — what appears as `` \` `` is a rendering artifact. Always use literal backtick characters in `--body-replace-old`/`--body-replace-new` values.
+
 Replace text (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)
 Append: `--body-append "content"` (`-` for stdin)
 Both can combine with metadata flags in a single update.
