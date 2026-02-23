@@ -199,11 +199,3 @@ func Status() (string, error) {
 	}
 	return strings.TrimRight(string(out), "\n"), nil
 }
-
-// TodoSync runs "todo sync" in the background, ignoring errors.
-// Returns immediately.
-func TodoSync() {
-	cmd := exec.Command("todo", "sync")
-	// Fire and forget — don't wait for completion, ignore errors.
-	_ = cmd.Start()
-}

@@ -1,11 +1,11 @@
 ---
 # xbt-a94
 title: Use GitHub native milestones, blocking, and sub-issues APIs
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-22T18:25:36Z
-updated_at: 2026-02-22T18:26:17Z
+updated_at: 2026-02-23T16:11:24Z
 ---
 
 GitHub now supports milestones, blocking/blocked-by relationships, and sub-issues (parent/child) natively. The sync should use all three native APIs instead of emulating relationships via footer text links.

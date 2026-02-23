@@ -1,10 +1,11 @@
 ---
 # y9c-wny
 title: Go optimization sweep (goptimize Feb 2026)
-status: in-progress
+status: completed
 type: epic
+priority: normal
 created_at: 2026-02-21T20:49:26Z
-updated_at: 2026-02-21T20:49:26Z
+updated_at: 2026-02-23T16:11:24Z
 ---
 
 ## Description

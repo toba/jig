@@ -86,7 +86,8 @@ Exit codes:
 
 		// 6. Todo sync (if configured).
 		if hasTodoSync(configPath()) {
-			commitpkg.TodoSync()
+			_ = initTodoCore(cmd)
+			_ = runSync(cmd, nil)
 		}
 
 		return nil
@@ -121,7 +122,8 @@ and pushes to the remote.`,
 
 			// Sync todo issues after commit (if configured).
 			if todoSync {
-				commitpkg.TodoSync()
+				_ = initTodoCore(cmd)
+				_ = runSync(cmd, nil)
 			}
 		} else if !applyPush {
 			// Nothing staged and no push — fail like git commit would.
@@ -147,7 +149,8 @@ and pushes to the remote.`,
 
 			// Sync again after push so remote state is reflected.
 			if todoSync {
-				commitpkg.TodoSync()
+				_ = initTodoCore(cmd)
+				_ = runSync(cmd, nil)
 			}
 		}
 
