@@ -7,6 +7,15 @@ import (
 	"github.com/toba/jig/internal/todo/ui"
 )
 
+// Modal sizing defaults.
+const (
+	defaultModalWidthPct = 50
+	defaultModalMaxWidth = 60
+	minModalWidth        = 40
+	modalTitlePadding    = 4  // padding subtracted from modal width for title
+	modalEllipsisLen     = 3  // length of "..." truncation suffix
+)
+
 // pickerModalConfig holds configuration for rendering a picker modal
 type pickerModalConfig struct {
 	Title       string // e.g., "Select Status"
@@ -24,20 +33,20 @@ func renderPickerModal(cfg pickerModalConfig) string {
 	// Default values
 	widthPct := cfg.WidthPct
 	if widthPct == 0 {
-		widthPct = 50
+		widthPct = defaultModalWidthPct
 	}
 	maxWidth := cfg.MaxWidth
 	if maxWidth == 0 {
-		maxWidth = 60
+		maxWidth = defaultModalMaxWidth
 	}
 
-	modalWidth := max(40, min(maxWidth, cfg.Width*widthPct/100))
+	modalWidth := max(minModalWidth, min(maxWidth, cfg.Width*widthPct/100))
 
 	// Header with issue title (truncated if needed)
-	titleWidth := modalWidth - 4
+	titleWidth := modalWidth - modalTitlePadding
 	issueTitle := cfg.IssueTitle
 	if len(issueTitle) > titleWidth {
-		issueTitle = issueTitle[:titleWidth-3] + "..."
+		issueTitle = issueTitle[:titleWidth-modalEllipsisLen] + "..."
 	}
 	header := lipgloss.NewStyle().Bold(true).Render(issueTitle)
 

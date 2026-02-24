@@ -103,7 +103,7 @@ func DoWithRetry(httpClient *http.Client, req *http.Request, cfg RetryConfig, ho
 			return fmt.Errorf("reading response: %w", err)
 		}
 
-		if resp.StatusCode >= 400 {
+		if resp.StatusCode >= httpErrorThreshold {
 			// Check for rate limit errors via client-specific hook
 			if hooks.HandleRateLimit != nil {
 				if rateLimitErr := hooks.HandleRateLimit(resp, body); rateLimitErr != nil {
@@ -141,27 +141,42 @@ func DoWithRetry(httpClient *http.Client, req *http.Request, cfg RetryConfig, ho
 	return fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
+// Transient network error substrings used for retry detection.
+var transientNetworkPatterns = []string{
+	"stream error",
+	"INTERNAL_ERROR",
+	"connection reset",
+	"connection refused",
+	"EOF",
+	"timeout",
+	"Timeout",
+}
+
+// Transient HTTP body patterns that indicate infrastructure/CDN errors.
+var transientBodyPatterns = []string{
+	"CloudFront",
+	"cloudfront",
+	"try again",
+	"Try again",
+}
+
+// HTTP status code boundaries for retry classification.
+const (
+	httpErrorThreshold    = 400
+	httpServerErrorMin    = 500
+	httpServerErrorMax    = 600
+)
+
 // IsTransientNetworkError checks if an error is a transient network error that should be retried.
 func IsTransientNetworkError(err error) bool {
 	if err == nil {
 		return false
 	}
 	errStr := err.Error()
-	// HTTP/2 stream errors
-	if strings.Contains(errStr, "stream error") || strings.Contains(errStr, "INTERNAL_ERROR") {
-		return true
-	}
-	// Connection reset/refused
-	if strings.Contains(errStr, "connection reset") || strings.Contains(errStr, "connection refused") {
-		return true
-	}
-	// EOF errors (connection closed unexpectedly)
-	if strings.Contains(errStr, "EOF") {
-		return true
-	}
-	// Timeout errors
-	if strings.Contains(errStr, "timeout") || strings.Contains(errStr, "Timeout") {
-		return true
+	for _, pattern := range transientNetworkPatterns {
+		if strings.Contains(errStr, pattern) {
+			return true
+		}
 	}
 	return false
 }
@@ -170,19 +185,17 @@ func IsTransientNetworkError(err error) bool {
 // Covers 5xx server errors, CDN/infrastructure errors (CloudFront), and "try again" messages.
 func IsTransientHTTPError(statusCode int, body []byte) bool {
 	// 5xx server errors are always transient
-	if statusCode >= 500 && statusCode < 600 {
+	if statusCode >= httpServerErrorMin && statusCode < httpServerErrorMax {
 		return true
 	}
 	// Some 4xx errors from CDN/infrastructure are transient
-	if statusCode == 400 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
+	if statusCode == http.StatusBadRequest || statusCode == http.StatusBadGateway ||
+		statusCode == http.StatusServiceUnavailable || statusCode == http.StatusGatewayTimeout {
 		bodyStr := string(body)
-		// CloudFront errors
-		if strings.Contains(bodyStr, "CloudFront") || strings.Contains(bodyStr, "cloudfront") {
-			return true
-		}
-		// Generic "try again later" messages
-		if strings.Contains(bodyStr, "try again") || strings.Contains(bodyStr, "Try again") {
-			return true
+		for _, pattern := range transientBodyPatterns {
+			if strings.Contains(bodyStr, pattern) {
+				return true
+			}
 		}
 	}
 	return false

@@ -29,11 +29,7 @@ func TestFindIncomingLinks(t *testing.T) {
 		Blocking: []string{"bbb2"},
 	}
 
-	for _, b := range []*issue.Issue{issueA, issueB, issueC, issueD} {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	createTestIssues(t, core,issueA, issueB, issueC, issueD)
 
 	t.Run("multiple incoming blocks", func(t *testing.T) {
 		links := core.FindIncomingLinks("bbb2")
@@ -101,11 +97,7 @@ func TestDetectCycle(t *testing.T) {
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{issueA, issueB, issueC} {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	createTestIssues(t, core,issueA, issueB, issueC)
 
 	t.Run("would create cycle", func(t *testing.T) {
 		// Adding C blocks A would create: A -> B -> C -> A
@@ -151,11 +143,7 @@ func TestDetectCycle(t *testing.T) {
 			Status: "todo",
 		}
 
-		for _, b := range []*issue.Issue{issueX, issueY, issueZ} {
-			if err := core.Create(b); err != nil {
-				t.Fatalf("Create error: %v", err)
-			}
-		}
+		createTestIssues(t, core, issueX, issueY, issueZ)
 
 		// Adding Z parent of X would create: X -> Y -> Z -> X
 		cycle := core.DetectCycle("zzz3", "parent", "xxx1")
@@ -186,11 +174,7 @@ func TestCheckAllLinks(t *testing.T) {
 		Blocking: []string{"aaa1"}, // creates cycle
 	}
 
-	for _, b := range []*issue.Issue{issueA, issueB} {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	createTestIssues(t, core,issueA, issueB)
 
 	result := core.CheckAllLinks()
 
@@ -262,11 +246,7 @@ func TestCheckAllLinksClean(t *testing.T) {
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{issueA, issueB} {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	createTestIssues(t, core,issueA, issueB)
 
 	result := core.CheckAllLinks()
 
@@ -299,11 +279,7 @@ func TestRemoveLinksTo(t *testing.T) {
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{issueA, issueB, target} {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	createTestIssues(t, core,issueA, issueB, target)
 
 	// Remove all links to target
 	removed, err := core.RemoveLinksTo("target")
@@ -344,11 +320,7 @@ func TestFixBrokenLinks(t *testing.T) {
 		Status: "todo",
 	}
 
-	for _, b := range []*issue.Issue{issueA, issueB} {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	createTestIssues(t, core,issueA, issueB)
 
 	// Fix broken links
 	fixed, err := core.FixBrokenLinks()
@@ -501,17 +473,12 @@ func TestIsBlocked(t *testing.T) {
 		BlockedBy: []string{"completed-blocker", "scrapped-blocker"},
 	}
 
-	issues := []*issue.Issue{
+	createTestIssues(t, core,
 		activeBlocker, completedBlocker, scrappedBlocker,
 		blockedByActive, blockedByCompleted, blockedByScrapped,
 		notBlocked, blockedByFieldActive, blockedByFieldCompleted,
 		blockedByBroken, mixedBlockers, allResolvedBlockers,
-	}
-	for _, b := range issues {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	)
 
 	tests := []struct {
 		name    string
@@ -573,12 +540,7 @@ func TestFindActiveBlockers(t *testing.T) {
 		Status: "todo",
 	}
 
-	issues := []*issue.Issue{activeBlocker1, activeBlocker2, completedBlocker, target, noBlockers}
-	for _, b := range issues {
-		if err := core.Create(b); err != nil {
-			t.Fatalf("Create error: %v", err)
-		}
-	}
+	createTestIssues(t, core, activeBlocker1, activeBlocker2, completedBlocker, target, noBlockers)
 
 	t.Run("returns active blockers from both sources", func(t *testing.T) {
 		blockers := core.FindActiveBlockers("target")

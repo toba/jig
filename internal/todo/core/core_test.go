@@ -13,7 +13,7 @@ import (
 	"github.com/toba/jig/internal/todo/config"
 )
 
-func setupTestCore(t *testing.T) (*Core, string) {
+func setupTestCore(t *testing.T, opts ...func(*config.Config)) (*Core, string) {
 	t.Helper()
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, DataDir)
@@ -22,6 +22,9 @@ func setupTestCore(t *testing.T) (*Core, string) {
 	}
 
 	cfg := config.Default()
+	for _, opt := range opts {
+		opt(cfg)
+	}
 	core := New(dataDir, cfg)
 	core.SetWarnWriter(nil) // suppress warnings in tests
 	if err := core.Load(); err != nil {
@@ -32,22 +35,18 @@ func setupTestCore(t *testing.T) (*Core, string) {
 }
 
 func setupTestCoreWithRequireIfMatch(t *testing.T) (*Core, string) {
+	return setupTestCore(t, func(cfg *config.Config) {
+		cfg.RequireIfMatch = true
+	})
+}
+
+func createTestIssues(t *testing.T, core *Core, issues ...*issue.Issue) {
 	t.Helper()
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, DataDir)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create test issues dir: %v", err)
+	for _, b := range issues {
+		if err := core.Create(b); err != nil {
+			t.Fatalf("Create error: %v", err)
+		}
 	}
-
-	cfg := config.Default()
-	cfg.RequireIfMatch = true
-	core := New(dataDir, cfg)
-	core.SetWarnWriter(nil) // suppress warnings in tests
-	if err := core.Load(); err != nil {
-		t.Fatalf("failed to load core: %v", err)
-	}
-
-	return core, dataDir
 }
 
 func createTestIssue(t *testing.T, core *Core, id, title, status string) *issue.Issue {

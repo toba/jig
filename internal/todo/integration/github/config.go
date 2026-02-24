@@ -19,6 +19,9 @@ const (
 	StateClosed = "closed"
 )
 
+// TodoCommentFormat is the HTML comment format used to link GitHub issues back to local issues.
+const TodoCommentFormat = "<!-- todo:%s -->"
+
 // Config holds GitHub integration configuration.
 type Config struct {
 	Owner string // Repository owner

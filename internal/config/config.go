@@ -133,18 +133,28 @@ func MarkSource(src *Source, sha string) {
 	src.LastCheckedDate = time.Now().UTC().Format(time.RFC3339)
 }
 
+// mappingNode returns the underlying MappingNode, unwrapping a DocumentNode if needed.
+// Returns nil if the node is not (or does not contain) a MappingNode.
+func mappingNode(node *yaml.Node) *yaml.Node {
+	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+		node = node.Content[0]
+	}
+	if node.Kind != yaml.MappingNode {
+		return nil
+	}
+	return node
+}
+
 // FindKey finds the value node for a given key in a YAML mapping node.
 // When root is a DocumentNode, it descends into the first content node.
 func FindKey(root *yaml.Node, key string) *yaml.Node {
-	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
-		root = root.Content[0]
-	}
-	if root.Kind != yaml.MappingNode {
+	m := mappingNode(root)
+	if m == nil {
 		return nil
 	}
-	for i := 0; i < len(root.Content)-1; i += 2 {
-		if root.Content[i].Value == key {
-			return root.Content[i+1]
+	for i := 0; i < len(m.Content)-1; i += 2 {
+		if m.Content[i].Value == key {
+			return m.Content[i+1]
 		}
 	}
 	return nil
@@ -152,15 +162,13 @@ func FindKey(root *yaml.Node, key string) *yaml.Node {
 
 // ReplaceKey replaces the value node for a given top-level key.
 func ReplaceKey(root *yaml.Node, key string, value *yaml.Node) bool {
-	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
-		root = root.Content[0]
-	}
-	if root.Kind != yaml.MappingNode {
+	m := mappingNode(root)
+	if m == nil {
 		return false
 	}
-	for i := 0; i < len(root.Content)-1; i += 2 {
-		if root.Content[i].Value == key {
-			root.Content[i+1] = value
+	for i := 0; i < len(m.Content)-1; i += 2 {
+		if m.Content[i].Value == key {
+			m.Content[i+1] = value
 			return true
 		}
 	}
@@ -170,11 +178,8 @@ func ReplaceKey(root *yaml.Node, key string, value *yaml.Node) bool {
 // AppendSource adds a new source to the citations section of the document.
 // If no citations section exists, one is created.
 func AppendSource(doc *Document, src Source) error {
-	root := doc.Root
-	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
-		root = root.Content[0]
-	}
-	if root.Kind != yaml.MappingNode {
+	root := mappingNode(doc.Root)
+	if root == nil {
 		return fmt.Errorf("expected mapping node at document root")
 	}
 

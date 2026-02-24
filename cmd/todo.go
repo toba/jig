@@ -15,29 +15,35 @@ var (
 	todoDataPath string
 )
 
+// loadConfigWithFallback loads todo config from the given path, falling back
+// to searching upward from the current directory.
+func loadConfigWithFallback(cfgPath string) (*todoconfig.Config, error) {
+	if _, statErr := os.Stat(cfgPath); statErr == nil {
+		cfg, err := todoconfig.Load(cfgPath)
+		if err != nil {
+			return nil, fmt.Errorf("loading config from %s: %w", cfgPath, err)
+		}
+		return cfg, nil
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("getting current directory: %w", err)
+	}
+	cfg, err := todoconfig.LoadFromDirectory(cwd)
+	if err != nil {
+		return nil, fmt.Errorf("loading config: %w", err)
+	}
+	return cfg, nil
+}
+
 // initTodoCore loads config, resolves data dir, and creates the core.
 // Extracted from todo's rootCmd.PersistentPreRunE.
 func initTodoCore(cmd *cobra.Command) error {
 	var err error
 
-	cp := configPath()
-
-	// Load configuration
-	if _, statErr := os.Stat(cp); statErr == nil {
-		todoCfg, err = todoconfig.Load(cp)
-		if err != nil {
-			return fmt.Errorf("loading config from %s: %w", cp, err)
-		}
-	} else {
-		// Search upward for config
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("getting current directory: %w", err)
-		}
-		todoCfg, err = todoconfig.LoadFromDirectory(cwd)
-		if err != nil {
-			return fmt.Errorf("loading config: %w", err)
-		}
+	todoCfg, err = loadConfigWithFallback(configPath())
+	if err != nil {
+		return err
 	}
 
 	// Determine data directory

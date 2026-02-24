@@ -18,24 +18,11 @@ var tagsImportCmd = &cobra.Command{
 	Long:  `Imports labels from the configured GitHub repository into the project tag registry in .jig.yaml.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cp := configPath()
-
 		// Load config (we skip initTodoCore for "import")
 		var err error
-		if _, statErr := os.Stat(cp); statErr == nil {
-			todoCfg, err = todoconfig.Load(cp)
-			if err != nil {
-				return fmt.Errorf("loading config from %s: %w", cp, err)
-			}
-		} else {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("getting current directory: %w", err)
-			}
-			todoCfg, err = todoconfig.LoadFromDirectory(cwd)
-			if err != nil {
-				return fmt.Errorf("loading config: %w", err)
-			}
+		todoCfg, err = loadConfigWithFallback(configPath())
+		if err != nil {
+			return err
 		}
 
 		// Parse GitHub sync config

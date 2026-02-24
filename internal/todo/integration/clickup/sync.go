@@ -10,6 +10,7 @@ import (
 	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/integration/syncutil"
 	"github.com/toba/jig/internal/todo/issue"
+	"golang.org/x/sync/errgroup"
 )
 
 // SyncResult holds the result of syncing a single issue.
@@ -131,9 +132,10 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	results := make([]SyncResult, len(issues))
 	total := len(issues)
 
-	var wg sync.WaitGroup
 	var mu sync.Mutex // protects issueToTaskID and completed count
 	var completed int
+	g := new(errgroup.Group)
+	g.SetLimit(10)
 
 	// Helper to report progress
 	reportProgress := func(result SyncResult) {
@@ -146,51 +148,45 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 		}
 	}
 
+	syncAndTrack := func(b *issue.Issue, result SyncResult) {
+		idx := issueIndex[b.ID]
+		results[idx] = result
+
+		if result.Error == nil && result.Action != syncutil.ActionSkipped && result.TaskID != "" {
+			mu.Lock()
+			s.issueToTaskID[b.ID] = result.TaskID
+			mu.Unlock()
+		}
+		reportProgress(result)
+	}
+
 	// Pass 1: Create/update parent tasks in parallel
 	for _, b := range parents {
-		wg.Go(func() {
-			result := s.syncIssue(ctx, b)
-			idx := issueIndex[b.ID]
-			results[idx] = result
-
-			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.TaskID != "" {
-				mu.Lock()
-				s.issueToTaskID[b.ID] = result.TaskID
-				mu.Unlock()
-			}
-			reportProgress(result)
+		g.Go(func() error {
+			syncAndTrack(b, s.syncIssue(ctx, b))
+			return nil
 		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 
 	// Pass 2: Create/update child tasks in parallel (parents now exist)
 	for _, b := range children {
-		wg.Go(func() {
-			result := s.syncIssue(ctx, b)
-			idx := issueIndex[b.ID]
-			results[idx] = result
-
-			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.TaskID != "" {
-				mu.Lock()
-				s.issueToTaskID[b.ID] = result.TaskID
-				mu.Unlock()
-			}
-			reportProgress(result)
+		g.Go(func() error {
+			syncAndTrack(b, s.syncIssue(ctx, b))
+			return nil
 		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 
 	// Pass 3: Sync blocking relationships in parallel (if not disabled)
 	if !s.opts.NoRelationships && !s.opts.DryRun {
 		for _, b := range issues {
-			wg.Go(func() {
-				if err := s.syncRelationships(ctx, b); err != nil {
-					// Log but don't fail - relationships are best-effort
-					_ = err
-				}
+			g.Go(func() error {
+				_ = s.syncRelationships(ctx, b)
+				return nil
 			})
 		}
-		wg.Wait()
+		_ = g.Wait()
 	}
 
 	return results, nil

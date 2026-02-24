@@ -8,7 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/toba/jig/internal/config"
@@ -241,8 +241,8 @@ func SuggestPaths(files []string) config.PathDefs {
 		for ext, count := range extCount {
 			entries = append(entries, extEntry{ext, count})
 		}
-		sort.Slice(entries, func(i, j int) bool {
-			return entries[i].count > entries[j].count
+		slices.SortFunc(entries, func(a, b extEntry) int {
+			return cmp.Compare(b.count, a.count) // descending
 		})
 		for i := range min(2, len(entries)) {
 			pd.High = append(pd.High, "**/*"+entries[i].ext)

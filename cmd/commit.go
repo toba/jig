@@ -85,10 +85,7 @@ Exit codes:
 		}
 
 		// 6. Todo sync (if configured).
-		if hasTodoSync(configPath()) {
-			_ = initTodoCore(cmd)
-			_ = runSync(cmd, nil)
-		}
+		syncTodoIfConfigured(cmd)
 
 		return nil
 	},
@@ -122,8 +119,7 @@ and pushes to the remote.`,
 
 			// Sync todo issues after commit (if configured).
 			if todoSync {
-				_ = initTodoCore(cmd)
-				_ = runSync(cmd, nil)
+				syncTodoIfConfigured(cmd)
 			}
 		} else if !applyPush {
 			// Nothing staged and no push — fail like git commit would.
@@ -149,8 +145,7 @@ and pushes to the remote.`,
 
 			// Sync again after push so remote state is reflected.
 			if todoSync {
-				_ = initTodoCore(cmd)
-				_ = runSync(cmd, nil)
+				syncTodoIfConfigured(cmd)
 			}
 		}
 
@@ -180,6 +175,21 @@ func init() {
 	commitCmd.AddCommand(gatherCmd)
 	commitCmd.AddCommand(applyCmd)
 	rootCmd.AddCommand(commitCmd)
+}
+
+// syncTodoIfConfigured runs todo sync if .jig.yaml has a sync section configured.
+// Errors are logged to stderr but not propagated — sync is best-effort during commits.
+func syncTodoIfConfigured(cmd *cobra.Command) {
+	if !hasTodoSync(configPath()) {
+		return
+	}
+	if err := initTodoCore(cmd); err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "warning: todo sync init: %v\n", err)
+		return
+	}
+	if err := runSync(cmd, nil); err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "warning: todo sync: %v\n", err)
+	}
 }
 
 // hasTodoSync checks whether .jig.yaml has a todo.sync section.

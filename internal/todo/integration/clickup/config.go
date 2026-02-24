@@ -44,14 +44,21 @@ var DefaultStatusMapping = map[string]string{
 	"scrapped":    "closed",
 }
 
+// ClickUp priority levels.
+const (
+	PriorityUrgent = 1
+	PriorityHigh   = 2
+	PriorityNormal = 3
+	PriorityLow    = 4
+)
+
 // DefaultPriorityMapping provides standard issue priority → ClickUp priority mapping.
-// ClickUp priorities: 1=Urgent, 2=High, 3=Normal, 4=Low
 var DefaultPriorityMapping = map[string]int{
-	"critical": 1,
-	"high":     2,
-	"normal":   3,
-	"low":      4,
-	"deferred": 4,
+	"critical": PriorityUrgent,
+	"high":     PriorityHigh,
+	"normal":   PriorityNormal,
+	"low":      PriorityLow,
+	"deferred": PriorityLow,
 }
 
 // ParseConfig parses ClickUp configuration from a map[string]any (from cfg.SyncConfig("clickup")).

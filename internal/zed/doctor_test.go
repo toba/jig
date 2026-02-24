@@ -177,7 +177,7 @@ func mockGH(t *testing.T, script string) string {
 func TestRunDoctor_WithMockGH_AllChecksPass(t *testing.T) {
 	// Mock gh to always succeed for repo/api/release commands.
 	releaseJSON, _ := json.Marshal([]map[string]string{{"tagName": "v1.0.0"}})
-	assetJSON, _ := json.Marshal(map[string]interface{}{
+	assetJSON, _ := json.Marshal(map[string]any{
 		"assets": []map[string]string{
 			{"name": "my-tool_darwin_arm64.tar.gz"},
 			{"name": "my-tool_linux_amd64.tar.gz"},
@@ -230,7 +230,7 @@ jobs:
 func TestRunDoctor_MissingWorkflow(t *testing.T) {
 	// Mock gh to always succeed.
 	releaseJSON, _ := json.Marshal([]map[string]string{{"tagName": "v1.0.0"}})
-	assetJSON, _ := json.Marshal(map[string]interface{}{
+	assetJSON, _ := json.Marshal(map[string]any{
 		"assets": []map[string]string{
 			{"name": "my-tool_darwin_arm64.tar.gz"},
 			{"name": "my-tool_linux_amd64.tar.gz"},
@@ -263,7 +263,7 @@ esac
 func TestRunDoctor_WorkflowMissingSyncJob(t *testing.T) {
 	// Mock gh to succeed.
 	releaseJSON, _ := json.Marshal([]map[string]string{{"tagName": "v1.0.0"}})
-	assetJSON, _ := json.Marshal(map[string]interface{}{
+	assetJSON, _ := json.Marshal(map[string]any{
 		"assets": []map[string]string{
 			{"name": "my-tool_darwin_arm64.tar.gz"},
 			{"name": "my-tool_linux_amd64.tar.gz"},
@@ -305,7 +305,7 @@ jobs:
 
 func TestRunDoctor_WorkflowMissingExtensionPAT(t *testing.T) {
 	releaseJSON, _ := json.Marshal([]map[string]string{{"tagName": "v1.0.0"}})
-	assetJSON, _ := json.Marshal(map[string]interface{}{
+	assetJSON, _ := json.Marshal(map[string]any{
 		"assets": []map[string]string{
 			{"name": "my-tool_darwin_arm64.tar.gz"},
 			{"name": "my-tool_linux_amd64.tar.gz"},
@@ -351,7 +351,7 @@ jobs:
 }
 
 func TestCheckReleaseAssets_BothPlatforms(t *testing.T) {
-	assetJSON, _ := json.Marshal(map[string]interface{}{
+	assetJSON, _ := json.Marshal(map[string]any{
 		"assets": []map[string]string{
 			{"name": "mytool_darwin_arm64.tar.gz"},
 			{"name": "mytool_linux_amd64.tar.gz"},
@@ -371,7 +371,7 @@ func TestCheckReleaseAssets_BothPlatforms(t *testing.T) {
 }
 
 func TestCheckReleaseAssets_MissingDarwin(t *testing.T) {
-	assetJSON, _ := json.Marshal(map[string]interface{}{
+	assetJSON, _ := json.Marshal(map[string]any{
 		"assets": []map[string]string{
 			{"name": "mytool_linux_amd64.tar.gz"},
 		},

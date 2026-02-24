@@ -127,8 +127,9 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	results := make([]SyncResult, len(issues))
 	total := len(issues)
 
-	var wg sync.WaitGroup
 	var completed int
+	g := new(errgroup.Group)
+	g.SetLimit(10)
 
 	reportProgress := func(result SyncResult) {
 		if s.opts.OnProgress != nil {
@@ -138,6 +139,21 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			s.mu.Unlock()
 			s.opts.OnProgress(result, current, total)
 		}
+	}
+
+	syncAndTrack := func(b *issue.Issue, result SyncResult) {
+		idx := issueIndex[b.ID]
+		results[idx] = result
+
+		if result.Error == nil && result.Action != syncutil.ActionSkipped && result.ExternalID != "" {
+			s.mu.Lock()
+			var n int
+			if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
+				s.issueToGHNumber[b.ID] = n
+			}
+			s.mu.Unlock()
+		}
+		reportProgress(result)
 	}
 
 	// Pass 0: Create/update milestones
@@ -150,43 +166,21 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 
 	// Pass 1: Create/update parent issues in parallel
 	for _, b := range parents {
-		wg.Go(func() {
-			result := s.syncIssue(ctx, b)
-			idx := issueIndex[b.ID]
-			results[idx] = result
-
-			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.ExternalID != "" {
-				s.mu.Lock()
-				var n int
-				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
-					s.issueToGHNumber[b.ID] = n
-				}
-				s.mu.Unlock()
-			}
-			reportProgress(result)
+		g.Go(func() error {
+			syncAndTrack(b, s.syncIssue(ctx, b))
+			return nil
 		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 
 	// Pass 2: Create/update child issues in parallel (parents now exist)
 	for _, b := range children {
-		wg.Go(func() {
-			result := s.syncIssue(ctx, b)
-			idx := issueIndex[b.ID]
-			results[idx] = result
-
-			if result.Error == nil && result.Action != syncutil.ActionSkipped && result.ExternalID != "" {
-				s.mu.Lock()
-				var n int
-				if _, err := fmt.Sscanf(result.ExternalID, "%d", &n); err == nil {
-					s.issueToGHNumber[b.ID] = n
-				}
-				s.mu.Unlock()
-			}
-			reportProgress(result)
+		g.Go(func() error {
+			syncAndTrack(b, s.syncIssue(ctx, b))
+			return nil
 		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 
 	// Pass 3: Sync native blocking relationships (if not disabled)
 	if !s.opts.NoRelationships && !s.opts.DryRun {
@@ -194,11 +188,12 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 			if len(b.Blocking) == 0 && len(b.BlockedBy) == 0 {
 				continue
 			}
-			wg.Go(func() {
+			g.Go(func() error {
 				s.syncBlockingRelationships(ctx, b)
+				return nil
 			})
 		}
-		wg.Wait()
+		_ = g.Wait()
 	}
 
 	return results, nil
@@ -321,7 +316,7 @@ func (s *Syncer) buildMilestoneDescription(b *issue.Issue) string {
 	if b.Body != "" {
 		parts = append(parts, b.Body)
 	}
-	parts = append(parts, fmt.Sprintf("<!-- todo:%s -->", b.ID))
+	parts = append(parts, fmt.Sprintf(TodoCommentFormat, b.ID))
 	return strings.Join(parts, "\n\n")
 }
 
@@ -477,7 +472,7 @@ func (s *Syncer) buildIssueBody(b *issue.Issue) string {
 		parts = append(parts, b.Body)
 	}
 	parts = append(parts, syncutil.SyncFooter)
-	parts = append(parts, fmt.Sprintf("<!-- todo:%s -->", b.ID))
+	parts = append(parts, fmt.Sprintf(TodoCommentFormat, b.ID))
 	return strings.Join(parts, "\n\n")
 }
 

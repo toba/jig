@@ -21,6 +21,17 @@ import (
 	"github.com/toba/jig/internal/todo/output"
 )
 
+// writeTempConfig creates a .jig.yaml with the given content in a temp dir and returns the path.
+func writeTempConfig(t *testing.T, content string) string {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".jig.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 // --- repoFromGitURL tests ---
 
 func TestRepoFromGitURL(t *testing.T) {
@@ -133,12 +144,7 @@ func TestHasTodoSync(t *testing.T) {
 	})
 
 	t.Run("file without todo section returns false", func(t *testing.T) {
-		dir := t.TempDir()
-		path := filepath.Join(dir, ".jig.yaml")
-		if err := os.WriteFile(path, []byte("citations:\n  - repo: owner/repo\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-
+		path := writeTempConfig(t, "citations:\n  - repo: owner/repo\n")
 		got := hasTodoSync(path)
 		if got {
 			t.Error("hasTodoSync() = true, want false for file without todo section")
@@ -146,12 +152,7 @@ func TestHasTodoSync(t *testing.T) {
 	})
 
 	t.Run("file with todo but no sync returns false", func(t *testing.T) {
-		dir := t.TempDir()
-		path := filepath.Join(dir, ".jig.yaml")
-		if err := os.WriteFile(path, []byte("todo:\n  data_path: .issues\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-
+		path := writeTempConfig(t, "todo:\n  data_path: .issues\n")
 		got := hasTodoSync(path)
 		if got {
 			t.Error("hasTodoSync() = true, want false for file without sync section")
@@ -159,13 +160,7 @@ func TestHasTodoSync(t *testing.T) {
 	})
 
 	t.Run("file with todo.sync returns true", func(t *testing.T) {
-		dir := t.TempDir()
-		path := filepath.Join(dir, ".jig.yaml")
-		content := "todo:\n  sync:\n    clickup:\n      token: abc\n"
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-
+		path := writeTempConfig(t, "todo:\n  sync:\n    clickup:\n      token: abc\n")
 		got := hasTodoSync(path)
 		if !got {
 			t.Error("hasTodoSync() = false, want true for file with todo.sync section")

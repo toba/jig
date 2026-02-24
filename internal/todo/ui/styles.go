@@ -126,8 +126,8 @@ func RenderTagsCompact(tags []string, maxTags int) string {
 	for i, tag := range showTags {
 		// Truncate long tags
 		displayTag := tag
-		if len(displayTag) > 12 {
-			displayTag = displayTag[:10] + ".."
+		if len(displayTag) > maxTagDisplayLen {
+			displayTag = displayTag[:truncatedTagLen] + ".."
 		}
 		rendered[i] = RenderTag(displayTag)
 	}
@@ -387,6 +387,25 @@ const (
 	ColWidthTags   = 24
 )
 
+// Responsive tag layout thresholds
+const (
+	minWidthForTags = 140 // Minimum terminal width to show tags column
+	minTitleWidth   = 50  // Minimum reserved title width before allocating to tags
+
+	tagColWidthXL    = 70 // Tag column width at 80+ space
+	tagColWidthLarge = 55 // Tag column width at 60+ space
+	tagColWidthMedium = 42 // Tag column width at 45+ space
+	tagColWidthSmall = 32 // Tag column width at 35+ space
+
+	maxTagsXL     = 5 // Max tags shown at 80+ space
+	maxTagsLarge  = 4 // Max tags shown at 60+ space
+	maxTagsMedium = 3 // Max tags shown at 45+ space
+	maxTagsSmall  = 2 // Max tags shown at 35+ space
+
+	maxTagDisplayLen = 12 // Truncate tags longer than this
+	truncatedTagLen  = 10 // Display length after truncation (+ "..")
+)
+
 // ResponsiveColumns holds calculated column widths based on available space
 type ResponsiveColumns struct {
 	ID       int
@@ -410,44 +429,35 @@ func CalculateResponsiveColumns(totalWidth int, hasTags bool) ResponsiveColumns 
 	}
 
 	// Don't show tags in narrow viewports - prioritize title space
-	// Only consider showing tags if terminal is wide enough (140+ columns)
-	const minWidthForTags = 140
-
+	// Only consider showing tags if terminal is wide enough
 	if !hasTags || totalWidth < minWidthForTags {
 		return cols
 	}
 
-	// At this point we have at least 140 columns
 	// Base usage: cursor (2) + ID (12) + status (5) + type (2) = 21
 	cursorWidth := 2
 	baseWidth := cursorWidth + cols.ID + cols.Status + cols.Type
 	available := totalWidth - baseWidth
 
 	// Reserve generous space for title, then allocate remaining to tags
-	minTitleWidth := 50
 	spaceForTags := available - minTitleWidth
 
 	if spaceForTags >= ColWidthTags {
 		cols.ShowTags = true
 
 		if spaceForTags >= 80 {
-			// Lots of space: show all tags (up to 5)
-			cols.Tags = 70
-			cols.MaxTags = 5
+			cols.Tags = tagColWidthXL
+			cols.MaxTags = maxTagsXL
 		} else if spaceForTags >= 60 {
-			// Good space: show 4 tags
-			cols.Tags = 55
-			cols.MaxTags = 4
+			cols.Tags = tagColWidthLarge
+			cols.MaxTags = maxTagsLarge
 		} else if spaceForTags >= 45 {
-			// Moderate space: show 3 tags
-			cols.Tags = 42
-			cols.MaxTags = 3
+			cols.Tags = tagColWidthMedium
+			cols.MaxTags = maxTagsMedium
 		} else if spaceForTags >= 35 {
-			// Limited space: show 2 tags
-			cols.Tags = 32
-			cols.MaxTags = 2
+			cols.Tags = tagColWidthSmall
+			cols.MaxTags = maxTagsSmall
 		} else {
-			// Minimal: show 1 tag
 			cols.Tags = ColWidthTags
 			cols.MaxTags = 1
 		}
