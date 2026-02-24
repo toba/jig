@@ -177,7 +177,7 @@ func RenderStatus(status string) string {
 		return StatusOpen.Render(status)
 	case config.StatusCompleted, config.StatusScrapped:
 		return StatusDone.Render(status)
-	case config.StatusInProgress, "in_progress":
+	case config.StatusInProgress, config.StatusReview, "in_progress":
 		return StatusInProgress.Render(status)
 	default:
 		return Muted.Render(status)
@@ -191,7 +191,7 @@ func RenderStatusText(status string) string {
 		return StatusOpenText.Render(status)
 	case config.StatusCompleted, config.StatusScrapped:
 		return StatusDoneText.Render(status)
-	case config.StatusInProgress, "in_progress":
+	case config.StatusInProgress, config.StatusReview, "in_progress":
 		return StatusInProgressText.Render(config.StatusInProgress)
 	default:
 		return Muted.Render(status)
@@ -207,6 +207,8 @@ func StatusIcon(status string) string {
 		return "○"
 	case "in-progress":
 		return "◔"
+	case "review":
+		return "◈"
 	case "completed":
 		return "✔"
 	case "scrapped":

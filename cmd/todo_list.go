@@ -94,7 +94,7 @@ Search Syntax (--search/-S):
 		if listReady {
 			isBlocked := false
 			filter.IsBlocked = &isBlocked
-			filter.ExcludeStatus = append(filter.ExcludeStatus, todoconfig.StatusInProgress, todoconfig.StatusCompleted, todoconfig.StatusScrapped, todoconfig.StatusDraft)
+			filter.ExcludeStatus = append(filter.ExcludeStatus, todoconfig.StatusInProgress, todoconfig.StatusReview, todoconfig.StatusCompleted, todoconfig.StatusScrapped, todoconfig.StatusDraft)
 		}
 
 		resolver := &graph.Resolver{Core: todoStore}

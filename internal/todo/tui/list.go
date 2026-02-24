@@ -38,6 +38,68 @@ func substringFilter(term string, targets []string) []list.Rank {
 	return ranks
 }
 
+// treeAwareFilter returns a filter function that preserves tree hierarchy.
+// When a child matches the search term, its ancestor chain is included in the
+// results (with nil MatchedIndexes) so tree prefixes remain visually correct.
+func treeAwareFilter(flatItems *[]ui.FlatItem, deepSearch *bool) func(string, []string) []list.Rank {
+	return func(term string, targets []string) []list.Rank {
+		// Start with normal substring matching
+		ranks := substringFilter(term, targets)
+		if len(ranks) == 0 || flatItems == nil || len(*flatItems) == 0 {
+			return ranks
+		}
+
+		items := *flatItems
+
+		// Build set of already-matched indices
+		included := make(map[int]bool, len(ranks))
+		for _, r := range ranks {
+			included[r.Index] = true
+		}
+
+		// For each matched item, walk backward through the flat list to find
+		// ancestors at progressively lower depths
+		for _, r := range ranks {
+			idx := r.Index
+			if idx >= len(items) {
+				continue
+			}
+			targetDepth := items[idx].Depth
+			for i := idx - 1; i >= 0 && targetDepth > 0; i-- {
+				if items[i].Depth < targetDepth {
+					if !included[i] {
+						included[i] = true
+					}
+					targetDepth = items[i].Depth
+				}
+			}
+		}
+
+		// Rebuild ranks in index order, preserving original tree ordering.
+		// Ancestor items get nil MatchedIndexes (used by Render to dim them).
+		result := make([]list.Rank, 0, len(included))
+		for i := range targets {
+			if !included[i] {
+				continue
+			}
+			// Find original rank if it was a direct match
+			var matchedIndexes []int
+			for _, r := range ranks {
+				if r.Index == i {
+					matchedIndexes = r.MatchedIndexes
+					break
+				}
+			}
+			result = append(result, list.Rank{
+				Index:          i,
+				MatchedIndexes: matchedIndexes,
+			})
+		}
+
+		return result
+	}
+}
+
 // issueItem wraps an issue to implement list.Item, with tree context
 type issueItem struct {
 	issue       *issue.Issue
@@ -80,6 +142,15 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
+	// Dim items that are shown only for tree context:
+	// - BuildTree ancestors (item.matched == false)
+	// - Filter ancestors: when filter is active, items with no MatchedIndexes
+	//   were included only to preserve tree hierarchy
+	dimmed := !item.matched
+	if !dimmed && m.FilterState() == list.FilterApplied {
+		dimmed = len(m.MatchesForItem(index)) == 0
+	}
+
 	// Get colors from config
 	colors := d.cfg.GetIssueColors(item.issue.Status, item.issue.Type, item.issue.Priority)
 
@@ -120,7 +191,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 			TagsColWidth:  d.cols.Tags,
 			MaxTags:       d.cols.MaxTags,
 			TreePrefix:    item.treePrefix,
-			Dimmed:        !item.matched,
+			Dimmed:        dimmed,
 			IDColWidth:    d.idColWidth,
 			HasDueDate:    item.issue.Due != nil,
 		},
@@ -152,6 +223,9 @@ type listModel struct {
 	// Deep search mode (heap-allocated so issueItem pointers survive value copies)
 	deepSearch *bool // when true, filter also searches issue body
 
+	// Tree-aware filter state (heap-allocated so filter closure survives value copies)
+	flatItems *[]ui.FlatItem // current flat tree items, shared with filter closure
+
 	// Multi-select state
 	selectedIssues map[string]bool // IDs of issues marked for multi-edit
 
@@ -163,24 +237,27 @@ func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
 	selectedIssues := make(map[string]bool)
 	delegate := itemDelegate{cfg: cfg, selectedIssues: &selectedIssues}
 
+	deepSearch := false
+	flatItems := &[]ui.FlatItem{}
+
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Issues"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	l.SetShowHelp(false)
-	l.Filter = substringFilter
+	l.Filter = treeAwareFilter(flatItems, &deepSearch)
 	l.Styles.Title = listTitleStyle
 	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 1, 1)
 	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
 	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
 
-	deepSearch := false
 	return listModel{
-		list:          l,
-		resolver:      resolver,
-		config:        cfg,
-		sortOrder:     sortOrder(cfg.GetDefaultSort()),
-		deepSearch:    &deepSearch,
+		list:           l,
+		resolver:       resolver,
+		config:         cfg,
+		sortOrder:      sortOrder(cfg.GetDefaultSort()),
+		deepSearch:     &deepSearch,
+		flatItems:      flatItems,
 		selectedIssues: selectedIssues,
 	}
 }
@@ -297,6 +374,11 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		m.updateDelegate()
 
 	case issuesLoadedMsg:
+		// Store flat items for tree-aware filtering
+		if m.flatItems != nil {
+			*m.flatItems = msg.items
+		}
+
 		items := make([]list.Item, len(msg.items))
 		// Check if any issues have tags
 		m.hasTags = false

@@ -33,6 +33,7 @@ type JigConfig struct {
 // Status name constants.
 const (
 	StatusInProgress = "in-progress"
+	StatusReview     = "review"
 	StatusReady      = "ready"
 	StatusDraft      = "draft"
 	StatusCompleted  = "completed"
@@ -67,6 +68,7 @@ const (
 // Order determines sort priority: in-progress first (active work), then todo, draft, and done states last.
 var DefaultStatuses = []StatusConfig{
 	{Name: StatusInProgress, Color: "yellow", Description: "Currently being worked on"},
+	{Name: StatusReview, Color: "cyan", Description: "Code complete, awaiting evaluation"},
 	{Name: StatusReady, Color: "green", Description: "Ready to be worked on"},
 	{Name: StatusDraft, Color: "blue", Description: "Needs refinement before it can be worked on"},
 	{Name: StatusCompleted, Color: "gray", Archive: true, Description: "Finished successfully"},

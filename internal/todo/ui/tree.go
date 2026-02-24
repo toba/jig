@@ -202,15 +202,15 @@ func RenderTree(nodes []*TreeNode, cfg *config.Config, maxIDWidth int, hasTags b
 
 	// Header with manual padding (lipgloss Width doesn't handle styled strings well)
 	headerCol := lipgloss.NewStyle().Foreground(ColorMuted)
-	idHeader := headerCol.Render("ID") + strings.Repeat(" ", treeColWidth-2)
-	typeHeader := headerCol.Render("TYPE") + strings.Repeat(" ", ColWidthType-4)
-	statusHeader := headerCol.Render("STATUS") + strings.Repeat(" ", ColWidthStatus-6)
+	idHeader := headerCol.Render("ID") + strings.Repeat(" ", max(0, treeColWidth-2))
+	typeHeader := headerCol.Render("TYPE") + strings.Repeat(" ", max(0, ColWidthType-4))
+	statusHeader := headerCol.Render("ST") + strings.Repeat(" ", max(0, ColWidthStatus-2))
 
 	header := idHeader + typeHeader + statusHeader + headerCol.Render("TITLE")
 	if cols.ShowTags && titleWidth > 5 {
-		header += strings.Repeat(" ", titleWidth-5+3) + headerCol.Render("TAGS") // +3 for priority/spacing
+		header += strings.Repeat(" ", max(0, titleWidth-5+3)) + headerCol.Render("TAGS") // +3 for priority/spacing
 	}
-	dividerWidth := termWidth - 1 // -1 to avoid wrapping on exact terminal width
+	dividerWidth := max(1, termWidth-1) // -1 to avoid wrapping on exact terminal width
 	sb.WriteString(header)
 	sb.WriteString("\n")
 	sb.WriteString(Muted.Render(strings.Repeat("─", dividerWidth)))

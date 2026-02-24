@@ -30,6 +30,7 @@ var DefaultStatusMapping = map[string]string{
 	"draft":       StateOpen,
 	"ready":       StateOpen,
 	"in-progress": StateOpen,
+	"review":      StateOpen,
 	"completed":   StateClosed,
 	"scrapped":    StateClosed,
 }

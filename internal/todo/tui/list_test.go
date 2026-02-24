@@ -508,3 +508,112 @@ func TestIssueItemFilterValue(t *testing.T) {
 		}
 	})
 }
+
+func TestTreeAwareFilter(t *testing.T) {
+	// Simulate the exact bug scenario:
+	// core-r6y1 (root, epic) "Length-of-Stay Rules Redesign"
+	//   ├─ core-jbag (child) "LOS PMS interface abstraction"
+	//   └─ core-gqyt (child) "LOS calendar preview"
+	// core-87p9 (root) "Merge amenity→description + PriceLabs gap closes"
+	//
+	// Searching "LOS" should match core-jbag, core-gqyt, and core-87p9 ("closes")
+	// but NOT core-r6y1 ("Length-of-Stay" has no "los" substring).
+	// The tree-aware filter should include core-r6y1 as an ancestor.
+
+	flatItems := &[]ui.FlatItem{
+		{Issue: &issue.Issue{ID: "core-r6y1", Title: "Length-of-Stay Rules Redesign"}, Depth: 0},
+		{Issue: &issue.Issue{ID: "core-jbag", Title: "LOS PMS interface abstraction", Parent: "core-r6y1"}, Depth: 1},
+		{Issue: &issue.Issue{ID: "core-gqyt", Title: "LOS calendar preview", Parent: "core-r6y1"}, Depth: 1},
+		{Issue: &issue.Issue{ID: "core-87p9", Title: "Merge amenity→description + PriceLabs gap closes"}, Depth: 0},
+	}
+
+	deepSearch := false
+	filter := treeAwareFilter(flatItems, &deepSearch)
+
+	targets := make([]string, len(*flatItems))
+	for i, fi := range *flatItems {
+		targets[i] = fi.Issue.Title + " " + fi.Issue.ID
+	}
+
+	ranks := filter("LOS", targets)
+
+	// Should include 4 items: core-r6y1 (ancestor), core-jbag, core-gqyt, core-87p9
+	if len(ranks) != 4 {
+		t.Fatalf("expected 4 ranks, got %d", len(ranks))
+	}
+
+	// Verify order matches original flat list order
+	for i := 1; i < len(ranks); i++ {
+		if ranks[i].Index <= ranks[i-1].Index {
+			t.Errorf("ranks not in ascending index order: index %d (%d) <= index %d (%d)",
+				i, ranks[i].Index, i-1, ranks[i-1].Index)
+		}
+	}
+
+	// core-r6y1 (index 0) should be included as ancestor (nil MatchedIndexes)
+	if ranks[0].Index != 0 {
+		t.Errorf("expected first rank to be index 0 (core-r6y1), got %d", ranks[0].Index)
+	}
+	if ranks[0].MatchedIndexes != nil {
+		t.Errorf("ancestor core-r6y1 should have nil MatchedIndexes, got %v", ranks[0].MatchedIndexes)
+	}
+
+	// core-jbag (index 1) should be a direct match
+	if ranks[1].Index != 1 {
+		t.Errorf("expected second rank to be index 1 (core-jbag), got %d", ranks[1].Index)
+	}
+	if ranks[1].MatchedIndexes == nil {
+		t.Error("core-jbag should have non-nil MatchedIndexes (direct match)")
+	}
+
+	// core-87p9 (index 3) should be a direct match via "closes" containing "los"
+	if ranks[3].Index != 3 {
+		t.Errorf("expected fourth rank to be index 3 (core-87p9), got %d", ranks[3].Index)
+	}
+	if ranks[3].MatchedIndexes == nil {
+		t.Error("core-87p9 should have non-nil MatchedIndexes (direct match via 'closes')")
+	}
+}
+
+func TestTreeAwareFilterDeepHierarchy(t *testing.T) {
+	// Test with deeper hierarchy:
+	// milestone (depth 0)
+	//   └─ epic (depth 1)
+	//       └─ task (depth 2) ← matches filter
+	// unrelated (depth 0) ← no match
+
+	flatItems := &[]ui.FlatItem{
+		{Issue: &issue.Issue{ID: "m1", Title: "Q1 Release"}, Depth: 0},
+		{Issue: &issue.Issue{ID: "e1", Title: "Auth System", Parent: "m1"}, Depth: 1},
+		{Issue: &issue.Issue{ID: "t1", Title: "Fix login bug", Parent: "e1"}, Depth: 2},
+		{Issue: &issue.Issue{ID: "t2", Title: "Update docs"}, Depth: 0},
+	}
+
+	deepSearch := false
+	filter := treeAwareFilter(flatItems, &deepSearch)
+
+	targets := make([]string, len(*flatItems))
+	for i, fi := range *flatItems {
+		targets[i] = fi.Issue.Title + " " + fi.Issue.ID
+	}
+
+	ranks := filter("login", targets)
+
+	// Should include: m1 (ancestor), e1 (ancestor), t1 (match) = 3 items
+	if len(ranks) != 3 {
+		t.Fatalf("expected 3 ranks, got %d", len(ranks))
+	}
+
+	// m1 (index 0) - ancestor
+	if ranks[0].Index != 0 || ranks[0].MatchedIndexes != nil {
+		t.Errorf("m1: expected index 0 with nil matches, got index %d matches %v", ranks[0].Index, ranks[0].MatchedIndexes)
+	}
+	// e1 (index 1) - ancestor
+	if ranks[1].Index != 1 || ranks[1].MatchedIndexes != nil {
+		t.Errorf("e1: expected index 1 with nil matches, got index %d matches %v", ranks[1].Index, ranks[1].MatchedIndexes)
+	}
+	// t1 (index 2) - direct match
+	if ranks[2].Index != 2 || ranks[2].MatchedIndexes == nil {
+		t.Errorf("t1: expected index 2 with non-nil matches, got index %d matches %v", ranks[2].Index, ranks[2].MatchedIndexes)
+	}
+}

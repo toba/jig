@@ -148,7 +148,7 @@ type Issue {
   path: String!
   "Issue title"
   title: String!
-  "Current status (draft, todo, in-progress, completed, scrapped)"
+  "Current status (draft, ready, in-progress, review, completed, scrapped)"
   status: String!
   "Issue type (milestone, epic, bug, feature, task)"
   type: String!

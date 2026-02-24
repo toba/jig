@@ -39,6 +39,7 @@ var DefaultStatusMapping = map[string]string{
 	"draft":       "backlog",
 	"ready":       "to do",
 	"in-progress": "in progress",
+	"review":      "review",
 	"completed":   "complete",
 	"scrapped":    "closed",
 }
