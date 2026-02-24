@@ -94,4 +94,3 @@ func InjectWorkflowJob(content string, p WorkflowParams) (string, error) {
 		return GenerateWorkflowJob(p)
 	})
 }
-

@@ -81,7 +81,7 @@ var (
 	StatusInProgressText = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 )
 
-// Tag badge style - black text on gray background
+// TagBadge is the style for tag badges - black text on gray background.
 var TagBadge = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#000")).
 	Background(ColorMuted).
@@ -202,7 +202,7 @@ func RenderStatusText(status string) string {
 func StatusIcon(status string) string {
 	switch status {
 	case "draft":
-		return "△" //"⬜︎"∷∴▲
+		return "△" // "⬜︎"∷∴▲
 	case "ready":
 		return "○"
 	case "in-progress":
@@ -392,10 +392,10 @@ const (
 	minWidthForTags = 140 // Minimum terminal width to show tags column
 	minTitleWidth   = 50  // Minimum reserved title width before allocating to tags
 
-	tagColWidthXL    = 70 // Tag column width at 80+ space
-	tagColWidthLarge = 55 // Tag column width at 60+ space
+	tagColWidthXL     = 70 // Tag column width at 80+ space
+	tagColWidthLarge  = 55 // Tag column width at 60+ space
 	tagColWidthMedium = 42 // Tag column width at 45+ space
-	tagColWidthSmall = 32 // Tag column width at 35+ space
+	tagColWidthSmall  = 32 // Tag column width at 35+ space
 
 	maxTagsXL     = 5 // Max tags shown at 80+ space
 	maxTagsLarge  = 4 // Max tags shown at 60+ space

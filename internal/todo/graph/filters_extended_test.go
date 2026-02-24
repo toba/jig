@@ -2,14 +2,10 @@ package graph
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/toba/jig/internal/todo/config"
-	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/graph/model"
 	"github.com/toba/jig/internal/todo/issue"
 )
@@ -193,11 +189,11 @@ func TestResolverIssueFieldResolvers(t *testing.T) {
 	ctx := context.Background()
 
 	b := &issue.Issue{
-		ID:       "field-test",
-		Title:    "Test",
-		Status:   "todo",
-		Parent:   "some-parent",
-		Blocking: []string{"target-1"},
+		ID:        "field-test",
+		Title:     "Test",
+		Status:    "todo",
+		Parent:    "some-parent",
+		Blocking:  []string{"target-1"},
 		BlockedBy: []string{"blocker-1"},
 	}
 	c.Create(b)
@@ -669,19 +665,4 @@ func ids(issues []*issue.Issue) []string {
 
 func timeNow() time.Time {
 	return time.Now().UTC()
-}
-
-// setupTestResolverInDir creates a resolver with a custom data dir and returns cleanup.
-func setupTestResolverInDir(t *testing.T, dir string) *Resolver {
-	t.Helper()
-	dataDir := filepath.Join(dir, ".issues")
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("failed to create .issues dir: %v", err)
-	}
-	cfg := config.Default()
-	c := core.New(dataDir, cfg)
-	if err := c.Load(); err != nil {
-		t.Fatalf("failed to load core: %v", err)
-	}
-	return &Resolver{Core: c}
 }

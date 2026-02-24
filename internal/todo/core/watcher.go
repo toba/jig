@@ -43,9 +43,9 @@ func (e EventType) String() string {
 
 // IssueEvent represents a change to an issue.
 type IssueEvent struct {
-	Type   EventType  // The type of change
+	Type    EventType    // The type of change
 	Issue   *issue.Issue // the issue (nil for Deleted events)
-	IssueID string     // Always set, useful for Deleted when Issue is nil
+	IssueID string       // Always set, useful for Deleted when Issue is nil
 }
 
 // subscription represents a subscriber to issue events.
@@ -110,6 +110,7 @@ func (c *Core) StartWatching() error {
 // Watch starts watching the issues directory for changes.
 // The onChange callback is invoked (after debouncing) whenever issues are created, modified, or deleted.
 // The internal state is automatically reloaded before the callback is invoked.
+//
 // Deprecated: Use StartWatching() + Subscribe() for new code.
 func (c *Core) Watch(onChange func()) error {
 	c.mu.Lock()
@@ -125,7 +126,7 @@ func (c *Core) Watch(onChange func()) error {
 	}
 
 	if err := watcher.Add(c.root); err != nil {
-		watcher.Close()
+		watcher.Close() //nolint:errcheck // cleanup on error path
 		c.mu.Unlock()
 		return err
 	}
@@ -133,7 +134,7 @@ func (c *Core) Watch(onChange func()) error {
 	// Watch all subdirectories (best effort - don't fail if any can't be watched)
 	_ = filepath.WalkDir(c.root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || !d.IsDir() || path == c.root {
-			return nil
+			return nil //nolint:nilerr // best-effort: skip unwatchable dirs
 		}
 		_ = watcher.Add(path)
 		return nil
@@ -159,7 +160,7 @@ func (c *Core) Unwatch() error {
 }
 
 // unwatchLocked stops watching (must be called with lock held).
-func (c *Core) unwatchLocked() error {
+func (c *Core) unwatchLocked() error { //nolint:unparam // returns error for Unwatch() API contract
 	if !c.watching {
 		return nil
 	}
@@ -181,7 +182,7 @@ func (c *Core) unwatchLocked() error {
 
 // watchLoop processes filesystem events with debouncing and polling fallback.
 func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
-	defer watcher.Close()
+	defer watcher.Close() //nolint:errcheck // cleanup
 
 	var debounceTimer *time.Timer
 	var pendingMu sync.Mutex
@@ -273,7 +274,7 @@ func (c *Core) snapshotMtimes() map[string]time.Time {
 	mtimes := make(map[string]time.Time)
 	_ = filepath.WalkDir(c.root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
-			return nil
+			return nil //nolint:nilerr // best-effort walk: skip errors
 		}
 		if strings.HasSuffix(path, ".md") {
 			if info, err := d.Info(); err == nil {
@@ -294,7 +295,7 @@ func (c *Core) pollForChanges(mtimes map[string]time.Time, watcher *fsnotify.Wat
 
 	_ = filepath.WalkDir(c.root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // best-effort walk: skip errors
 		}
 		if d.IsDir() {
 			// Watch new subdirectories
@@ -310,7 +311,7 @@ func (c *Core) pollForChanges(mtimes map[string]time.Time, watcher *fsnotify.Wat
 		seen[path] = true
 		info, err := d.Info()
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // best-effort: skip files we can't stat
 		}
 		mtime := info.ModTime()
 
@@ -374,7 +375,7 @@ func (c *Core) handleChanges(changes map[string]fsnotify.Op) {
 					}
 
 					events = append(events, IssueEvent{
-						Type:   EventDeleted,
+						Type:    EventDeleted,
 						Issue:   nil,
 						IssueID: id,
 					})
@@ -403,13 +404,13 @@ func (c *Core) handleChanges(changes map[string]fsnotify.Op) {
 
 			if existed {
 				events = append(events, IssueEvent{
-					Type:   EventUpdated,
+					Type:    EventUpdated,
 					Issue:   newIssue,
 					IssueID: newIssue.ID,
 				})
 			} else {
 				events = append(events, IssueEvent{
-					Type:   EventCreated,
+					Type:    EventCreated,
 					Issue:   newIssue,
 					IssueID: newIssue.ID,
 				})

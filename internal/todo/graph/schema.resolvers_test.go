@@ -32,7 +32,7 @@ func setupTestResolver(t *testing.T) (*Resolver, *core.Core) {
 	return &Resolver{Core: c}, c
 }
 
-func createTestIssue(t *testing.T, c *core.Core, id, title, status string) *issue.Issue {
+func createTestIssue(t *testing.T, c *core.Core, id, title, status string) {
 	t.Helper()
 	b := &issue.Issue{
 		ID:     id,
@@ -43,7 +43,6 @@ func createTestIssue(t *testing.T, c *core.Core, id, title, status string) *issu
 	if err := c.Create(b); err != nil {
 		t.Fatalf("failed to create test issue: %v", err)
 	}
-	return b
 }
 
 func TestQueryIssue(t *testing.T) {
@@ -1262,7 +1261,6 @@ func TestRequireIfMatchConfig(t *testing.T) {
 			t.Errorf("UpdateIssue().Title = %q, want %q", got.Title, "Updated")
 		}
 	})
-
 }
 
 func TestDueDateResolver(t *testing.T) {
@@ -2619,4 +2617,3 @@ func TestUpdateIssueWithETag(t *testing.T) {
 		}
 	})
 }
-

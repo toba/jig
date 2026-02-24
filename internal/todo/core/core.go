@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/config"
+	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/search"
 )
 
@@ -49,7 +49,7 @@ type Core struct {
 	config *config.Config // project configuration
 
 	// In-memory state
-	mu    sync.RWMutex
+	mu     sync.RWMutex
 	issues map[string]*issue.Issue // ID -> Issue
 
 	// Search index (optional, lazy-initialized)
@@ -89,7 +89,7 @@ func (c *Core) SetWarnWriter(w io.Writer) {
 // logWarn logs a warning message if a warn writer is configured.
 func (c *Core) logWarn(format string, args ...any) {
 	if c.warnWriter != nil {
-		fmt.Fprintf(c.warnWriter, "warning: "+format+"\n", args...)
+		fmt.Fprintf(c.warnWriter, "warning: "+format+"\n", args...) //nolint:errcheck // warning output
 	}
 }
 
@@ -142,7 +142,7 @@ func (c *Core) loadFromDisk() error {
 
 	// Reinitialize search index if it was active: close and re-create (best-effort, don't fail load)
 	if c.searchIndex != nil {
-		c.searchIndex.Close()
+		c.searchIndex.Close() //nolint:errcheck // best-effort cleanup
 		c.searchIndex = nil
 
 		if err := c.ensureSearchIndexLocked(); err != nil {
@@ -155,11 +155,11 @@ func (c *Core) loadFromDisk() error {
 
 // loadIssue reads and parses a single issue file.
 func (c *Core) loadIssue(path string) (*issue.Issue, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // path from known directory
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only file
 
 	b, err := issue.Parse(f)
 	if err != nil {
@@ -414,12 +414,12 @@ func (c *Core) validateETagLocked(storedIssue *issue.Issue, ifMatch *string) err
 		var currentETag string
 		if storedIssue.Path != "" {
 			diskPath := filepath.Join(c.root, storedIssue.Path)
-			content, err := os.ReadFile(diskPath)
+			content, err := os.ReadFile(diskPath) //nolint:gosec // path from known directory
 			if err != nil {
 				currentETag = storedIssue.ETag()
 			} else {
 				h := fnv.New64a()
-				h.Write(content)
+				h.Write(content) //nolint:gosec // hash.Write never returns error
 				currentETag = hex.EncodeToString(h.Sum(nil))
 			}
 		} else {

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/toba/jig/internal/todo/issue"
@@ -147,7 +148,7 @@ func TestBuildTree(t *testing.T) {
 		// Issue with parent that doesn't exist
 		brokenIssue := &issue.Issue{ID: "broken", Title: "Broken", Parent: "nonexistent"}
 		matchedIssues := []*issue.Issue{brokenIssue}
-		allIssuesWithBroken := append(allIssues, brokenIssue)
+		allIssuesWithBroken := append(slices.Clone(allIssues), brokenIssue)
 
 		tree := BuildTree(matchedIssues, allIssuesWithBroken, noSort)
 
@@ -175,11 +176,11 @@ func TestTreeNodeToJSON(t *testing.T) {
 	}
 
 	node := &TreeNode{
-		Issue:    b,
+		Issue:   b,
 		Matched: true,
 		Children: []*TreeNode{
 			{
-				Issue:    &issue.Issue{ID: "child-id", Title: "Child"},
+				Issue:   &issue.Issue{ID: "child-id", Title: "Child"},
 				Matched: false,
 			},
 		},

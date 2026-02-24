@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/config"
+	"github.com/toba/jig/internal/todo/issue"
 )
 
 func setupTestCore(t *testing.T, opts ...func(*config.Config)) (*Core, string) {
@@ -216,7 +216,7 @@ func TestGet(t *testing.T) {
 
 	t.Run("partial ID not found", func(t *testing.T) {
 		_, err := core.Get("abc")
-		if err != ErrNotFound {
+		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("Get() error = %v, want ErrNotFound", err)
 		}
 	})
@@ -228,11 +228,10 @@ func TestGetNotFound(t *testing.T) {
 	createTestIssue(t, core, "abc1", "Test", "todo")
 
 	_, err := core.Get("xyz")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Get() error = %v, want ErrNotFound", err)
 	}
 }
-
 
 func TestUpdate(t *testing.T) {
 	core, _ := setupTestCore(t)
@@ -282,7 +281,7 @@ func TestUpdateNotFound(t *testing.T) {
 	}
 
 	err := core.Update(b, nil)
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Update() error = %v, want ErrNotFound", err)
 	}
 }
@@ -311,7 +310,7 @@ func TestDelete(t *testing.T) {
 
 	// Verify in-memory state
 	_, err = core.Get("del1")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Error("issue should not be in memory after delete")
 	}
 }
@@ -320,11 +319,10 @@ func TestDeleteNotFound(t *testing.T) {
 	core, _ := setupTestCore(t)
 
 	err := core.Delete("nonexistent")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Delete() error = %v, want ErrNotFound", err)
 	}
 }
-
 
 func TestDeletePartialIDNotFound(t *testing.T) {
 	core, _ := setupTestCore(t)
@@ -333,7 +331,7 @@ func TestDeletePartialIDNotFound(t *testing.T) {
 
 	// Partial ID should not match
 	err := core.Delete("unique")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Delete() error = %v, want ErrNotFound", err)
 	}
 
@@ -596,7 +594,7 @@ func TestWatchDeletedIssue(t *testing.T) {
 
 	// Verify the issue is gone from memory
 	_, err = core.Get("del1")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("deleted issue still in memory: %v", err)
 	}
 
@@ -926,7 +924,7 @@ status: in-progress
 
 	// tmp1 should not exist
 	_, err = core.Get("tmp1")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Error("tmp1 should not exist (was created then deleted)")
 	}
 }
@@ -1101,7 +1099,7 @@ func TestArchiveNotFound(t *testing.T) {
 	core, _ := setupTestCore(t)
 
 	err := core.Archive("nonexistent")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Archive() error = %v, want ErrNotFound", err)
 	}
 }
@@ -1298,7 +1296,7 @@ func TestLoadFromSubdirectories(t *testing.T) {
 }
 
 // writeTestIssueFile creates an issue file directly on disk (for testing load scenarios)
-func writeTestIssueFile(t *testing.T, path, id, title, status string) {
+func writeTestIssueFile(t *testing.T, path, _, title, status string) {
 	t.Helper()
 	content := fmt.Sprintf(`---
 title: %s
@@ -1432,11 +1430,10 @@ func TestLoadAndUnarchiveNotFound(t *testing.T) {
 	core, _ := setupTestCore(t)
 
 	_, err := core.LoadAndUnarchive("nonexistent")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("LoadAndUnarchive() error = %v, want ErrNotFound", err)
 	}
 }
-
 
 func TestNormalizeID(t *testing.T) {
 	core, _ := setupTestCore(t)

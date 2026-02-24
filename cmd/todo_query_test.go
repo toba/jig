@@ -36,7 +36,7 @@ func setupQueryTestCore(t *testing.T) (*core.Core, func()) {
 	return testCore, cleanup
 }
 
-func createQueryTestIssue(t *testing.T, c *core.Core, id, title, status string) *issue.Issue {
+func createQueryTestIssue(t *testing.T, c *core.Core, id, title, status string) {
 	t.Helper()
 	b := &issue.Issue{
 		ID:     id,
@@ -47,7 +47,6 @@ func createQueryTestIssue(t *testing.T, c *core.Core, id, title, status string) 
 	if err := c.Create(b); err != nil {
 		t.Fatalf("failed to create test issue: %v", err)
 	}
-	return b
 }
 
 func TestExecuteQuery(t *testing.T) {

@@ -155,11 +155,9 @@ func TestGetEditor(t *testing.T) {
 					t.Errorf("args[%d] = %q, want %q", i, args[i], a)
 				}
 			}
-		} else {
+		} else if cmd != "vi" && cmd != "nano" {
 			// On non-darwin, "system" falls through to vi/nano
-			if cmd != "vi" && cmd != "nano" {
-				t.Errorf("cmd = %q, want \"vi\" or \"nano\" on non-darwin", cmd)
-			}
+			t.Errorf("cmd = %q, want \"vi\" or \"nano\" on non-darwin", cmd)
 		}
 	})
 

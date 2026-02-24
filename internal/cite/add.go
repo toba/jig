@@ -94,9 +94,9 @@ func inspectGit(arg RepoArg) (*config.Source, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating temp dir: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
-	cmd := exec.Command("git", "clone", "--depth=1", "--single-branch", arg.FullURL, tmpDir)
+	cmd := exec.Command("git", "clone", "--depth=1", "--single-branch", arg.FullURL, tmpDir) //nolint:gosec // git clone with user-provided URL
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("cloning %s: %w", arg.FullURL, err)
@@ -104,7 +104,7 @@ func inspectGit(arg RepoArg) (*config.Source, error) {
 
 	// Detect default branch.
 	branch := constants.DefaultBranch
-	out, err := exec.Command("git", "-C", tmpDir, "symbolic-ref", "refs/remotes/origin/HEAD").Output()
+	out, err := exec.Command("git", "-C", tmpDir, "symbolic-ref", "refs/remotes/origin/HEAD").Output() //nolint:gosec // git command
 	if err == nil {
 		ref := strings.TrimSpace(string(out))
 		// refs/remotes/origin/main → main
@@ -117,7 +117,7 @@ func inspectGit(arg RepoArg) (*config.Source, error) {
 	var files []string
 	_ = filepath.Walk(tmpDir, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // best-effort walk: skip unreadable entries
 		}
 		rel, _ := filepath.Rel(tmpDir, p)
 		if strings.HasPrefix(rel, ".git") {
@@ -256,7 +256,7 @@ func SuggestPaths(files []string) config.PathDefs {
 }
 
 // addIfPresent adds file names to a slice only if they exist in the file list.
-func addIfPresent(slice []string, files []string, names ...string) []string {
+func addIfPresent(slice, files []string, names ...string) []string {
 	fileSet := make(map[string]bool, len(files))
 	for _, f := range files {
 		fileSet[f] = true

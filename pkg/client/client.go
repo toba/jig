@@ -13,6 +13,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -22,22 +23,22 @@ import (
 // Issue represents an issue as returned by the todo CLI JSON output.
 // This struct matches the format used by "todo show --json" and "todo list --json".
 type Issue struct {
-	ID         string                    `json:"id"`
-	Slug       string                    `json:"slug,omitempty"`
-	Path       string                    `json:"path"`
-	Title      string                    `json:"title"`
-	Status     string                    `json:"status"`
-	Type       string                    `json:"type,omitempty"`
-	Priority   string                    `json:"priority,omitempty"`
-	Tags       []string                  `json:"tags,omitempty"`
-	CreatedAt  *time.Time                `json:"created_at,omitempty"`
-	UpdatedAt  *time.Time                `json:"updated_at,omitempty"`
-	Body       string                    `json:"body,omitempty"`
-	Parent     string                    `json:"parent,omitempty"`
-	Blocking   []string                  `json:"blocking,omitempty"`
-	BlockedBy  []string                  `json:"blocked_by,omitempty"`
-	Sync map[string]map[string]any `json:"sync,omitempty"`
-	ETag       string                    `json:"etag"`
+	ID        string                    `json:"id"`
+	Slug      string                    `json:"slug,omitempty"`
+	Path      string                    `json:"path"`
+	Title     string                    `json:"title"`
+	Status    string                    `json:"status"`
+	Type      string                    `json:"type,omitempty"`
+	Priority  string                    `json:"priority,omitempty"`
+	Tags      []string                  `json:"tags,omitempty"`
+	CreatedAt *time.Time                `json:"created_at,omitempty"`
+	UpdatedAt *time.Time                `json:"updated_at,omitempty"`
+	Body      string                    `json:"body,omitempty"`
+	Parent    string                    `json:"parent,omitempty"`
+	Blocking  []string                  `json:"blocking,omitempty"`
+	BlockedBy []string                  `json:"blocked_by,omitempty"`
+	Sync      map[string]map[string]any `json:"sync,omitempty"`
+	ETag      string                    `json:"etag"`
 }
 
 // SyncDataOp represents a single set-sync-data operation for batch updates.
@@ -109,7 +110,8 @@ func (c *Client) Query(query string, variables map[string]any) ([]byte, error) {
 
 	out, err := cmd.Output()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
 			return nil, fmt.Errorf("todo query: %s", strings.TrimSpace(string(exitErr.Stderr)))
 		}
 		return nil, fmt.Errorf("todo query: %w", err)

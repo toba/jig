@@ -1,10 +1,11 @@
 package graph
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/core"
+	"github.com/toba/jig/internal/todo/issue"
 )
 
 //go:generate go tool gqlgen generate
@@ -69,7 +70,7 @@ func (r *Resolver) validateAndAddBlocking(b *issue.Issue, targetIDs []string) er
 
 		// Validate: cannot block itself
 		if normalizedTargetID == b.ID {
-			return fmt.Errorf("issue cannot block itself")
+			return errors.New("issue cannot block itself")
 		}
 
 		// Validate: target must exist
@@ -106,7 +107,7 @@ func (r *Resolver) validateAndAddBlockedBy(b *issue.Issue, targetIDs []string) e
 
 		// Validate: cannot be blocked by itself
 		if normalizedTargetID == b.ID {
-			return fmt.Errorf("issue cannot be blocked by itself")
+			return errors.New("issue cannot be blocked by itself")
 		}
 
 		// Validate: blocker must exist

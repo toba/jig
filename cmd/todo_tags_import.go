@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -31,13 +32,13 @@ var tagsImportCmd = &cobra.Command{
 			return fmt.Errorf("parsing GitHub sync config: %w", err)
 		}
 		if ghCfg == nil {
-			return fmt.Errorf("no GitHub sync configured in .jig.yaml (need sync.github.repo)")
+			return errors.New("no GitHub sync configured in .jig.yaml (need sync.github.repo)")
 		}
 
 		// Get token
 		token := os.Getenv("GITHUB_TOKEN")
 		if token == "" {
-			return fmt.Errorf("GITHUB_TOKEN environment variable is required")
+			return errors.New("GITHUB_TOKEN environment variable is required")
 		}
 
 		// Fetch labels

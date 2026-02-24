@@ -19,10 +19,10 @@ var (
 )
 
 type todoCheckResult struct {
-	Success      bool              `json:"success"`
-	ConfigErrors []string          `json:"config_errors"`
+	Success      bool                  `json:"success"`
+	ConfigErrors []string              `json:"config_errors"`
 	LinkIssues   *core.LinkCheckResult `json:"link_issues,omitempty"`
-	Fixed        int               `json:"fixed,omitempty"`
+	Fixed        int                   `json:"fixed,omitempty"`
 }
 
 var todoCheckCmd = &cobra.Command{

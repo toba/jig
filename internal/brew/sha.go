@@ -2,6 +2,8 @@ package brew
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -37,7 +39,7 @@ func downloadSidecar(repo, tag, asset string) (string, error) {
 	s := strings.TrimSpace(string(out))
 	fields := strings.Fields(s)
 	if len(fields) == 0 {
-		return "", fmt.Errorf("empty sidecar file")
+		return "", errors.New("empty sidecar file")
 	}
 	return fields[0], nil
 }
@@ -63,7 +65,7 @@ func computeSHA(repo, tag, asset string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("creating temp dir: %w", err)
 	}
-	defer os.RemoveAll(tmp)
+	defer os.RemoveAll(tmp) //nolint:errcheck // best-effort cleanup
 
 	dest := filepath.Join(tmp, asset)
 	_, err = ghRelease("download", tag, "--repo", repo, "--pattern", asset, "-D", tmp)
@@ -76,16 +78,17 @@ func computeSHA(repo, tag, asset string) (string, error) {
 		return "", fmt.Errorf("reading downloaded asset: %w", err)
 	}
 	sum := sha256.Sum256(data)
-	return fmt.Sprintf("%x", sum), nil
+	return hex.EncodeToString(sum[:]), nil
 }
 
 // ghRelease shells out to `gh release`. Separated for testability.
 var ghRelease = func(args ...string) ([]byte, error) {
 	full := append([]string{"release"}, args...)
-	cmd := exec.Command("gh", full...)
+	cmd := exec.Command("gh", full...) //nolint:gosec // shasum on known file
 	out, err := cmd.Output()
 	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+		ee := &exec.ExitError{}
+		if errors.As(err, &ee) {
 			return nil, fmt.Errorf("gh release %s: %s", strings.Join(args, " "), string(ee.Stderr))
 		}
 		return nil, fmt.Errorf("gh release %s: %w", strings.Join(args, " "), err)

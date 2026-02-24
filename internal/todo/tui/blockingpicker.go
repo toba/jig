@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"context"
 	"cmp"
+	"context"
 	"fmt"
 	"io"
 	"slices"
@@ -11,17 +11,17 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/graph"
+	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/ui"
 )
 
 // blockingConfirmedMsg is sent when blocking changes are confirmed
 type blockingConfirmedMsg struct {
-	issueID  string            // the issue we're modifying
-	toAdd   []string          // IDs to add to blocking
-	toRemove []string         // IDs to remove from blocking
+	issueID  string   // the issue we're modifying
+	toAdd    []string // IDs to add to blocking
+	toRemove []string // IDs to remove from blocking
 }
 
 // closeBlockingPickerMsg is sent when the blocking picker is cancelled
@@ -29,15 +29,15 @@ type closeBlockingPickerMsg struct{}
 
 // openBlockingPickerMsg requests opening the blocking picker for an issue
 type openBlockingPickerMsg struct {
-	issueID          string
-	issueTitle       string
+	issueID         string
+	issueTitle      string
 	currentBlocking []string // IDs of issues currently being blocked
 }
 
 // blockingItem wraps an issue to implement list.Item for the blocking picker
 type blockingItem struct {
 	issue *issue.Issue
-	cfg  *config.Config
+	cfg   *config.Config
 }
 
 func (i blockingItem) Title() string       { return i.issue.Title }
@@ -82,16 +82,16 @@ func (d blockingItemDelegate) Render(w io.Writer, m list.Model, index int, listI
 	}
 	id := ui.Muted.Render(" (" + item.issue.ID + ")")
 
-	fmt.Fprint(w, cursor+blockingIndicator+typeBadge+" "+title+id)
+	fmt.Fprint(w, cursor+blockingIndicator+typeBadge+" "+title+id) //nolint:errcheck // terminal output
 }
 
 // blockingPickerModel is the model for the blocking picker view
 type blockingPickerModel struct {
 	list             list.Model
-	issueID           string           // the issue we're setting blocking for
-	issueTitle        string           // the issue's title
-	originalBlocking map[string]bool  // original state (for computing diff)
-	pendingBlocking  map[string]bool  // pending state (toggled by space)
+	issueID          string          // the issue we're setting blocking for
+	issueTitle       string          // the issue's title
+	originalBlocking map[string]bool // original state (for computing diff)
+	pendingBlocking  map[string]bool // pending state (toggled by space)
 	cfg              *config.Config
 	width            int
 	height           int
@@ -135,7 +135,7 @@ func newBlockingPickerModel(issueID, issueTitle string, currentBlocking []string
 	for _, b := range eligibleIssues {
 		items = append(items, blockingItem{
 			issue: b,
-			cfg:  cfg,
+			cfg:   cfg,
 		})
 	}
 
@@ -168,8 +168,8 @@ func newBlockingPickerModel(issueID, issueTitle string, currentBlocking []string
 
 	return blockingPickerModel{
 		list:             l,
-		issueID:           issueID,
-		issueTitle:        issueTitle,
+		issueID:          issueID,
+		issueTitle:       issueTitle,
 		originalBlocking: originalBlocking,
 		pendingBlocking:  pendingBlocking,
 		cfg:              cfg,
@@ -231,7 +231,7 @@ func (m blockingPickerModel) Update(msg tea.Msg) (blockingPickerModel, tea.Cmd) 
 
 				return m, func() tea.Msg {
 					return blockingConfirmedMsg{
-						issueID:   m.issueID,
+						issueID:  m.issueID,
 						toAdd:    toAdd,
 						toRemove: toRemove,
 					}
@@ -257,8 +257,8 @@ func (m blockingPickerModel) View() string {
 
 	return renderPickerModal(pickerModalConfig{
 		Title:       "Manage Blocking",
-		IssueTitle:   m.issueTitle,
-		IssueID:      m.issueID,
+		IssueTitle:  m.issueTitle,
+		IssueID:     m.issueID,
 		ListContent: m.list.View(),
 		Description: "space toggle, enter confirm, esc cancel",
 		Width:       m.width,

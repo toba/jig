@@ -146,4 +146,3 @@ companions:
 		t.Errorf("brew = %q", c2.Brew)
 	}
 }
-

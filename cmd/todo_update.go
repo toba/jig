@@ -112,7 +112,7 @@ var todoUpdateCmd = &cobra.Command{
 	},
 }
 
-func buildUpdateInput(cmd *cobra.Command, existingTags []string, currentBody string) (model.UpdateIssueInput, []string, error) {
+func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIssueInput, []string, error) {
 	var input model.UpdateIssueInput
 	var changes []string
 

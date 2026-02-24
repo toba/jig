@@ -8,6 +8,7 @@ Multi-tool CLI combining file-based issue tracking, citation monitoring, Claude 
 go build -o jig .
 go test ./...
 go vet ./...
+scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issues
 ```
 
 ## Architecture

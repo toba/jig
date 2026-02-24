@@ -160,7 +160,7 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 
 	// Classify each commit by its highest-level file.
 	for _, c := range commits {
-		level := classify.Unclassified
+		var level classify.Level
 		if len(c.Files) > 0 {
 			cFilePaths := make([]string, 0, len(c.Files))
 			for _, f := range c.Files {
@@ -200,7 +200,7 @@ func fetchCommitDetails(client github.Client, repo string, commits []github.Comm
 		g.Go(func() error {
 			detail, err := client.GetCommitDetail(repo, commits[i].SHA)
 			if err != nil {
-				return nil // non-fatal
+				return nil //nolint:nilerr // non-fatal: skip commits we can't fetch
 			}
 			ch <- indexedFiles{idx: i, files: detail.Files}
 			return nil

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"io"
@@ -18,7 +19,7 @@ import (
 // ValidateTag checks if a tag is valid (any non-empty string).
 func ValidateTag(tag string) error {
 	if strings.TrimSpace(tag) == "" {
-		return fmt.Errorf("tag cannot be empty")
+		return errors.New("tag cannot be empty")
 	}
 	return nil
 }
@@ -146,7 +147,7 @@ func ParseDueDate(s string) (*DueDate, error) {
 
 // MarshalYAML implements yaml.Marshaler to serialize as "YYYY-MM-DD".
 func (d DueDate) MarshalYAML() (any, error) {
-	return d.Time.Format(DueDateFormat), nil
+	return d.Format(DueDateFormat), nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler to parse "YYYY-MM-DD".
@@ -165,7 +166,7 @@ func (d *DueDate) UnmarshalYAML(unmarshal func(any) error) error {
 
 // MarshalJSON implements json.Marshaler to serialize as "YYYY-MM-DD".
 func (d DueDate) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.Time.Format(DueDateFormat))
+	return json.Marshal(d.Format(DueDateFormat))
 }
 
 // UnmarshalJSON implements json.Unmarshaler to parse "YYYY-MM-DD".
@@ -184,7 +185,7 @@ func (d *DueDate) UnmarshalJSON(data []byte) error {
 
 // String returns the date as "YYYY-MM-DD".
 func (d DueDate) String() string {
-	return d.Time.Format(DueDateFormat)
+	return d.Format(DueDateFormat)
 }
 
 // Issue represents an issue stored as a markdown file with front matter.
@@ -224,18 +225,18 @@ type Issue struct {
 
 // frontMatter is the subset of Issue that gets serialized to YAML front matter.
 type frontMatter struct {
-	Title      string                    `yaml:"title"`
-	Status     string                    `yaml:"status"`
-	Type       string                    `yaml:"type,omitempty"`
-	Priority   string                    `yaml:"priority,omitempty"`
-	Tags       []string                  `yaml:"tags,omitempty"`
-	CreatedAt  *time.Time                `yaml:"created_at,omitempty"`
-	UpdatedAt  *time.Time                `yaml:"updated_at,omitempty"`
-	Due        *DueDate                  `yaml:"due,omitempty"`
-	Parent     string                    `yaml:"parent,omitempty"`
-	Blocking   []string                  `yaml:"blocking,omitempty"`
-	BlockedBy  []string                  `yaml:"blocked_by,omitempty"`
-	Sync       map[string]map[string]any `yaml:"sync,omitempty"`
+	Title     string                    `yaml:"title"`
+	Status    string                    `yaml:"status"`
+	Type      string                    `yaml:"type,omitempty"`
+	Priority  string                    `yaml:"priority,omitempty"`
+	Tags      []string                  `yaml:"tags,omitempty"`
+	CreatedAt *time.Time                `yaml:"created_at,omitempty"`
+	UpdatedAt *time.Time                `yaml:"updated_at,omitempty"`
+	Due       *DueDate                  `yaml:"due,omitempty"`
+	Parent    string                    `yaml:"parent,omitempty"`
+	Blocking  []string                  `yaml:"blocking,omitempty"`
+	BlockedBy []string                  `yaml:"blocked_by,omitempty"`
+	Sync      map[string]map[string]any `yaml:"sync,omitempty"`
 }
 
 // Parse reads an issue from a reader (markdown with YAML front matter).
@@ -250,36 +251,36 @@ func Parse(r io.Reader) (*Issue, error) {
 	bodyStr := strings.TrimSuffix(string(body), "\n")
 
 	return &Issue{
-		Title:      fm.Title,
-		Status:     fm.Status,
-		Type:       fm.Type,
-		Priority:   fm.Priority,
-		Tags:       fm.Tags,
-		CreatedAt:  fm.CreatedAt,
-		UpdatedAt:  fm.UpdatedAt,
-		Due:        fm.Due,
-		Body:       bodyStr,
-		Parent:     fm.Parent,
-		Blocking:   fm.Blocking,
-		BlockedBy:  fm.BlockedBy,
-		Sync: fm.Sync,
+		Title:     fm.Title,
+		Status:    fm.Status,
+		Type:      fm.Type,
+		Priority:  fm.Priority,
+		Tags:      fm.Tags,
+		CreatedAt: fm.CreatedAt,
+		UpdatedAt: fm.UpdatedAt,
+		Due:       fm.Due,
+		Body:      bodyStr,
+		Parent:    fm.Parent,
+		Blocking:  fm.Blocking,
+		BlockedBy: fm.BlockedBy,
+		Sync:      fm.Sync,
 	}, nil
 }
 
 // renderFrontMatter is used for YAML output with yaml.v3 (supports custom marshalers).
 type renderFrontMatter struct {
-	Title      string                    `yaml:"title"`
-	Status     string                    `yaml:"status"`
-	Type       string                    `yaml:"type,omitempty"`
-	Priority   string                    `yaml:"priority,omitempty"`
-	Tags       []string                  `yaml:"tags,omitempty"`
-	CreatedAt  *time.Time                `yaml:"created_at,omitempty"`
-	UpdatedAt  *time.Time                `yaml:"updated_at,omitempty"`
-	Due        *DueDate                  `yaml:"due,omitempty"`
-	Parent     string                    `yaml:"parent,omitempty"`
-	Blocking   []string                  `yaml:"blocking,omitempty"`
-	BlockedBy  []string                  `yaml:"blocked_by,omitempty"`
-	Sync       map[string]map[string]any `yaml:"sync,omitempty"`
+	Title     string                    `yaml:"title"`
+	Status    string                    `yaml:"status"`
+	Type      string                    `yaml:"type,omitempty"`
+	Priority  string                    `yaml:"priority,omitempty"`
+	Tags      []string                  `yaml:"tags,omitempty"`
+	CreatedAt *time.Time                `yaml:"created_at,omitempty"`
+	UpdatedAt *time.Time                `yaml:"updated_at,omitempty"`
+	Due       *DueDate                  `yaml:"due,omitempty"`
+	Parent    string                    `yaml:"parent,omitempty"`
+	Blocking  []string                  `yaml:"blocking,omitempty"`
+	BlockedBy []string                  `yaml:"blocked_by,omitempty"`
+	Sync      map[string]map[string]any `yaml:"sync,omitempty"`
 }
 
 // Render serializes the issue back to markdown with YAML front matter.
@@ -342,7 +343,7 @@ func (b *Issue) ETag() string {
 		return "0000000000000000"
 	}
 	h := fnv.New64a()
-	h.Write(content)
+	h.Write(content) //nolint:gosec // hash.Write never returns error
 	return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -354,6 +355,6 @@ func (b *Issue) MarshalJSON() ([]byte, error) {
 		ETag string `json:"etag"`
 	}{
 		IssueAlias: (*IssueAlias)(b),
-		ETag:      b.ETag(),
+		ETag:       b.ETag(),
 	})
 }

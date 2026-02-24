@@ -77,7 +77,7 @@ func (d sortItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		currentIndicator = ui.Muted.Render(" (current)")
 	}
 
-	fmt.Fprint(w, cursor+nameText+descText+currentIndicator)
+	fmt.Fprint(w, cursor+nameText+descText+currentIndicator) //nolint:errcheck // terminal output
 }
 
 // sortPickerModel is the model for the sort picker view

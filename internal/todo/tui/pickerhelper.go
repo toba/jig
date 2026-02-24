@@ -78,5 +78,5 @@ func renderPickerItem(w io.Writer, cursor, text string, isCurrent bool) {
 	if isCurrent {
 		currentIndicator = ui.Muted.Render(" (current)")
 	}
-	fmt.Fprint(w, cursor+text+currentIndicator)
+	fmt.Fprint(w, cursor+text+currentIndicator) //nolint:errcheck // terminal output
 }

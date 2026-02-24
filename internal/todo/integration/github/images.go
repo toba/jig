@@ -134,7 +134,7 @@ func UploadImages(ctx context.Context, client *Client, body string) (map[string]
 			continue
 		}
 
-		commitMsg := fmt.Sprintf("chore: upload issue image %s", imageName)
+		commitMsg := "chore: upload issue image " + imageName
 		downloadURL, err := client.UploadContents(ctx, repoPath, content, commitMsg, "")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to upload image %s: %v\n", ref.LocalPath, err)

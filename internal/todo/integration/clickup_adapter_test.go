@@ -53,7 +53,7 @@ func TestCheckMappingKeys(t *testing.T) {
 			},
 			wantFail:       true,
 			wantFailSubstr: "todo",
-			wantWarn:       true,        // "ready" is unmapped
+			wantWarn:       true, // "ready" is unmapped
 			wantWarnSubstr: "ready",
 		},
 		{
@@ -175,4 +175,3 @@ func TestCheckMappingKeys(t *testing.T) {
 		})
 	}
 }
-

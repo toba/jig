@@ -40,7 +40,7 @@ var showCmd = &cobra.Command{
 			}
 			if b == nil {
 				if showJSON {
-					return output.Error(output.ErrNotFound, fmt.Sprintf("issue not found: %s", id))
+					return output.Error(output.ErrNotFound, "issue not found: "+id)
 				}
 				return fmt.Errorf("issue not found: %s", id)
 			}

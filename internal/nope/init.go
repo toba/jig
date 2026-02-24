@@ -129,7 +129,7 @@ func RunInit() int {
 			fmt.Fprintf(os.Stderr, "nope init: %s already contains a 'nope' section, skipping\n", jigPath)
 		} else {
 			// Append nope section.
-			if len(content) > 0 && content[len(content)-1] != '\n' {
+			if content != "" && content[len(content)-1] != '\n' {
 				content += "\n"
 			}
 			content += "\n" + StarterConfig
@@ -169,7 +169,7 @@ func hasNopeSection(content string) bool {
 func mergeSettings(path string) error {
 	var settings map[string]any
 
-	data, err := os.ReadFile(path) //nolint:gosec // settings path is constructed internally
+	data, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("read %s: %w", path, err)

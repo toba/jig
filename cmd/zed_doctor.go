@@ -15,10 +15,7 @@ var zedDoctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Verify Zed extension setup is healthy",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ext, err := resolveExt("", configPath())
-		if err != nil {
-			return err
-		}
+		ext := resolveExt("", configPath())
 		if ext == "" {
 			fmt.Fprintf(os.Stderr, "OK:   companions.zed not configured (nothing to check)\n")
 			return nil

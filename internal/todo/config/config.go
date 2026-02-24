@@ -126,14 +126,14 @@ type TagConfig struct {
 // Note: Statuses are no longer stored in config - they are hardcoded like types.
 type Config struct {
 	// Path is the path to the issues directory (relative to config file location)
-	Path           string `yaml:"path,omitempty"`
-	DefaultStatus  string `yaml:"default_status,omitempty"`
-	DefaultType    string `yaml:"default_type,omitempty"`
-	DefaultSort    string `yaml:"default_sort,omitempty"`
-	Editor         string `yaml:"editor,omitempty"`
-	RequireIfMatch bool         `yaml:"require_if_match,omitempty"`
-	Tags           []TagConfig  `yaml:"tags,omitempty"`
-	Sync map[string]map[string]any `yaml:"sync,omitempty"`
+	Path           string                    `yaml:"path,omitempty"`
+	DefaultStatus  string                    `yaml:"default_status,omitempty"`
+	DefaultType    string                    `yaml:"default_type,omitempty"`
+	DefaultSort    string                    `yaml:"default_sort,omitempty"`
+	Editor         string                    `yaml:"editor,omitempty"`
+	RequireIfMatch bool                      `yaml:"require_if_match,omitempty"`
+	Tags           []TagConfig               `yaml:"tags,omitempty"`
+	Sync           map[string]map[string]any `yaml:"sync,omitempty"`
 
 	// configDir is the directory containing the config file (not serialized)
 	// Used to resolve relative paths
@@ -248,9 +248,8 @@ func migrateLegacyConfig(legacyPath, newPath string) (bool, error) {
 	}
 
 	// Remove legacy file
-	if err := os.Remove(legacyPath); err != nil {
-		// Non-fatal: new file is written, old file just lingers
-		return true, nil
+	if err := os.Remove(legacyPath); err != nil { //nolint:nilerr // non-fatal: new file written, old file just lingers
+		return true, nil //nolint:nilerr // non-fatal: new file written, old file just lingers
 	}
 
 	return true, nil

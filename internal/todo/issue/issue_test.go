@@ -387,7 +387,7 @@ func TestParseRenderRoundtrip(t *testing.T) {
 	later := time.Date(2024, 1, 16, 14, 45, 0, 0, time.UTC)
 
 	tests := []struct {
-		name string
+		name  string
 		issue *Issue
 	}{
 		{
@@ -1060,22 +1060,22 @@ func TestValidateTag(t *testing.T) {
 		{"urgent2", false},
 		{"wont-fix", false},
 		{"a-b-c", false},
-		{"Frontend", false},          // mixed case now valid
-		{"URGENT", false},            // all uppercase now valid
-		{"123", false},               // starts with number now valid
-		{"123abc", false},            // starts with number now valid
-		{"my tag", false},            // contains space now valid
-		{"my_tag", false},            // contains underscore now valid
-		{"my--tag", false},           // consecutive hyphens now valid
-		{"-tag", false},              // starts with hyphen now valid
-		{"tag-", false},              // ends with hyphen now valid
-		{"my.tag", false},            // contains dot now valid
-		{"my/tag", false},            // contains slash now valid
-		{"Good First Issue", false},  // spaces and mixed case
-		{"P1: Critical", false},      // colons and spaces
-		{"won't fix", false},         // apostrophes
-		{"", true},                   // empty
-		{"   ", true},                // whitespace only
+		{"Frontend", false},         // mixed case now valid
+		{"URGENT", false},           // all uppercase now valid
+		{"123", false},              // starts with number now valid
+		{"123abc", false},           // starts with number now valid
+		{"my tag", false},           // contains space now valid
+		{"my_tag", false},           // contains underscore now valid
+		{"my--tag", false},          // consecutive hyphens now valid
+		{"-tag", false},             // starts with hyphen now valid
+		{"tag-", false},             // ends with hyphen now valid
+		{"my.tag", false},           // contains dot now valid
+		{"my/tag", false},           // contains slash now valid
+		{"Good First Issue", false}, // spaces and mixed case
+		{"P1: Critical", false},     // colons and spaces
+		{"won't fix", false},        // apostrophes
+		{"", true},                  // empty
+		{"   ", true},               // whitespace only
 	}
 
 	for _, tt := range tests {
@@ -1467,7 +1467,7 @@ func TestRenderWithIDCommentRoundtrip(t *testing.T) {
 
 func TestRenderTrailingNewline(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		issue *Issue
 	}{
 		{
@@ -1533,7 +1533,7 @@ func TestETag(t *testing.T) {
 		}
 		// Verify it's valid hex
 		for _, c := range etag {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 				t.Errorf("ETag contains non-hex char: %c", c)
 			}
 		}

@@ -105,12 +105,12 @@ func TestRun(t *testing.T) {
 		assertFileExists(t, filepath.Join(dir, ".issues", "b", "beans-1xyz--second-issue.md"))
 
 		// Check status was rewritten in first issue
-		content := testutil.ReadFile(t,filepath.Join(dir, ".issues", "b", "beans-0ajg--first-issue.md"))
+		content := testutil.ReadFile(t, filepath.Join(dir, ".issues", "b", "beans-0ajg--first-issue.md"))
 		assertContains(t, content, "status: ready")
 		assertNotContains(t, content, "status: todo")
 
 		// Check second issue status unchanged
-		content2 := testutil.ReadFile(t,filepath.Join(dir, ".issues", "b", "beans-1xyz--second-issue.md"))
+		content2 := testutil.ReadFile(t, filepath.Join(dir, ".issues", "b", "beans-1xyz--second-issue.md"))
 		assertContains(t, content2, "status: in-progress")
 
 		// Check .jig.yaml created
@@ -156,7 +156,7 @@ func TestRun(t *testing.T) {
 		assertFileExists(t, filepath.Join(dir, ".issues", "archive", "beans-bbbb--done.md"))
 
 		// Archived file status rewritten
-		content := testutil.ReadFile(t,filepath.Join(dir, ".issues", "archive", "beans-bbbb--done.md"))
+		content := testutil.ReadFile(t, filepath.Join(dir, ".issues", "archive", "beans-bbbb--done.md"))
 		assertContains(t, content, "status: ready")
 	})
 

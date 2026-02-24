@@ -12,4 +12,3 @@ const (
 	FieldCreatedAt = "created_at"
 	FieldUpdatedAt = "updated_at"
 )
-

@@ -42,7 +42,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if data, err := os.ReadFile(path); err == nil {
 		// File exists — check if it already has a citations section.
 		content := string(data)
-		if len(content) > 0 {
+		if content != "" {
 			// Simple check for existing citations section.
 			if slices.Contains(strings.Split(content, "\n"), "citations:") {
 				return fmt.Errorf("%s already contains a 'citations' section", path)

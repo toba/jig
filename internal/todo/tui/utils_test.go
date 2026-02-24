@@ -129,13 +129,13 @@ func TestIntersectStrings(t *testing.T) {
 
 func TestCollectDescendants(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		issueID   string
 		allIssues []*issue.Issue
-		want     map[string]bool
+		want      map[string]bool
 	}{
 		{
-			name:   "no children",
+			name:    "no children",
 			issueID: "root",
 			allIssues: []*issue.Issue{
 				{ID: "root"},
@@ -144,7 +144,7 @@ func TestCollectDescendants(t *testing.T) {
 			want: map[string]bool{},
 		},
 		{
-			name:   "direct children only",
+			name:    "direct children only",
 			issueID: "root",
 			allIssues: []*issue.Issue{
 				{ID: "root"},
@@ -157,7 +157,7 @@ func TestCollectDescendants(t *testing.T) {
 			},
 		},
 		{
-			name:   "grandchildren included",
+			name:    "grandchildren included",
 			issueID: "root",
 			allIssues: []*issue.Issue{
 				{ID: "root"},
@@ -172,7 +172,7 @@ func TestCollectDescendants(t *testing.T) {
 			},
 		},
 		{
-			name:   "no matching parent",
+			name:    "no matching parent",
 			issueID: "nonexistent",
 			allIssues: []*issue.Issue{
 				{ID: "a", Parent: "b"},
@@ -181,10 +181,10 @@ func TestCollectDescendants(t *testing.T) {
 			want: map[string]bool{},
 		},
 		{
-			name:     "empty issue list",
+			name:      "empty issue list",
 			issueID:   "root",
 			allIssues: []*issue.Issue{},
-			want:     map[string]bool{},
+			want:      map[string]bool{},
 		},
 	}
 

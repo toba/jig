@@ -91,7 +91,7 @@ func SuccessInit(path string) error {
 }
 
 // Error outputs an error response and returns an error for command handling.
-func Error(code string, message string) error {
+func Error(code, message string) error {
 	_ = JSON(Response{
 		Success: false,
 		Error:   message,

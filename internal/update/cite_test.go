@@ -51,10 +51,7 @@ description: Check upstream repos
 `
 
 func TestParseSkill(t *testing.T) {
-	sources, err := parseSkill(sampleSkill)
-	if err != nil {
-		t.Fatalf("parseSkill: %v", err)
-	}
+	sources := parseSkill(sampleSkill)
 	if len(sources) != 3 {
 		t.Fatalf("expected 3 sources, got %d", len(sources))
 	}

@@ -9,9 +9,9 @@ import (
 
 // WorkflowParams holds the inputs needed to generate the sync-extension CI job.
 type WorkflowParams struct {
-	Org    string // GitHub org, e.g. "toba"
-	Ext    string // extension repo name, e.g. "gozer"
-	Needs  string // job this depends on, e.g. "release"
+	Org   string // GitHub org, e.g. "toba"
+	Ext   string // extension repo name, e.g. "gozer"
+	Needs string // job this depends on, e.g. "release"
 }
 
 // GenerateSyncExtensionJob produces the YAML block for a sync-extension job.
@@ -39,4 +39,3 @@ func InjectSyncExtensionJob(content string, p WorkflowParams) (string, error) {
 		return GenerateSyncExtensionJob(p)
 	})
 }
-

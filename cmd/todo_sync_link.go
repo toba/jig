@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -26,7 +27,7 @@ var syncLinkCmd = &cobra.Command{
 			return fmt.Errorf("detecting integration: %w", err)
 		}
 		if integ == nil {
-			return fmt.Errorf("no integration configured")
+			return errors.New("no integration configured")
 		}
 
 		result, err := integ.Link(ctx, issueID, externalID)

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -123,7 +124,7 @@ and pushes to the remote.`,
 			}
 		} else if !applyPush {
 			// Nothing staged and no push — fail like git commit would.
-			return fmt.Errorf("nothing to commit (use --push to push existing commits)")
+			return errors.New("nothing to commit (use --push to push existing commits)")
 		} else {
 			fmt.Println("Nothing to commit.")
 		}
@@ -184,11 +185,11 @@ func syncTodoIfConfigured(cmd *cobra.Command) {
 		return
 	}
 	if err := initTodoCore(cmd); err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "warning: todo sync init: %v\n", err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "warning: todo sync init: %v\n", err) //nolint:errcheck // warning output
 		return
 	}
 	if err := runSync(cmd, nil); err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "warning: todo sync: %v\n", err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "warning: todo sync: %v\n", err) //nolint:errcheck // warning output
 	}
 }
 

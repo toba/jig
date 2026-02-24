@@ -179,11 +179,11 @@ func TestFilterIssuesNeedingSync(t *testing.T) {
 	twoHoursAgo := now.Add(-2 * time.Hour)
 
 	tests := []struct {
-		name     string
-		issues   []*issue.Issue
-		setup    func(*memorySyncProvider)
-		force    bool
-		wantIDs  []string
+		name    string
+		issues  []*issue.Issue
+		setup   func(*memorySyncProvider)
+		force   bool
+		wantIDs []string
 	}{
 		{
 			name:    "empty list",

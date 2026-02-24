@@ -14,9 +14,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/graph"
+	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/ui"
 )
 
@@ -37,7 +37,7 @@ type backToListMsg struct{}
 // resolvedLink represents a link with the target issue resolved
 type resolvedLink struct {
 	linkType string
-	issue     *issue.Issue
+	issue    *issue.Issue
 	incoming bool // true if another issue links TO this one
 }
 
@@ -116,13 +116,13 @@ func (d linkDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		},
 	)
 
-	fmt.Fprint(w, cursor+labelCol+row)
+	fmt.Fprint(w, cursor+labelCol+row) //nolint:errcheck // terminal output
 }
 
 // detailModel displays a single issue's details
 type detailModel struct {
 	viewport      viewport.Model
-	issue          *issue.Issue
+	issue         *issue.Issue
 	resolver      *graph.Resolver
 	config        *config.Config
 	width         int
@@ -137,7 +137,7 @@ type detailModel struct {
 
 func newDetailModel(b *issue.Issue, resolver *graph.Resolver, cfg *config.Config, width, height int) detailModel {
 	m := detailModel{
-		issue:        b,
+		issue:       b,
 		resolver:    resolver,
 		config:      cfg,
 		width:       width,

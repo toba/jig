@@ -1,7 +1,7 @@
 package brew
 
 import (
-	"fmt"
+	"errors"
 	"slices"
 	"testing"
 )
@@ -15,7 +15,7 @@ func TestResolveSHA256Sidecar(t *testing.T) {
 		if slices.Contains(args, "tool_darwin_arm64.tar.gz.sha256") {
 			return []byte("abc123def456  tool_darwin_arm64.tar.gz\n"), nil
 		}
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	sha, err := ResolveSHA256("org/tool", "v1.0.0", "tool_darwin_arm64.tar.gz")
@@ -36,13 +36,13 @@ func TestResolveSHA256Checksums(t *testing.T) {
 		calls++
 		for _, a := range args {
 			if a == "tool_darwin_arm64.tar.gz.sha256" {
-				return nil, fmt.Errorf("not found")
+				return nil, errors.New("not found")
 			}
 			if a == "checksums.txt" {
 				return []byte("deadbeef01  tool_linux_amd64.tar.gz\nfeedface02  tool_darwin_arm64.tar.gz\n"), nil
 			}
 		}
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	sha, err := ResolveSHA256("org/tool", "v1.0.0", "tool_darwin_arm64.tar.gz")
@@ -59,7 +59,7 @@ func TestResolveSHA256AllFail(t *testing.T) {
 	defer func() { ghRelease = orig }()
 
 	ghRelease = func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	_, err := ResolveSHA256("org/tool", "v1.0.0", "tool_darwin_arm64.tar.gz")

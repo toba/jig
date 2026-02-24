@@ -7,7 +7,7 @@ import (
 
 func ReadFile(t *testing.T, path string) string {
 	t.Helper()
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // test helper
 	if err != nil {
 		t.Fatal(err)
 	}

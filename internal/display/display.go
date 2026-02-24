@@ -12,34 +12,34 @@ import (
 )
 
 var (
-	repoStyle    = lipgloss.NewStyle().Bold(true)
-	branchStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))   // cyan
-	highStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true) // red
-	mediumStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true) // yellow
-	lowStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))   // gray
-	unclassStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	shaStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))   // yellow
-	authorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))   // cyan
-	dateStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))   // gray
-	notesStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true)
-	noChangeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))  // green
-	sepStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	repoStyle     = lipgloss.NewStyle().Bold(true)
+	branchStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))            // cyan
+	highStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true) // red
+	mediumStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true) // yellow
+	lowStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))            // gray
+	unclassStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	shaStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("3")) // yellow
+	authorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("6")) // cyan
+	dateStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // gray
+	notesStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true)
+	noChangeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")) // green
+	sepStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
 // SourceResult holds the check results for a single cited source.
 type SourceResult struct {
-	Source  config.Source   `json:"source"`
+	Source  config.Source  `json:"source"`
 	Commits []CommitResult `json:"commits"`
 	Files   []FileResult   `json:"files,omitempty"`
 }
 
 // CommitResult holds a commit with its classified files.
 type CommitResult struct {
-	SHA     string              `json:"sha"`
-	Message string              `json:"message"`
-	Author  string              `json:"author"`
-	Date    string              `json:"date"`
-	Level   classify.Level      `json:"level"`
+	SHA     string         `json:"sha"`
+	Message string         `json:"message"`
+	Author  string         `json:"author"`
+	Date    string         `json:"date"`
+	Level   classify.Level `json:"level"`
 }
 
 // FileResult holds a file with its classification.
@@ -52,17 +52,17 @@ type FileResult struct {
 func RenderText(w io.Writer, results []SourceResult) {
 	for i, r := range results {
 		if i > 0 {
-			fmt.Fprintln(w, sepStyle.Render("---"))
-			fmt.Fprintln(w)
+			fmt.Fprintln(w, sepStyle.Render("---")) //nolint:errcheck // terminal output
+			fmt.Fprintln(w)                         //nolint:errcheck // terminal output
 		}
 
 		// Header: repo  branch
 		header := repoStyle.Render(r.Source.Repo) + "  " +
 			branchStyle.Render(r.Source.Branch)
-		fmt.Fprintln(w, header)
+		fmt.Fprintln(w, header) //nolint:errcheck // terminal output
 
 		if r.Source.Notes != "" {
-			fmt.Fprintln(w, "  "+notesStyle.Render(r.Source.Notes))
+			fmt.Fprintln(w, "  "+notesStyle.Render(r.Source.Notes)) //nolint:errcheck // terminal output
 		}
 
 		if len(r.Commits) == 0 {
@@ -70,8 +70,8 @@ func RenderText(w io.Writer, results []SourceResult) {
 			if r.Source.LastCheckedDate != "" {
 				since = r.Source.LastCheckedDate[:10]
 			}
-			fmt.Fprintln(w, "  "+noChangeStyle.Render("No new commits since "+since))
-			fmt.Fprintln(w)
+			fmt.Fprintln(w, "  "+noChangeStyle.Render("No new commits since "+since)) //nolint:errcheck // terminal output
+			fmt.Fprintln(w)                                                           //nolint:errcheck // terminal output
 			continue
 		}
 
@@ -79,8 +79,8 @@ func RenderText(w io.Writer, results []SourceResult) {
 		if r.Source.LastCheckedDate != "" {
 			since = r.Source.LastCheckedDate[:10]
 		}
-		fmt.Fprintf(w, "  %d new commits since %s\n", len(r.Commits), since)
-		fmt.Fprintln(w)
+		fmt.Fprintf(w, "  %d new commits since %s\n", len(r.Commits), since) //nolint:errcheck // terminal output
+		fmt.Fprintln(w)                                                      //nolint:errcheck // terminal output
 
 		// Group commits by level, display in order: HIGH, MEDIUM, LOW, UNCLASSIFIED.
 		grouped := groupCommitsByLevel(r.Commits)
@@ -90,7 +90,7 @@ func RenderText(w io.Writer, results []SourceResult) {
 				continue
 			}
 			label := levelLabel(level, len(commits))
-			fmt.Fprintln(w, "  "+label)
+			fmt.Fprintln(w, "  "+label) //nolint:errcheck // terminal output
 			for _, c := range commits {
 				short := c.SHA[:min(7, len(c.SHA))]
 				msg := Truncate(c.Message, 50)
@@ -100,9 +100,9 @@ func RenderText(w io.Writer, results []SourceResult) {
 					authorStyle.Render("("+c.Author+")"),
 					dateStyle.Render(c.Date),
 				)
-				fmt.Fprintln(w, line)
+				fmt.Fprintln(w, line) //nolint:errcheck // terminal output
 			}
-			fmt.Fprintln(w)
+			fmt.Fprintln(w) //nolint:errcheck // terminal output
 		}
 	}
 }
@@ -117,7 +117,7 @@ func RenderJSON(w io.Writer, results []SourceResult) error {
 func levelLabel(level classify.Level, count int) string {
 	label := fmt.Sprintf("%s (%d commits)", level.String(), count)
 	if count == 1 {
-		label = fmt.Sprintf("%s (1 commit)", level.String())
+		label = level.String() + " (1 commit)"
 	}
 	switch level {
 	case classify.High:

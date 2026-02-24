@@ -23,7 +23,7 @@ func NewDebugLogger(path, root string) *DebugLogger {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(root, path)
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600) //nolint:gosec // debug log path from config
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "nope: debug log: %v\n", err)
 		return nil
@@ -41,8 +41,8 @@ func (d *DebugLogger) Log(fields map[string]any) {
 	if err != nil {
 		return
 	}
-	d.f.Write(data)
-	d.f.Write([]byte("\n"))
+	d.f.Write(data)       //nolint:errcheck // debug log, best-effort
+	d.f.WriteString("\n") //nolint:errcheck // debug log, best-effort
 }
 
 // Close closes the debug log file.
@@ -50,5 +50,5 @@ func (d *DebugLogger) Close() {
 	if d == nil {
 		return
 	}
-	d.f.Close()
+	d.f.Close() //nolint:errcheck // debug log, best-effort
 }

@@ -217,7 +217,7 @@ func TestGetGitHubState(t *testing.T) {
 
 func TestSyncIssue_Create(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/issues") {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issues") {
 			resp := Issue{
 				Number:  42,
 				Title:   "Test",
@@ -233,7 +233,7 @@ func TestSyncIssue_Create(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -275,7 +275,7 @@ func TestSyncIssue_Create(t *testing.T) {
 
 func TestSyncIssue_Update(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/issues/") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/issues/") {
 			resp := Issue{
 				Number:  42,
 				Title:   "Old title",
@@ -287,7 +287,7 @@ func TestSyncIssue_Update(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		if r.Method == "PATCH" && strings.Contains(r.URL.Path, "/issues/") {
+		if r.Method == http.MethodPatch && strings.Contains(r.URL.Path, "/issues/") {
 			resp := Issue{
 				Number:  42,
 				Title:   "Updated issue",
@@ -298,7 +298,7 @@ func TestSyncIssue_Update(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -346,7 +346,7 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 	var receivedLabels []string
 	var receivedType string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/issues") {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issues") {
 			var req CreateIssueRequest
 			_ = json.NewDecoder(r.Body).Decode(&req)
 			receivedLabels = req.Labels
@@ -367,7 +367,7 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -754,7 +754,7 @@ func TestBuildUpdateRequest_StripsStaleFooterLinks(t *testing.T) {
 func TestSyncMilestone_Create(t *testing.T) {
 	var receivedReq CreateMilestoneRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/milestones") {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/milestones") {
 			_ = json.NewDecoder(r.Body).Decode(&receivedReq)
 			resp := Milestone{
 				ID:      1,
@@ -767,7 +767,7 @@ func TestSyncMilestone_Create(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -813,7 +813,7 @@ func TestSyncMilestone_Create(t *testing.T) {
 func TestSyncMilestone_Update(t *testing.T) {
 	var patchCalled bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/milestones/") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/milestones/") {
 			resp := Milestone{
 				ID:          1,
 				Number:      5,
@@ -826,7 +826,7 @@ func TestSyncMilestone_Update(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		if r.Method == "PATCH" && strings.Contains(r.URL.Path, "/milestones/") {
+		if r.Method == http.MethodPatch && strings.Contains(r.URL.Path, "/milestones/") {
 			patchCalled = true
 			resp := Milestone{
 				Number:  5,
@@ -837,7 +837,7 @@ func TestSyncMilestone_Update(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -884,7 +884,7 @@ func TestSyncMilestone_Update(t *testing.T) {
 func TestSyncIssue_MilestoneAssignment(t *testing.T) {
 	var receivedMilestone *int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/issues") {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issues") {
 			var req CreateIssueRequest
 			_ = json.NewDecoder(r.Body).Decode(&req)
 			receivedMilestone = req.Milestone
@@ -904,7 +904,7 @@ func TestSyncIssue_MilestoneAssignment(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -915,10 +915,10 @@ func TestSyncIssue_MilestoneAssignment(t *testing.T) {
 	}
 
 	syncer := &Syncer{
-		client:    client,
-		config:    &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:      SyncOptions{NoRelationships: true},
-		syncStore: newMemorySyncProvider(),
+		client:          client,
+		config:          &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:            SyncOptions{NoRelationships: true},
+		syncStore:       newMemorySyncProvider(),
 		issueToGHNumber: make(map[string]int),
 		issueToGHID:     make(map[string]int),
 		issueToMilestoneNumber: map[string]int{
@@ -962,13 +962,13 @@ func TestSyncBlockingRelationships_Add(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// ListBlockedBy returns empty (no current deps)
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/blocked_by") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blocked_by") {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode([]BlockingDependency{})
 			return
 		}
 		// AddBlockedBy
-		if r.Method == "POST" && strings.Contains(r.URL.Path, "/blocked_by") {
+		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/blocked_by") {
 			var req AddBlockedByRequest
 			_ = json.NewDecoder(r.Body).Decode(&req)
 			// Extract issue number from URL
@@ -988,7 +988,7 @@ func TestSyncBlockingRelationships_Add(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(BlockingDependency{ID: req.IssueID, Number: num})
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -1036,7 +1036,7 @@ func TestSyncBlockingRelationships_Remove(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// ListBlockedBy returns an existing dependency that should be removed
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/blocked_by") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blocked_by") {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode([]BlockingDependency{
 				{ID: 100099, Number: 99}, // stale dependency
@@ -1044,7 +1044,7 @@ func TestSyncBlockingRelationships_Remove(t *testing.T) {
 			return
 		}
 		// RemoveBlockedBy
-		if r.Method == "DELETE" && strings.Contains(r.URL.Path, "/blocked_by/") {
+		if r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/blocked_by/") {
 			parts := strings.Split(r.URL.Path, "/")
 			var issueNum, blockerID int
 			for i, p := range parts {
@@ -1059,10 +1059,10 @@ func TestSyncBlockingRelationships_Remove(t *testing.T) {
 				issueNumber int
 				blockerID   int
 			}{issueNum, blockerID})
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -1103,14 +1103,14 @@ func TestSyncBlockingRelationships_NoChange(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiCalls++
 		// ListBlockedBy returns current dep that matches desired
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/blocked_by") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blocked_by") {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode([]BlockingDependency{
 				{ID: 100020, Number: 20},
 			})
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -1150,13 +1150,13 @@ func TestSyncSubIssueLink_AddParent(t *testing.T) {
 	var addedChildIssueID int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// GetParentIssue returns 404 (no current parent)
-		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/parent") {
-			w.WriteHeader(404)
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/parent") {
+			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"message":"Not Found"}`))
 			return
 		}
 		// AddSubIssue
-		if r.Method == "POST" && strings.Contains(r.URL.Path, "/sub_issues") {
+		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/sub_issues") {
 			addedSubIssue = true
 			// Extract parent number from URL
 			parts := strings.Split(r.URL.Path, "/")
@@ -1174,7 +1174,7 @@ func TestSyncSubIssueLink_AddParent(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(Issue{Number: 50})
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -1229,19 +1229,19 @@ func TestSyncSubIssueLink_RemoveParent(t *testing.T) {
 	var removedSubIssue bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// GetParentIssue returns a parent (issue has one on GitHub)
-		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/parent") {
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/parent") {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(Issue{Number: 50})
 			return
 		}
 		// RemoveSubIssue
-		if r.Method == "DELETE" && strings.Contains(r.URL.Path, "/sub_issue") {
+		if r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/sub_issue") {
 			removedSubIssue = true
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(Issue{Number: 50})
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()

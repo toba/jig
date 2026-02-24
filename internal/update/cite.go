@@ -48,7 +48,7 @@ func migrateCiteSkill(jigPath string) (bool, string, error) {
 	var skillPath string
 	var skillData []byte
 	for _, c := range skillCandidates {
-		data, err := os.ReadFile(c) //nolint:gosec // hardcoded paths
+		data, err := os.ReadFile(c)
 		if err != nil {
 			continue
 		}
@@ -61,7 +61,7 @@ func migrateCiteSkill(jigPath string) (bool, string, error) {
 	}
 
 	// Check if citations: already exists in .jig.yaml.
-	existing, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
+	existing, err := os.ReadFile(jigPath)
 	if err != nil && !os.IsNotExist(err) {
 		return false, "", fmt.Errorf("reading %s: %w", jigPath, err)
 	}
@@ -74,17 +74,14 @@ func migrateCiteSkill(jigPath string) (bool, string, error) {
 
 	// Parse the skill file.
 	content := string(skillData)
-	sources, err := parseSkill(content)
-	if err != nil {
-		return false, skillPath, fmt.Errorf("parsing %s: %w", skillPath, err)
-	}
+	sources := parseSkill(content)
 	if len(sources) == 0 {
 		return false, skillPath, nil
 	}
 
 	// Merge marker data from references/last-checked.json if present.
 	markerPath := filepath.Join(filepath.Dir(skillPath), "references", "last-checked.json")
-	if markerData, err := os.ReadFile(markerPath); err == nil { //nolint:gosec // path derived from hardcoded skill path
+	if markerData, err := os.ReadFile(markerPath); err == nil {
 		var markers map[string]markerEntry
 		if err := json.Unmarshal(markerData, &markers); err == nil {
 			for i := range sources {
@@ -134,10 +131,10 @@ func cleanupSkillDir(skillPath string) {
 }
 
 // parseSkill extracts citation source definitions from a legacy SKILL.md file.
-func parseSkill(content string) ([]citationSource, error) {
+func parseSkill(content string) []citationSource {
 	repos := parseRepoTable(content)
 	if len(repos) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	pathsByRepo := parsePathTables(content)
@@ -154,7 +151,7 @@ func parseSkill(content string) ([]citationSource, error) {
 		}
 		sources = append(sources, s)
 	}
-	return sources, nil
+	return sources
 }
 
 type repoEntry struct {
@@ -345,4 +342,3 @@ func extractRepoFromHeading(heading string) string {
 	m := repoPattern.FindString(heading)
 	return m
 }
-

@@ -89,7 +89,7 @@ func TestSyncTags_SetDiff(t *testing.T) {
 		if len(parts) == 2 {
 			calls = append(calls, r.Method+" "+parts[1])
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -189,7 +189,7 @@ func TestSyncTags_SetDiff(t *testing.T) {
 func TestSyncIssue_CreateWithTags(t *testing.T) {
 	var tagCalls []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && strings.Contains(r.URL.Path, "/list/") {
+		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/list/") {
 			resp := taskResponse{
 				ID:     "task-123",
 				Name:   "Test",
@@ -203,7 +203,7 @@ func TestSyncIssue_CreateWithTags(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/tag/") {
 			parts := strings.Split(r.URL.Path, "/tag/")
 			tagCalls = append(tagCalls, r.Method+" "+parts[len(parts)-1])
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
@@ -212,7 +212,7 @@ func TestSyncIssue_CreateWithTags(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -255,7 +255,7 @@ func TestSyncIssue_CreateWithTags(t *testing.T) {
 func TestSyncIssue_UpdateWithTagChanges(t *testing.T) {
 	var tagCalls []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/task/") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/task/") {
 			resp := taskResponse{
 				ID:     "task-123",
 				Name:   "Test issue",
@@ -270,11 +270,11 @@ func TestSyncIssue_UpdateWithTagChanges(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/tag/") {
 			parts := strings.Split(r.URL.Path, "/tag/")
 			tagCalls = append(tagCalls, r.Method+" "+parts[len(parts)-1])
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -338,21 +338,21 @@ func TestSyncTags_EnsureSpaceTagBeforeAdd(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		// Space tag creation: POST /api/v2/space/{id}/tag (path ends with /tag, not /tag/{name})
-		if r.Method == "POST" && strings.Contains(path, "/space/") && strings.Contains(path, "/tag") && !strings.Contains(path, "/task/") {
+		if r.Method == http.MethodPost && strings.Contains(path, "/space/") && strings.Contains(path, "/tag") && !strings.Contains(path, "/task/") {
 			calls = append(calls, "space-create")
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
 		// Task tag addition: POST /api/v2/task/{id}/tag/{tagName}
-		if r.Method == "POST" && strings.Contains(path, "/task/") && strings.Contains(path, "/tag/") {
+		if r.Method == http.MethodPost && strings.Contains(path, "/task/") && strings.Contains(path, "/tag/") {
 			parts := strings.Split(path, "/tag/")
 			calls = append(calls, "task-add:"+parts[len(parts)-1])
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -385,10 +385,10 @@ func TestSyncTags_EnsureSpaceTagBeforeAdd(t *testing.T) {
 func TestSyncTags_CachePreventsRedundantSpaceTagCreation(t *testing.T) {
 	var spaceCreateCalls int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && strings.Contains(r.URL.Path, "/space/") && strings.HasSuffix(r.URL.Path, "/tag") {
+		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/space/") && strings.HasSuffix(r.URL.Path, "/tag") {
 			spaceCreateCalls++
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -441,7 +441,7 @@ func TestSyncTags_CachePreventsRedundantSpaceTagCreation(t *testing.T) {
 func TestSyncIssue_CreateWithDueDate(t *testing.T) {
 	var capturedReq CreateTaskRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && strings.Contains(r.URL.Path, "/list/") {
+		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/list/") {
 			_ = json.NewDecoder(r.Body).Decode(&capturedReq)
 			resp := taskResponse{
 				ID:     "task-456",
@@ -458,7 +458,7 @@ func TestSyncIssue_CreateWithDueDate(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -522,7 +522,7 @@ func TestSyncIssue_CreateWithDueDate(t *testing.T) {
 func TestSyncIssue_UpdateDueDate(t *testing.T) {
 	existingDue := "1750000000000" // existing due date in ClickUp (Unix ms)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/task/") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/task/") {
 			resp := taskResponse{
 				ID:      "task-789",
 				Name:    "Test issue",
@@ -534,7 +534,7 @@ func TestSyncIssue_UpdateDueDate(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		if r.Method == "PUT" && strings.Contains(r.URL.Path, "/task/") {
+		if r.Method == http.MethodPut && strings.Contains(r.URL.Path, "/task/") {
 			resp := taskResponse{
 				ID:     "task-789",
 				Name:   "Test issue",
@@ -545,7 +545,7 @@ func TestSyncIssue_UpdateDueDate(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -672,7 +672,7 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 			return
 		}
 		// GetList (for space ID)
-		if r.Method == "GET" && strings.Contains(r.URL.Path, "/list/") && !strings.Contains(r.URL.Path, "/task") {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/list/") && !strings.Contains(r.URL.Path, "/task") {
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "test-list", "space": map[string]any{"id": "space-1"}})
 			return
 		}
@@ -682,7 +682,7 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 			return
 		}
 		// CreateTask - capture the parent field
-		if r.Method == "POST" && strings.Contains(r.URL.Path, "/list/") && strings.Contains(r.URL.Path, "/task") {
+		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/list/") && strings.Contains(r.URL.Path, "/task") {
 			var req map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&req)
 			if p, ok := req["parent"]; ok && p != nil {
@@ -699,7 +699,7 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 			})
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
@@ -780,4 +780,3 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 		t.Errorf("parent = %q, want %q", *capturedParent, "clickup-parent-789")
 	}
 }
-

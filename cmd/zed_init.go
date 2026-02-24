@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -30,16 +31,13 @@ sync-extension job into the source repo's release workflow.
 This is a one-time setup command. After running it, extension updates happen
 automatically via CI when you push a new tag.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ext, err := resolveExt(zedInitExt, configPath())
-		if err != nil {
-			return err
-		}
+		ext := resolveExt(zedInitExt, configPath())
 		if ext == "" {
 			return fmt.Errorf("--ext is required (or set companions.zed in %s)", configPath())
 		}
 
 		if zedInitLanguages == "" {
-			return fmt.Errorf("--languages is required")
+			return errors.New("--languages is required")
 		}
 
 		opts := zed.InitOpts{

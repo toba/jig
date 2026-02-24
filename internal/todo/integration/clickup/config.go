@@ -1,13 +1,11 @@
 package clickup
 
-import (
-	"fmt"
-)
+import "errors"
 
 // Sync metadata constants
 const (
-	SyncName       = "clickup"
-	SyncKeyTaskID  = "task_id"
+	SyncName        = "clickup"
+	SyncKeyTaskID   = "task_id"
 	SyncKeySyncedAt = "synced_at"
 )
 
@@ -141,8 +139,7 @@ func ParseConfig(m map[string]any) (*Config, error) {
 		if sf, ok := v.(map[string]any); ok {
 			filter := &SyncFilter{}
 			if es, ok := sf["exclude_status"]; ok {
-				switch s := es.(type) {
-				case []any:
+				if s, ok := es.([]any); ok {
 					for _, item := range s {
 						if str, ok := item.(string); ok {
 							filter.ExcludeStatus = append(filter.ExcludeStatus, str)
@@ -193,7 +190,7 @@ func (c *Config) GetPriorityMapping() map[string]int {
 // Validate checks the config for issues.
 func (c *Config) Validate() error {
 	if c.ListID == "" {
-		return fmt.Errorf("list_id is required")
+		return errors.New("list_id is required")
 	}
 	return nil
 }

@@ -38,7 +38,7 @@ func (l Language) AssetName(tool, tag string) string {
 	case "rust":
 		return fmt.Sprintf("%s-%s-aarch64-apple-darwin.tar.gz", tool, tag)
 	default: // go
-		return fmt.Sprintf("%s_darwin_arm64.tar.gz", tool)
+		return tool + "_darwin_arm64.tar.gz"
 	}
 }
 
@@ -47,11 +47,11 @@ func (l Language) AssetName(tool, tag string) string {
 func (l Language) AssetNameTemplate(tool string) string {
 	switch l.Name {
 	case "swift":
-		return fmt.Sprintf("%s-${{ github.ref_name }}-arm64.tar.gz", tool)
+		return tool + "-${{ github.ref_name }}-arm64.tar.gz"
 	case "rust":
-		return fmt.Sprintf("%s-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz", tool)
+		return tool + "-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz"
 	default: // go — goreleaser handles naming, no tag in asset name
-		return fmt.Sprintf("%s_darwin_arm64.tar.gz", tool)
+		return tool + "_darwin_arm64.tar.gz"
 	}
 }
 

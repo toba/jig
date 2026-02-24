@@ -51,7 +51,7 @@ func (d tagItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	tagBadge := ui.RenderTag(item.tag)
 	count := ui.Muted.Render(fmt.Sprintf(" (%d)", item.count))
 
-	fmt.Fprint(w, cursor+tagBadge+count)
+	fmt.Fprint(w, cursor+tagBadge+count) //nolint:errcheck // terminal output
 }
 
 // tagPickerModel is the model for the tag picker view
@@ -75,7 +75,7 @@ func newTagPickerModel(tags []tagWithCount, width, height int) tagPickerModel {
 
 	items := make([]list.Item, len(tags))
 	for i, t := range tags {
-		items[i] = tagItem{tag: t.tag, count: t.count}
+		items[i] = tagItem(t)
 	}
 
 	l := list.New(items, delegate, width-4, height-6)

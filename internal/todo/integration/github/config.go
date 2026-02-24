@@ -40,10 +40,10 @@ var DefaultStatusMapping = map[string]string{
 
 // DefaultTypeMapping maps issue types to GitHub native issue type names.
 var DefaultTypeMapping = map[string]string{
-	"bug":       "Bug",
-	"feature":   "Feature",
-	"task":      "Task",
-	"epic": "Task",
+	"bug":     "Bug",
+	"feature": "Feature",
+	"task":    "Task",
+	"epic":    "Task",
 }
 
 // ParseConfig parses GitHub config from a sync config map.

@@ -87,20 +87,14 @@ func TestExtNameFromRepo(t *testing.T) {
 
 func TestResolveExt(t *testing.T) {
 	t.Run("flag takes precedence", func(t *testing.T) {
-		got, err := resolveExt("toba/gozer", "/nonexistent/path")
-		if err != nil {
-			t.Fatalf("resolveExt() error: %v", err)
-		}
+		got := resolveExt("toba/gozer", "/nonexistent/path")
 		if got != "toba/gozer" {
 			t.Errorf("resolveExt() = %q, want %q", got, "toba/gozer")
 		}
 	})
 
 	t.Run("empty flag and no config returns empty", func(t *testing.T) {
-		got, err := resolveExt("", "/nonexistent/path")
-		if err != nil {
-			t.Fatalf("resolveExt() error: %v", err)
-		}
+		got := resolveExt("", "/nonexistent/path")
 		if got != "" {
 			t.Errorf("resolveExt() = %q, want empty", got)
 		}

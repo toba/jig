@@ -12,7 +12,7 @@ import (
 
 // prioritySelectedMsg is sent when a priority is selected from the picker
 type prioritySelectedMsg struct {
-	issueIDs  []string
+	issueIDs []string
 	priority string
 }
 
@@ -21,8 +21,8 @@ type closePriorityPickerMsg struct{}
 
 // openPriorityPickerMsg requests opening the priority picker for issue(s)
 type openPriorityPickerMsg struct {
-	issueIDs         []string // IDs of issues to update
-	issueTitle       string   // Display title (single title or "N issues")
+	issueIDs        []string // IDs of issues to update
+	issueTitle      string   // Display title (single title or "N issues")
 	currentPriority string   // Only meaningful for single issue
 }
 
@@ -60,14 +60,14 @@ func (d priorityItemDelegate) Render(w io.Writer, m list.Model, index int, listI
 // priorityPickerModel is the model for the priority picker view
 type priorityPickerModel struct {
 	list            list.Model
-	issueIDs         []string
-	issueTitle       string
+	issueIDs        []string
+	issueTitle      string
 	currentPriority string
 	width           int
 	height          int
 }
 
-func newPriorityPickerModel(issueIDs []string, issueTitle, currentPriority string, cfg *config.Config, width, height int) priorityPickerModel {
+func newPriorityPickerModel(issueIDs []string, issueTitle, currentPriority string, _ *config.Config, width, height int) priorityPickerModel {
 	// Get all priorities (hardcoded in config package)
 	priorities := config.DefaultPriorities
 
@@ -112,8 +112,8 @@ func newPriorityPickerModel(issueIDs []string, issueTitle, currentPriority strin
 
 	return priorityPickerModel{
 		list:            l,
-		issueIDs:         issueIDs,
-		issueTitle:       issueTitle,
+		issueIDs:        issueIDs,
+		issueTitle:      issueTitle,
 		currentPriority: currentPriority,
 		width:           width,
 		height:          height,
@@ -174,8 +174,8 @@ func (m priorityPickerModel) View() string {
 
 	return renderPickerModal(pickerModalConfig{
 		Title:       "Select Priority",
-		IssueTitle:   m.issueTitle,
-		IssueID:      issueID,
+		IssueTitle:  m.issueTitle,
+		IssueID:     issueID,
 		ListContent: m.list.View(),
 		Description: description,
 		Width:       m.width,

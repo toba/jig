@@ -231,4 +231,3 @@ func TestImageFileName(t *testing.T) {
 		t.Errorf("ImageFileName() = %q, should contain original filename", name)
 	}
 }
-

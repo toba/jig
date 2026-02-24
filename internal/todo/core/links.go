@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/config"
+	"github.com/toba/jig/internal/todo/issue"
 )
 
 // IncomingLink represents a link from another issue to a target issue.
@@ -17,14 +17,14 @@ type IncomingLink struct {
 
 // BrokenLink represents a link to a non-existent issue.
 type BrokenLink struct {
-	IssueID   string `json:"issue_id"`
+	IssueID  string `json:"issue_id"`
 	LinkType string `json:"link_type"`
 	Target   string `json:"target"`
 }
 
 // SelfLink represents an issue linking to itself.
 type SelfLink struct {
-	IssueID   string `json:"issue_id"`
+	IssueID  string `json:"issue_id"`
 	LinkType string `json:"link_type"`
 }
 
@@ -62,7 +62,7 @@ func (c *Core) FindIncomingLinks(targetID string) []IncomingLink {
 		if b.Parent == targetID {
 			result = append(result, IncomingLink{
 				FromIssue: b,
-				LinkType: issue.LinkTypeParent,
+				LinkType:  issue.LinkTypeParent,
 			})
 		}
 		// Check blocking links
@@ -70,7 +70,7 @@ func (c *Core) FindIncomingLinks(targetID string) []IncomingLink {
 			if blocked == targetID {
 				result = append(result, IncomingLink{
 					FromIssue: b,
-					LinkType: issue.LinkTypeBlocking,
+					LinkType:  issue.LinkTypeBlocking,
 				})
 			}
 		}
@@ -79,7 +79,7 @@ func (c *Core) FindIncomingLinks(targetID string) []IncomingLink {
 			if blocker == targetID {
 				result = append(result, IncomingLink{
 					FromIssue: b,
-					LinkType: issue.LinkTypeBlockedBy,
+					LinkType:  issue.LinkTypeBlockedBy,
 				})
 			}
 		}
@@ -139,7 +139,7 @@ func (c *Core) findPathToTarget(current, target, linkType string, visited map[st
 	}
 
 	for _, t := range targets {
-		newPath := append(path, t)
+		newPath := append(slices.Clone(path), t)
 		if result := c.findPathToTarget(t, target, linkType, visited, newPath); result != nil {
 			return result
 		}
@@ -165,12 +165,12 @@ func (c *Core) CheckAllLinks() *LinkCheckResult {
 		if b.Parent != "" {
 			if b.Parent == b.ID {
 				result.SelfLinks = append(result.SelfLinks, SelfLink{
-					IssueID:   b.ID,
+					IssueID:  b.ID,
 					LinkType: issue.LinkTypeParent,
 				})
 			} else if _, ok := c.issues[b.Parent]; !ok {
 				result.BrokenLinks = append(result.BrokenLinks, BrokenLink{
-					IssueID:   b.ID,
+					IssueID:  b.ID,
 					LinkType: issue.LinkTypeParent,
 					Target:   b.Parent,
 				})
@@ -181,12 +181,12 @@ func (c *Core) CheckAllLinks() *LinkCheckResult {
 		for _, blocked := range b.Blocking {
 			if blocked == b.ID {
 				result.SelfLinks = append(result.SelfLinks, SelfLink{
-					IssueID:   b.ID,
+					IssueID:  b.ID,
 					LinkType: issue.LinkTypeBlocking,
 				})
 			} else if _, ok := c.issues[blocked]; !ok {
 				result.BrokenLinks = append(result.BrokenLinks, BrokenLink{
-					IssueID:   b.ID,
+					IssueID:  b.ID,
 					LinkType: issue.LinkTypeBlocking,
 					Target:   blocked,
 				})
@@ -197,12 +197,12 @@ func (c *Core) CheckAllLinks() *LinkCheckResult {
 		for _, blocker := range b.BlockedBy {
 			if blocker == b.ID {
 				result.SelfLinks = append(result.SelfLinks, SelfLink{
-					IssueID:   b.ID,
+					IssueID:  b.ID,
 					LinkType: issue.LinkTypeBlockedBy,
 				})
 			} else if _, ok := c.issues[blocker]; !ok {
 				result.BrokenLinks = append(result.BrokenLinks, BrokenLink{
-					IssueID:   b.ID,
+					IssueID:  b.ID,
 					LinkType: issue.LinkTypeBlockedBy,
 					Target:   blocker,
 				})
@@ -238,7 +238,7 @@ func (c *Core) findCycles(linkType string) []Cycle {
 				}
 			}
 			if cycleStart >= 0 {
-				cyclePath := append(path[cycleStart:], id)
+				cyclePath := append(slices.Clone(path[cycleStart:]), id)
 				// Create a canonical key to avoid duplicate cycles
 				key := canonicalCycleKey(cyclePath)
 				if !seenCycles[key] {

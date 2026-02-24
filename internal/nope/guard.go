@@ -68,7 +68,7 @@ func RunGuard(version string) error {
 // ReadHookInput reads the JSON payload from stdin that Claude Code sends
 // to PreToolUse hooks. Returns the tool name and the tool_input as a JSON
 // string (for pattern matching against rules).
-func ReadHookInput() (toolName string, input string, err error) {
+func ReadHookInput() (toolName, input string, err error) {
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return "", "", fmt.Errorf("reading stdin: %w", err)

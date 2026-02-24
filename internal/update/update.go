@@ -30,7 +30,7 @@ func Run(jigPath string) error {
 	var hits []found
 	for _, m := range migrations {
 		for _, c := range m.candidates {
-			data, err := os.ReadFile(c) //nolint:gosec // candidate paths are hardcoded
+			data, err := os.ReadFile(c)
 			if err != nil {
 				continue
 			}
@@ -77,7 +77,7 @@ func Run(jigPath string) error {
 	}
 
 	// Read existing .jig.yaml (may have been updated by upstream migration).
-	existing, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
+	existing, err := os.ReadFile(jigPath)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("reading %s: %w", jigPath, err)
 	}
@@ -133,7 +133,7 @@ func Run(jigPath string) error {
 // migrateUpstreamKey renames an existing "upstream:" key to "citations:" in .jig.yaml
 // using the yaml.v3 Node API to preserve formatting. Returns true if renamed.
 func migrateUpstreamKey(jigPath string) (bool, error) {
-	data, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
+	data, err := os.ReadFile(jigPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -164,17 +164,18 @@ func migrateUpstreamKey(jigPath string) (bool, error) {
 	}
 
 	for i := 0; i < len(mapping.Content)-1; i += 2 {
-		if mapping.Content[i].Value == "upstream" {
-			mapping.Content[i].Value = "citations"
-			out, err := yaml.Marshal(&root)
-			if err != nil {
-				return false, fmt.Errorf("marshaling %s: %w", jigPath, err)
-			}
-			if err := os.WriteFile(jigPath, out, 0o644); err != nil {
-				return false, fmt.Errorf("writing %s: %w", jigPath, err)
-			}
-			return true, nil
+		if mapping.Content[i].Value != "upstream" {
+			continue
 		}
+		mapping.Content[i].Value = "citations"
+		out, err := yaml.Marshal(&root)
+		if err != nil {
+			return false, fmt.Errorf("marshaling %s: %w", jigPath, err)
+		}
+		if err := os.WriteFile(jigPath, out, 0o644); err != nil {
+			return false, fmt.Errorf("writing %s: %w", jigPath, err)
+		}
+		return true, nil
 	}
 	return false, nil
 }

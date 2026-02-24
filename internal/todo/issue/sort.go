@@ -179,8 +179,8 @@ func SortByDueDate(issues []*Issue) {
 		if db == nil {
 			return -1
 		}
-		if !da.Time.Equal(db.Time) {
-			return da.Time.Compare(db.Time) // soonest first
+		if !da.Equal(db.Time) {
+			return da.Compare(db.Time) // soonest first
 		}
 		return cmp.Compare(strings.ToLower(a.Title), strings.ToLower(b.Title))
 	})

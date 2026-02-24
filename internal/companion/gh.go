@@ -3,6 +3,7 @@ package companion
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -25,10 +26,11 @@ func DetectRepoInfo(repo, fields string) (*RepoInfo, error) {
 	if repo != "" {
 		args = append(args, repo)
 	}
-	cmd := exec.Command("gh", args...)
+	cmd := exec.Command("gh", args...) //nolint:gosec // gh CLI wrapper
 	out, err := cmd.Output()
 	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+		ee := &exec.ExitError{}
+		if errors.As(err, &ee) {
 			return nil, fmt.Errorf("gh repo view: %s", strings.TrimSpace(string(ee.Stderr)))
 		}
 		return nil, err
@@ -42,10 +44,11 @@ func DetectRepoInfo(repo, fields string) (*RepoInfo, error) {
 
 // DetectLatestTag returns the tag name of the most recent release for repo.
 func DetectLatestTag(repo string) (string, error) {
-	cmd := exec.Command("gh", "release", "list", "--repo", repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName")
+	cmd := exec.Command("gh", "release", "list", "--repo", repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName") //nolint:gosec // gh CLI wrapper
 	out, err := cmd.Output()
 	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+		ee := &exec.ExitError{}
+		if errors.As(err, &ee) {
 			return "", fmt.Errorf("gh release list: %s", strings.TrimSpace(string(ee.Stderr)))
 		}
 		return "", err

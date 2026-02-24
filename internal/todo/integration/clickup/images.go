@@ -25,7 +25,7 @@ func (c *Client) UploadAttachment(ctx context.Context, taskID, filePath string) 
 	if err != nil {
 		return nil, fmt.Errorf("opening file: %w", err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only file
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)

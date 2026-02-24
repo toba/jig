@@ -35,7 +35,7 @@ type TransientError struct {
 }
 
 func (e *TransientError) Error() string {
-	return fmt.Sprintf("transient error: %s", e.Message)
+	return "transient error: " + e.Message
 }
 
 // RetryConfig holds retry settings for rate limit handling.
@@ -93,7 +93,7 @@ func (c *Client) GetList(ctx context.Context, listID string) (*List, error) {
 	}
 
 	url := fmt.Sprintf("%s/list/%s", baseURL, listID)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -116,7 +116,7 @@ func (c *Client) GetList(ctx context.Context, listID string) (*List, error) {
 // GetTask fetches a task by ID.
 func (c *Client) GetTask(ctx context.Context, taskID string) (*TaskInfo, error) {
 	url := fmt.Sprintf("%s/task/%s", baseURL, taskID)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -188,8 +188,8 @@ func (c *Client) GetAuthorizedUser(ctx context.Context) (*AuthorizedUser, error)
 		return c.authorizedUser, nil
 	}
 
-	url := fmt.Sprintf("%s/user", baseURL)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	url := baseURL + "/user"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -206,7 +206,7 @@ func (c *Client) GetAuthorizedUser(ctx context.Context) (*AuthorizedUser, error)
 // GetAccessibleCustomFields fetches available custom fields for a list.
 func (c *Client) GetAccessibleCustomFields(ctx context.Context, listID string) ([]FieldInfo, error) {
 	url := fmt.Sprintf("%s/list/%s/field", baseURL, listID)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -223,8 +223,8 @@ func (c *Client) GetAccessibleCustomFields(ctx context.Context, listID string) (
 // Returns custom items with their IDs, names, and descriptions.
 func (c *Client) GetCustomItems(ctx context.Context) ([]CustomItem, error) {
 	// First get all teams to iterate through workspaces
-	teamsURL := fmt.Sprintf("%s/team", baseURL)
-	teamsReq, err := http.NewRequestWithContext(ctx, "GET", teamsURL, nil)
+	teamsURL := baseURL + "/team"
+	teamsReq, err := http.NewRequestWithContext(ctx, http.MethodGet, teamsURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating teams request: %w", err)
 	}
@@ -239,7 +239,7 @@ func (c *Client) GetCustomItems(ctx context.Context) ([]CustomItem, error) {
 	var items []CustomItem
 	for _, team := range teamsResp.Teams {
 		url := fmt.Sprintf("%s/team/%s/custom_item", baseURL, team.ID)
-		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
@@ -267,7 +267,7 @@ func (c *Client) GetCustomItems(ctx context.Context) ([]CustomItem, error) {
 func (c *Client) AddTagToTask(ctx context.Context, taskID, tagName string) error {
 	url := fmt.Sprintf("%s/task/%s/tag/%s", baseURL, taskID, tagName)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
@@ -283,7 +283,7 @@ func (c *Client) AddTagToTask(ctx context.Context, taskID, tagName string) error
 func (c *Client) RemoveTagFromTask(ctx context.Context, taskID, tagName string) error {
 	url := fmt.Sprintf("%s/task/%s/tag/%s", baseURL, taskID, tagName)
 
-	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
@@ -298,7 +298,7 @@ func (c *Client) RemoveTagFromTask(ctx context.Context, taskID, tagName string) 
 // GetSpaceTags fetches all tags for a space.
 func (c *Client) GetSpaceTags(ctx context.Context, spaceID string) ([]Tag, error) {
 	url := fmt.Sprintf("%s/space/%s/tag", baseURL, spaceID)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -394,7 +394,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 		HandleRateLimit: func(resp *http.Response, body []byte) error {
 			var errResp errorResponse
 			if err := json.Unmarshal(body, &errResp); err == nil && errResp.Err != "" {
-				if resp.StatusCode == 429 || errResp.ECODE == "APP_002" {
+				if resp.StatusCode == http.StatusTooManyRequests || errResp.ECODE == "APP_002" {
 					return &RateLimitError{Message: errResp.Err, Code: errResp.ECODE}
 				}
 			}

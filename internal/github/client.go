@@ -2,6 +2,7 @@ package github
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -97,7 +98,7 @@ func (c *GHClient) GetHeadSHA(repo, branch string) (string, error) {
 }
 
 func (c *GHClient) GetRepo(repo string) (*RepoInfo, error) {
-	out, err := gh("api", fmt.Sprintf("repos/%s", repo))
+	out, err := gh("api", "repos/"+repo)
 	if err != nil {
 		return nil, err
 	}
@@ -137,10 +138,11 @@ func (c *GHClient) GetLicense(repo string) (*LicenseInfo, error) {
 var ghExec = ghDefault
 
 func ghDefault(args ...string) ([]byte, error) {
-	cmd := exec.Command("gh", args...)
+	cmd := exec.Command("gh", args...) //nolint:gosec // gh CLI wrapper
 	out, err := cmd.Output()
 	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+		ee := &exec.ExitError{}
+		if errors.As(err, &ee) {
 			return nil, fmt.Errorf("gh %s: %s", strings.Join(args, " "), string(ee.Stderr))
 		}
 		return nil, fmt.Errorf("gh %s: %w", strings.Join(args, " "), err)

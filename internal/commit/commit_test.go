@@ -490,7 +490,7 @@ func TestGitignoreCandidates(t *testing.T) {
 
 // setupGitRepoWithRemote creates a local repo with a bare remote.
 // Returns the working dir and a run helper.
-func setupGitRepoWithRemote(t *testing.T) (dir string, run func(args ...string)) {
+func setupGitRepoWithRemote(t *testing.T) (dir string, run func(args ...string)) { //nolint:unparam // dir used internally; callers only need run
 	t.Helper()
 
 	bare := t.TempDir()

@@ -67,7 +67,7 @@ type statusPickerModel struct {
 	height        int
 }
 
-func newStatusPickerModel(issueIDs []string, issueTitle, currentStatus string, cfg *config.Config, width, height int) statusPickerModel {
+func newStatusPickerModel(issueIDs []string, issueTitle, currentStatus string, _ *config.Config, width, height int) statusPickerModel {
 	// Get all statuses (hardcoded in config package)
 	statuses := config.DefaultStatuses
 

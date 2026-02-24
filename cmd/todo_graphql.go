@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,9 +14,9 @@ import (
 	"github.com/99designs/gqlgen/graphql/executor"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/pretty"
+	"github.com/toba/jig/internal/todo/graph"
 	"github.com/vektah/gqlparser/v2/formatter"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"github.com/toba/jig/internal/todo/graph"
 )
 
 var (
@@ -53,7 +54,7 @@ Examples:
 			return nil
 		}
 		if len(args) > 1 {
-			return fmt.Errorf("accepts at most 1 argument (the GraphQL query)")
+			return errors.New("accepts at most 1 argument (the GraphQL query)")
 		}
 		return nil
 	},
@@ -71,7 +72,7 @@ Examples:
 				return err
 			}
 			if stdinQuery == "" {
-				return fmt.Errorf("no query provided (pass as argument or pipe to stdin)")
+				return errors.New("no query provided (pass as argument or pipe to stdin)")
 			}
 			query = stdinQuery
 		}

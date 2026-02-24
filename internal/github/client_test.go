@@ -2,7 +2,7 @@ package github
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 )
@@ -165,7 +165,7 @@ func TestGetCommits_Success(t *testing.T) {
 
 func TestGetCommits_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("gh api: Not Found")
+		return nil, errors.New("gh api: Not Found")
 	})
 
 	c := NewClient()
@@ -217,7 +217,7 @@ func TestGetCommitsSince_Success(t *testing.T) {
 
 func TestGetCommitsSince_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("gh api error")
+		return nil, errors.New("gh api error")
 	})
 
 	c := NewClient()
@@ -293,7 +293,7 @@ func TestCompare_Success(t *testing.T) {
 
 func TestCompare_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	})
 
 	c := NewClient()
@@ -356,7 +356,7 @@ func TestGetCommitDetail_Success(t *testing.T) {
 
 func TestGetCommitDetail_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	})
 
 	c := NewClient()
@@ -395,7 +395,7 @@ func TestGetHeadSHA_Success(t *testing.T) {
 
 func TestGetHeadSHA_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	})
 
 	c := NewClient()
@@ -434,7 +434,7 @@ func TestGetRepo_Success(t *testing.T) {
 
 func TestGetRepo_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	})
 
 	c := NewClient()
@@ -495,7 +495,7 @@ func TestGetTree_Success(t *testing.T) {
 
 func TestGetTree_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	})
 
 	c := NewClient()
@@ -548,7 +548,7 @@ func TestGetLicense_Success(t *testing.T) {
 
 func TestGetLicense_Error(t *testing.T) {
 	mockGH(t, func(args ...string) ([]byte, error) {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	})
 
 	c := NewClient()

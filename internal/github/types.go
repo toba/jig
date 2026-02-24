@@ -4,18 +4,18 @@ import "time"
 
 // Commit represents a commit from the GitHub API.
 type Commit struct {
-	SHA     string       `json:"sha"`
-	Message string       `json:"-"` // Extracted from commit.message
-	Author  string       `json:"-"` // Extracted from author.login or commit.author.name
-	Date    time.Time    `json:"-"` // Extracted from commit.author.date
+	SHA       string     `json:"sha"`
+	Message   string     `json:"-"` // Extracted from commit.message
+	Author    string     `json:"-"` // Extracted from author.login or commit.author.name
+	Date      time.Time  `json:"-"` // Extracted from commit.author.date
 	RawCommit rawCommit  `json:"commit"`
 	RawAuthor *rawAuthor `json:"author"`
 	Files     []File     `json:"files,omitempty"`
 }
 
 type rawCommit struct {
-	Message   string    `json:"message"`
-	RawAuthor rawDate   `json:"author"`
+	Message   string  `json:"message"`
+	RawAuthor rawDate `json:"author"`
 }
 
 type rawDate struct {
@@ -40,11 +40,11 @@ func (c *Commit) Normalize() {
 
 // CompareResponse represents the response from the compare API endpoint.
 type CompareResponse struct {
-	Status      string   `json:"status"`
-	AheadBy     int      `json:"ahead_by"`
-	TotalCommits int    `json:"total_commits"`
-	Commits     []Commit `json:"commits"`
-	Files       []File   `json:"files"`
+	Status       string   `json:"status"`
+	AheadBy      int      `json:"ahead_by"`
+	TotalCommits int      `json:"total_commits"`
+	Commits      []Commit `json:"commits"`
+	Files        []File   `json:"files"`
 }
 
 // File represents a changed file from the GitHub API.

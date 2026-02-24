@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +15,7 @@ import (
 // If value is "-", reads from stdin.
 func resolveContent(value, file string) (string, error) {
 	if value != "" && file != "" {
-		return "", fmt.Errorf("cannot use both --body and --body-file")
+		return "", errors.New("cannot use both --body and --body-file")
 	}
 
 	if value == "-" {
@@ -56,7 +57,7 @@ func formatCycle(path []string) string {
 }
 
 // cmdError returns an appropriate error for JSON or text mode.
-func cmdError(jsonMode bool, code string, format string, args ...any) error {
+func cmdError(jsonMode bool, code, format string, args ...any) error {
 	if jsonMode {
 		return output.Error(code, fmt.Sprintf(format, args...))
 	}

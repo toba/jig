@@ -148,7 +148,6 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 	return result, nil
 }
 
-
 func generateReadme(tool, org, desc string) string {
 	return fmt.Sprintf(`# Homebrew Tap for %s
 
@@ -197,8 +196,8 @@ Report issues at [%s/%s](https://github.com/%s/%s/issues).
 }
 
 func createTapRepo(tap, tool string) error {
-	cmd := exec.Command("gh", "repo", "create", tap, "--public",
-		"--description", fmt.Sprintf("Homebrew tap for %s", tool))
+	cmd := exec.Command("gh", "repo", "create", tap, "--public", //nolint:gosec // gh CLI wrapper
+		"--description", "Homebrew tap for "+tool)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
 	}
@@ -210,10 +209,10 @@ func pushInitialContent(tap, tool, formula, readme string) error {
 	if err != nil {
 		return fmt.Errorf("creating temp dir: %w", err)
 	}
-	defer os.RemoveAll(tmp)
+	defer os.RemoveAll(tmp) //nolint:errcheck // best-effort cleanup
 
 	// Clone the empty repo.
-	cmd := exec.Command("gh", "repo", "clone", tap, tmp)
+	cmd := exec.Command("gh", "repo", "clone", tap, tmp) //nolint:gosec // gh CLI wrapper
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("cloning: %s", strings.TrimSpace(string(out)))
 	}
@@ -239,7 +238,7 @@ func pushInitialContent(tap, tool, formula, readme string) error {
 		{"git", "-C", tmp, "push"},
 	}
 	for _, args := range cmds {
-		c := exec.Command(args[0], args[1:]...)
+		c := exec.Command(args[0], args[1:]...) //nolint:gosec // gh CLI wrapper
 		if out, err := c.CombinedOutput(); err != nil {
 			return fmt.Errorf("%s: %s", strings.Join(args, " "), strings.TrimSpace(string(out)))
 		}

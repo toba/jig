@@ -34,14 +34,14 @@ func extFromCompanions(cfgPath string) string {
 // resolveExt determines the extension repo using (in order):
 //  1. explicit --ext flag
 //  2. companions.zed from .jig.yaml
-func resolveExt(flag, cfgPath string) (string, error) {
+func resolveExt(flag, cfgPath string) string {
 	if flag != "" {
-		return flag, nil
+		return flag
 	}
 	if ext := extFromCompanions(cfgPath); ext != "" {
-		return ext, nil
+		return ext
 	}
-	return "", nil
+	return ""
 }
 
 // extNameFromRepo extracts just the repo name from "owner/repo".

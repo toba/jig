@@ -7,6 +7,7 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -98,7 +99,7 @@ func (r *issueResolver) Parent(ctx context.Context, obj *issue.Issue) (*issue.Is
 	}
 	// Filter out broken links
 	parent, err := r.Core.Get(obj.Parent)
-	if err == core.ErrNotFound {
+	if errors.Is(err, core.ErrNotFound) {
 		return nil, nil
 	}
 	return parent, err
@@ -210,12 +211,12 @@ func (r *mutationResolver) UpdateIssue(ctx context.Context, id string, input mod
 
 	// Validate body and bodyMod are mutually exclusive
 	if input.Body != nil && input.BodyMod != nil {
-		return nil, fmt.Errorf("cannot specify both body and bodyMod")
+		return nil, errors.New("cannot specify both body and bodyMod")
 	}
 
 	// Validate tags and addTags/removeTags are mutually exclusive
 	if input.Tags != nil && (input.AddTags != nil || input.RemoveTags != nil) {
-		return nil, fmt.Errorf("cannot specify both tags and addTags/removeTags")
+		return nil, errors.New("cannot specify both tags and addTags/removeTags")
 	}
 
 	// Update fields if provided
@@ -355,9 +356,9 @@ func (r *mutationResolver) DeleteIssue(ctx context.Context, id string) (bool, er
 }
 
 // SetSyncData is the resolver for the setSyncData field.
-func (r *mutationResolver) SetSyncData(ctx context.Context, id string, name string, data map[string]any, ifMatch *string) (*issue.Issue, error) {
+func (r *mutationResolver) SetSyncData(ctx context.Context, id, name string, data map[string]any, ifMatch *string) (*issue.Issue, error) {
 	if name == "" {
-		return nil, fmt.Errorf("sync name cannot be empty")
+		return nil, errors.New("sync name cannot be empty")
 	}
 
 	b, err := r.Core.Get(id)
@@ -374,7 +375,7 @@ func (r *mutationResolver) SetSyncData(ctx context.Context, id string, name stri
 }
 
 // RemoveSyncData is the resolver for the removeSyncData field.
-func (r *mutationResolver) RemoveSyncData(ctx context.Context, id string, name string, ifMatch *string) (*issue.Issue, error) {
+func (r *mutationResolver) RemoveSyncData(ctx context.Context, id, name string, ifMatch *string) (*issue.Issue, error) {
 	b, err := r.Core.Get(id)
 	if err != nil {
 		return nil, err
@@ -391,7 +392,7 @@ func (r *mutationResolver) RemoveSyncData(ctx context.Context, id string, name s
 // Issue is the resolver for the issue field.
 func (r *queryResolver) Issue(ctx context.Context, id string) (*issue.Issue, error) {
 	b, err := r.Core.Get(id)
-	if err == core.ErrNotFound {
+	if errors.Is(err, core.ErrNotFound) {
 		return nil, nil
 	}
 	return b, err

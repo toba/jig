@@ -14,22 +14,22 @@ func TestFindIncomingLinks(t *testing.T) {
 	// A -> C (parent)
 	// D -> B (blocks)
 	issueA := &issue.Issue{
-		ID:     "aaa1",
-		Title:  "Issue A",
-		Status: "todo",
+		ID:       "aaa1",
+		Title:    "Issue A",
+		Status:   "todo",
 		Blocking: []string{"bbb2"},
-		Parent: "ccc3",
+		Parent:   "ccc3",
 	}
 	issueB := &issue.Issue{ID: "bbb2", Title: "Issue B", Status: "todo"}
 	issueC := &issue.Issue{ID: "ccc3", Title: "Issue C", Status: "todo"}
 	issueD := &issue.Issue{
-		ID:     "ddd4",
-		Title:  "Issue D",
-		Status: "todo",
+		ID:       "ddd4",
+		Title:    "Issue D",
+		Status:   "todo",
 		Blocking: []string{"bbb2"},
 	}
 
-	createTestIssues(t, core,issueA, issueB, issueC, issueD)
+	createTestIssues(t, core, issueA, issueB, issueC, issueD)
 
 	t.Run("multiple incoming blocks", func(t *testing.T) {
 		links := core.FindIncomingLinks("bbb2")
@@ -80,15 +80,15 @@ func TestDetectCycle(t *testing.T) {
 
 	// Create a chain: A blocks B, B blocks C
 	issueA := &issue.Issue{
-		ID:     "aaa1",
-		Title:  "Issue A",
-		Status: "todo",
+		ID:       "aaa1",
+		Title:    "Issue A",
+		Status:   "todo",
 		Blocking: []string{"bbb2"},
 	}
 	issueB := &issue.Issue{
-		ID:     "bbb2",
-		Title:  "Issue B",
-		Status: "todo",
+		ID:       "bbb2",
+		Title:    "Issue B",
+		Status:   "todo",
 		Blocking: []string{"ccc3"},
 	}
 	issueC := &issue.Issue{
@@ -97,7 +97,7 @@ func TestDetectCycle(t *testing.T) {
 		Status: "todo",
 	}
 
-	createTestIssues(t, core,issueA, issueB, issueC)
+	createTestIssues(t, core, issueA, issueB, issueC)
 
 	t.Run("would create cycle", func(t *testing.T) {
 		// Adding C blocks A would create: A -> B -> C -> A
@@ -161,20 +161,20 @@ func TestCheckAllLinks(t *testing.T) {
 	// - Self-reference in blocks
 	// - Cycle (A -> B -> A via blocks)
 	issueA := &issue.Issue{
-		ID:     "aaa1",
-		Title:  "Issue A",
-		Status: "todo",
+		ID:       "aaa1",
+		Title:    "Issue A",
+		Status:   "todo",
 		Blocking: []string{"bbb2", "aaa1"}, // aaa1 is self-reference
-		Parent: "nonexistent",
+		Parent:   "nonexistent",
 	}
 	issueB := &issue.Issue{
-		ID:     "bbb2",
-		Title:  "Issue B",
-		Status: "todo",
+		ID:       "bbb2",
+		Title:    "Issue B",
+		Status:   "todo",
 		Blocking: []string{"aaa1"}, // creates cycle
 	}
 
-	createTestIssues(t, core,issueA, issueB)
+	createTestIssues(t, core, issueA, issueB)
 
 	result := core.CheckAllLinks()
 
@@ -235,9 +235,9 @@ func TestCheckAllLinksClean(t *testing.T) {
 
 	// Create clean issues with no problems
 	issueA := &issue.Issue{
-		ID:     "aaa1",
-		Title:  "Issue A",
-		Status: "todo",
+		ID:       "aaa1",
+		Title:    "Issue A",
+		Status:   "todo",
 		Blocking: []string{"bbb2"},
 	}
 	issueB := &issue.Issue{
@@ -246,7 +246,7 @@ func TestCheckAllLinksClean(t *testing.T) {
 		Status: "todo",
 	}
 
-	createTestIssues(t, core,issueA, issueB)
+	createTestIssues(t, core, issueA, issueB)
 
 	result := core.CheckAllLinks()
 
@@ -261,16 +261,16 @@ func TestRemoveLinksTo(t *testing.T) {
 
 	// Create issues where multiple issues link to one target
 	issueA := &issue.Issue{
-		ID:     "aaa1",
-		Title:  "Issue A",
-		Status: "todo",
+		ID:       "aaa1",
+		Title:    "Issue A",
+		Status:   "todo",
 		Blocking: []string{"target"},
-		Parent: "target",
+		Parent:   "target",
 	}
 	issueB := &issue.Issue{
-		ID:     "bbb2",
-		Title:  "Issue B",
-		Status: "todo",
+		ID:       "bbb2",
+		Title:    "Issue B",
+		Status:   "todo",
 		Blocking: []string{"target"},
 	}
 	target := &issue.Issue{
@@ -279,7 +279,7 @@ func TestRemoveLinksTo(t *testing.T) {
 		Status: "todo",
 	}
 
-	createTestIssues(t, core,issueA, issueB, target)
+	createTestIssues(t, core, issueA, issueB, target)
 
 	// Remove all links to target
 	removed, err := core.RemoveLinksTo("target")
@@ -308,11 +308,11 @@ func TestFixBrokenLinks(t *testing.T) {
 
 	// Create issue with broken link and self-reference
 	issueA := &issue.Issue{
-		ID:     "aaa1",
-		Title:  "Issue A",
-		Status: "todo",
+		ID:       "aaa1",
+		Title:    "Issue A",
+		Status:   "todo",
 		Blocking: []string{"bbb2", "aaa1"}, // bbb2 is valid, aaa1 is self-reference
-		Parent: "nonexistent",             // broken
+		Parent:   "nonexistent",            // broken
 	}
 	issueB := &issue.Issue{
 		ID:     "bbb2",
@@ -320,7 +320,7 @@ func TestFixBrokenLinks(t *testing.T) {
 		Status: "todo",
 	}
 
-	createTestIssues(t, core,issueA, issueB)
+	createTestIssues(t, core, issueA, issueB)
 
 	// Fix broken links
 	fixed, err := core.FixBrokenLinks()

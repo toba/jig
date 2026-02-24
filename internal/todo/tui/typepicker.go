@@ -21,8 +21,8 @@ type closeTypePickerMsg struct{}
 
 // openTypePickerMsg requests opening the type picker for issue(s)
 type openTypePickerMsg struct {
-	issueIDs     []string // IDs of issues to update
-	issueTitle   string   // Display title (single title or "N issues")
+	issueIDs    []string // IDs of issues to update
+	issueTitle  string   // Display title (single title or "N issues")
 	currentType string   // Only meaningful for single issue
 }
 
@@ -59,14 +59,14 @@ func (d typeItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 // typePickerModel is the model for the type picker view
 type typePickerModel struct {
 	list        list.Model
-	issueIDs     []string
-	issueTitle   string
+	issueIDs    []string
+	issueTitle  string
 	currentType string
 	width       int
 	height      int
 }
 
-func newTypePickerModel(issueIDs []string, issueTitle, currentType string, cfg *config.Config, width, height int) typePickerModel {
+func newTypePickerModel(issueIDs []string, issueTitle, currentType string, _ *config.Config, width, height int) typePickerModel {
 	// Get all types (hardcoded in config package)
 	types := config.DefaultTypes
 
@@ -111,8 +111,8 @@ func newTypePickerModel(issueIDs []string, issueTitle, currentType string, cfg *
 
 	return typePickerModel{
 		list:        l,
-		issueIDs:     issueIDs,
-		issueTitle:   issueTitle,
+		issueIDs:    issueIDs,
+		issueTitle:  issueTitle,
 		currentType: currentType,
 		width:       width,
 		height:      height,
@@ -173,8 +173,8 @@ func (m typePickerModel) View() string {
 
 	return renderPickerModal(pickerModalConfig{
 		Title:       "Select Type",
-		IssueTitle:   m.issueTitle,
-		IssueID:      issueID,
+		IssueTitle:  m.issueTitle,
+		IssueID:     issueID,
 		ListContent: m.list.View(),
 		Description: description,
 		Width:       m.width,

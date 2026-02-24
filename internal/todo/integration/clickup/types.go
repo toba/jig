@@ -54,8 +54,8 @@ type CreateTaskRequest struct {
 	MarkdownDescription string        `json:"markdown_description,omitempty"`
 	Status              string        `json:"status,omitempty"`
 	Priority            *int          `json:"priority,omitempty"`
-	Assignees           []int         `json:"assignees,omitempty"`      // User IDs to assign
-	Parent              *string       `json:"parent,omitempty"`         // Parent task ID for subtasks
+	Assignees           []int         `json:"assignees,omitempty"` // User IDs to assign
+	Parent              *string       `json:"parent,omitempty"`    // Parent task ID for subtasks
 	DueDate             *int64        `json:"due_date,omitempty"`
 	DueDatetime         *bool         `json:"due_date_time,omitempty"`
 	CustomFields        []CustomField `json:"custom_fields,omitempty"`

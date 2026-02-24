@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -14,12 +15,12 @@ type Config []Source
 
 // Source represents a single cited repository to monitor.
 type Source struct {
-	Repo            string    `yaml:"repo"`
-	Branch          string    `yaml:"branch"`
-	Notes           string    `yaml:"notes,omitempty"`
-	LastCheckedSHA  string    `yaml:"last_checked_sha,omitempty"`
-	LastCheckedDate string    `yaml:"last_checked_date,omitempty"`
-	Paths           PathDefs  `yaml:"paths"`
+	Repo            string   `yaml:"repo"`
+	Branch          string   `yaml:"branch"`
+	Notes           string   `yaml:"notes,omitempty"`
+	LastCheckedSHA  string   `yaml:"last_checked_sha,omitempty"`
+	LastCheckedDate string   `yaml:"last_checked_date,omitempty"`
+	Paths           PathDefs `yaml:"paths"`
 }
 
 // PathDefs defines glob patterns grouped by relevance level.
@@ -89,7 +90,7 @@ func Save(doc *Document, cfg *Config) error {
 
 	// Find and replace the citations value node in the document tree.
 	if !ReplaceKey(doc.Root, "citations", &newCitations) {
-		return fmt.Errorf("could not find 'citations' key in document to update")
+		return errors.New("could not find 'citations' key in document to update")
 	}
 
 	data, err := marshalNode(doc.Root)
@@ -180,7 +181,7 @@ func ReplaceKey(root *yaml.Node, key string, value *yaml.Node) bool {
 func AppendSource(doc *Document, src Source) error {
 	root := mappingNode(doc.Root)
 	if root == nil {
-		return fmt.Errorf("expected mapping node at document root")
+		return errors.New("expected mapping node at document root")
 	}
 
 	citationsNode := FindKey(doc.Root, "citations")

@@ -57,55 +57,55 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 2. extension repo exists on GitHub
 	g.Go(func() error {
-		cmd := exec.Command("gh", "repo", "view", opts.Ext)
+		cmd := exec.Command("gh", "repo", "view", opts.Ext) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
 			setResult(0, fmt.Sprintf("FAIL: extension repo %s not found on GitHub: %s", opts.Ext, strings.TrimSpace(string(out))), false)
 		} else {
-			setResult(0, fmt.Sprintf("OK:   extension repo exists: %s", opts.Ext), true)
+			setResult(0, "OK:   extension repo exists: "+opts.Ext, true)
 		}
 		return nil
 	})
 
 	// 3. extension.toml exists in extension repo
 	g.Go(func() error {
-		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/extension.toml", opts.Ext))
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/extension.toml", opts.Ext)) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
 			setResult(1, fmt.Sprintf("FAIL: extension.toml not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
 		} else {
-			setResult(1, fmt.Sprintf("OK:   extension.toml exists in %s", opts.Ext), true)
+			setResult(1, "OK:   extension.toml exists in "+opts.Ext, true)
 		}
 		return nil
 	})
 
 	// 4. Cargo.toml exists in extension repo
 	g.Go(func() error {
-		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/Cargo.toml", opts.Ext))
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/Cargo.toml", opts.Ext)) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
 			setResult(2, fmt.Sprintf("FAIL: Cargo.toml not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
 		} else {
-			setResult(2, fmt.Sprintf("OK:   Cargo.toml exists in %s", opts.Ext), true)
+			setResult(2, "OK:   Cargo.toml exists in "+opts.Ext, true)
 		}
 		return nil
 	})
 
 	// 5. bump-version.yml workflow exists in extension repo
 	g.Go(func() error {
-		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/.github/workflows/bump-version.yml", opts.Ext))
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/.github/workflows/bump-version.yml", opts.Ext)) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
 			setResult(3, fmt.Sprintf("FAIL: bump-version.yml workflow not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
 		} else {
-			setResult(3, fmt.Sprintf("OK:   bump-version.yml workflow exists in %s", opts.Ext), true)
+			setResult(3, "OK:   bump-version.yml workflow exists in "+opts.Ext, true)
 		}
 		return nil
 	})
 
 	// 6. scripts/bump-version.sh exists in extension repo
 	g.Go(func() error {
-		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/scripts/bump-version.sh", opts.Ext))
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/scripts/bump-version.sh", opts.Ext)) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
 			setResult(4, fmt.Sprintf("FAIL: scripts/bump-version.sh not found in %s: %s", opts.Ext, strings.TrimSpace(string(out))), false)
 		} else {
-			setResult(4, fmt.Sprintf("OK:   scripts/bump-version.sh exists in %s", opts.Ext), true)
+			setResult(4, "OK:   scripts/bump-version.sh exists in "+opts.Ext, true)
 		}
 		return nil
 	})
@@ -122,7 +122,7 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 7. source repo has releases
 	tag := ""
-	cmd := exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName")
+	cmd := exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName") //nolint:gosec // gh CLI wrapper
 	if out, err := cmd.Output(); err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL: no releases found for %s\n", opts.Repo)
 		ok = false
@@ -138,7 +138,7 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 8. extension repo has a matching tag
 	if tag != "" {
-		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/git/ref/tags/%s", opts.Ext, tag))
+		cmd := exec.Command("gh", "api", fmt.Sprintf("repos/%s/git/ref/tags/%s", opts.Ext, tag)) //nolint:gosec // gh CLI wrapper
 		if _, err := cmd.Output(); err != nil {
 			fmt.Fprintf(os.Stderr, "WARN: extension repo %s missing tag %s (may not have synced yet)\n", opts.Ext, tag)
 		} else {
@@ -206,7 +206,7 @@ func RunDoctor(opts DoctorOpts) int {
 // checkReleaseAssets verifies the latest release has platform-specific assets
 // that the extension's lib.rs will download.
 func checkReleaseAssets(repo, tag, tool string, ok *bool) {
-	cmd := exec.Command("gh", "release", "view", tag, "--repo", repo, "--json", "assets")
+	cmd := exec.Command("gh", "release", "view", tag, "--repo", repo, "--json", "assets") //nolint:gosec // gh CLI wrapper
 	out, err := cmd.Output()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL: could not fetch release %s assets\n", tag)

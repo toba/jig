@@ -182,7 +182,7 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	if !s.opts.NoRelationships && !s.opts.DryRun {
 		for _, b := range issues {
 			g.Go(func() error {
-				_ = s.syncRelationships(ctx, b)
+				s.syncRelationships(ctx, b)
 				return nil
 			})
 		}
@@ -330,7 +330,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	if urlMap, err := UploadImages(ctx, s.client, task.ID, b.Body); err == nil && len(urlMap) > 0 {
 		refs := syncutil.FindLocalImages(b.Body)
 		newDesc := syncutil.ReplaceImages(b.Body, refs, urlMap)
-		s.client.UpdateTask(ctx, task.ID, &UpdateTaskRequest{MarkdownDescription: &newDesc})
+		s.client.UpdateTask(ctx, task.ID, &UpdateTaskRequest{MarkdownDescription: &newDesc}) //nolint:errcheck // best-effort description update
 		b.Body = newDesc
 		_ = s.core.Update(b, nil)
 	}
@@ -684,10 +684,10 @@ func (s *Syncer) syncTags(ctx context.Context, taskID string, b *issue.Issue, cu
 }
 
 // syncRelationships syncs blocking relationships for an issue.
-func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) error {
+func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) {
 	taskID, ok := s.issueToTaskID[b.ID]
 	if !ok {
-		return nil // Issue not synced
+		return // Issue not synced
 	}
 
 	// Sync blocking relationships (dependencies)
@@ -705,10 +705,7 @@ func (s *Syncer) syncRelationships(ctx context.Context, b *issue.Issue) error {
 			_ = err
 		}
 	}
-
-	return nil
 }
-
 
 // FilterIssuesForSync filters issues based on sync filter configuration.
 func FilterIssuesForSync(issues []*issue.Issue, filter *SyncFilter) []*issue.Issue {
@@ -752,4 +749,3 @@ func clickUpDueToMillis(s *string) *int64 {
 	}
 	return &millis
 }
-

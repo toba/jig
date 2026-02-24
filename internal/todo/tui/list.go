@@ -9,10 +9,10 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/graph/model"
+	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/ui"
 )
 
@@ -41,7 +41,7 @@ func substringFilter(term string, targets []string) []list.Rank {
 // treeAwareFilter returns a filter function that preserves tree hierarchy.
 // When a child matches the search term, its ancestor chain is included in the
 // results (with nil MatchedIndexes) so tree prefixes remain visually correct.
-func treeAwareFilter(flatItems *[]ui.FlatItem, deepSearch *bool) func(string, []string) []list.Rank {
+func treeAwareFilter(flatItems *[]ui.FlatItem, _ *bool) func(string, []string) []list.Rank {
 	return func(term string, targets []string) []list.Rank {
 		// Start with normal substring matching
 		ranks := substringFilter(term, targets)
@@ -102,7 +102,7 @@ func treeAwareFilter(flatItems *[]ui.FlatItem, deepSearch *bool) func(string, []
 
 // issueItem wraps an issue to implement list.Item, with tree context
 type issueItem struct {
-	issue       *issue.Issue
+	issue      *issue.Issue
 	cfg        *config.Config
 	treePrefix string // tree prefix for rendering (e.g., "├─" or "  └─")
 	matched    bool   // true if issue matched filter (vs. ancestor shown for context)
@@ -120,16 +120,12 @@ func (i issueItem) FilterValue() string {
 
 // itemDelegate handles rendering of list items
 type itemDelegate struct {
-	cfg           *config.Config
-	hasTags       bool
-	width         int
-	cols          ui.ResponsiveColumns // cached responsive columns
-	idColWidth    int                  // ID column width (accounts for tree prefix)
+	cfg            *config.Config
+	hasTags        bool
+	width          int
+	cols           ui.ResponsiveColumns // cached responsive columns
+	idColWidth     int                  // ID column width (accounts for tree prefix)
 	selectedIssues *map[string]bool     // pointer to marked issues for multi-select
-}
-
-func newItemDelegate(cfg *config.Config) itemDelegate {
-	return itemDelegate{cfg: cfg, hasTags: false, width: 0}
 }
 
 func (d itemDelegate) Height() int                             { return 1 }
@@ -197,7 +193,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		},
 	)
 
-	fmt.Fprint(w, str)
+	fmt.Fprint(w, str) //nolint:errcheck // terminal output
 }
 
 // listModel is the model for the issue list view
@@ -384,7 +380,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		m.hasTags = false
 		for i, flatItem := range msg.items {
 			items[i] = issueItem{
-				issue:       flatItem.Issue,
+				issue:      flatItem.Issue,
 				cfg:        m.config,
 				treePrefix: flatItem.TreePrefix,
 				matched:    flatItem.Matched,
@@ -464,9 +460,9 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openParentPickerMsg{
-							issueIDs:       []string{item.issue.ID},
-							issueTitle:     item.issue.Title,
-							issueTypes:     []string{item.issue.Type},
+							issueIDs:      []string{item.issue.ID},
+							issueTitle:    item.issue.Title,
+							issueTypes:    []string{item.issue.Type},
 							currentParent: item.issue.Parent,
 						}
 					}
@@ -488,8 +484,8 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openStatusPickerMsg{
-							issueIDs:       []string{item.issue.ID},
-							issueTitle:     item.issue.Title,
+							issueIDs:      []string{item.issue.ID},
+							issueTitle:    item.issue.Title,
 							currentStatus: item.issue.Status,
 						}
 					}
@@ -511,8 +507,8 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openTypePickerMsg{
-							issueIDs:     []string{item.issue.ID},
-							issueTitle:   item.issue.Title,
+							issueIDs:    []string{item.issue.ID},
+							issueTitle:  item.issue.Title,
 							currentType: item.issue.Type,
 						}
 					}
@@ -534,8 +530,8 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openPriorityPickerMsg{
-							issueIDs:         []string{item.issue.ID},
-							issueTitle:       item.issue.Title,
+							issueIDs:        []string{item.issue.ID},
+							issueTitle:      item.issue.Title,
 							currentPriority: item.issue.Priority,
 						}
 					}
@@ -545,8 +541,8 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				if item, ok := m.list.SelectedItem().(issueItem); ok {
 					return m, func() tea.Msg {
 						return openBlockingPickerMsg{
-							issueID:          item.issue.ID,
-							issueTitle:       item.issue.Title,
+							issueID:         item.issue.ID,
+							issueTitle:      item.issue.Title,
 							currentBlocking: item.issue.Blocking,
 						}
 					}
@@ -619,11 +615,11 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 // updateDelegate updates the list delegate with current responsive columns
 func (m *listModel) updateDelegate() {
 	delegate := itemDelegate{
-		cfg:           m.config,
-		hasTags:       m.hasTags,
-		width:         m.width,
-		cols:          m.cols,
-		idColWidth:    m.idColWidth,
+		cfg:            m.config,
+		hasTags:        m.hasTags,
+		width:          m.width,
+		cols:           m.cols,
+		idColWidth:     m.idColWidth,
 		selectedIssues: &m.selectedIssues,
 	}
 	m.list.SetDelegate(delegate)
@@ -719,4 +715,3 @@ func (m listModel) View() string {
 
 	return content + "\n" + footer
 }
-

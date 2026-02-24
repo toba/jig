@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"cmp"
 	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"cmp"
 	"slices"
 	"strings"
 	"text/template"
@@ -36,13 +36,13 @@ type roadmapData struct {
 }
 
 type unscheduledGroup struct {
-	Epics []epicGroup   `json:"epics,omitempty"`
+	Epics []epicGroup    `json:"epics,omitempty"`
 	Other []*issue.Issue `json:"other,omitempty"`
 }
 
 type milestoneGroup struct {
 	Milestone *issue.Issue   `json:"milestone"`
-	Epics     []epicGroup   `json:"epics,omitempty"`
+	Epics     []epicGroup    `json:"epics,omitempty"`
 	Other     []*issue.Issue `json:"other,omitempty"`
 }
 

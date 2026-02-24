@@ -2,6 +2,7 @@ package github
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -24,9 +25,9 @@ type SyncStateProvider interface {
 
 // extensionCache holds cached sync state for a single issue.
 type extensionCache struct {
-	issueNumber    int
+	issueNumber     int
 	milestoneNumber int
-	syncedAt       *time.Time
+	syncedAt        *time.Time
 }
 
 // pendingOp represents a pending write operation.
@@ -58,9 +59,9 @@ func NewSyncStateStore(store *core.Core, issues []*issue.Issue) *SyncStateStore 
 
 		if hasNumber || hasMilestone || syncedAt != nil {
 			p.cache[b.ID] = &extensionCache{
-				issueNumber:    issueNumber,
+				issueNumber:     issueNumber,
 				milestoneNumber: milestoneNumber,
-				syncedAt:       syncedAt,
+				syncedAt:        syncedAt,
 			}
 		}
 	}
@@ -182,10 +183,10 @@ func (p *SyncStateStore) Flush() error {
 
 			data := map[string]any{}
 			if c.issueNumber != 0 {
-				data[SyncKeyIssueNumber] = fmt.Sprintf("%d", c.issueNumber)
+				data[SyncKeyIssueNumber] = strconv.Itoa(c.issueNumber)
 			}
 			if c.milestoneNumber != 0 {
-				data[SyncKeyMilestoneNumber] = fmt.Sprintf("%d", c.milestoneNumber)
+				data[SyncKeyMilestoneNumber] = strconv.Itoa(c.milestoneNumber)
 			}
 			if c.syncedAt != nil {
 				data[SyncKeySyncedAt] = c.syncedAt.Format(time.RFC3339)

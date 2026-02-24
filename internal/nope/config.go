@@ -1,6 +1,7 @@
 package nope
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,7 +21,7 @@ const (
 	BuiltinChained        = "chained"
 	BuiltinRedirect       = "redirect"
 	BuiltinSubshell       = "subshell"
-	BuiltinCredentialRead = "credential-read"
+	BuiltinCredentialRead = "credential-read" //nolint:gosec // not a credential, just a category name
 	BuiltinNetwork        = "network"
 	BuiltinExfiltration   = "exfiltration"
 	BuiltinEnvHijack      = "env-hijack"
@@ -104,7 +105,7 @@ func FindConfigPath() (string, error) {
 		dir = parent
 	}
 
-	return "", fmt.Errorf("no config found (create .jig.yaml with a nope: section or run `jig nope init`)")
+	return "", errors.New("no config found (create .jig.yaml with a nope: section or run `jig nope init`)")
 }
 
 // FindAndLoadConfig locates and parses the nope section of .jig.yaml.

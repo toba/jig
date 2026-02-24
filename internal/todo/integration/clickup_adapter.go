@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -44,7 +45,7 @@ func (cu *clickUpIntegration) Name() string { return "clickup" }
 func (cu *clickUpIntegration) getToken() (string, error) {
 	token := os.Getenv("CLICKUP_TOKEN")
 	if token == "" {
-		return "", fmt.Errorf("CLICKUP_TOKEN environment variable not set")
+		return "", errors.New("CLICKUP_TOKEN environment variable not set")
 	}
 	return token, nil
 }
@@ -405,7 +406,7 @@ func (cu *clickUpIntegration) checkMappingKeys() []CheckResult {
 	return results
 }
 
-func validStatusList(cfg *config.Config) string {
+func validStatusList(_ *config.Config) string {
 	names := make([]string, len(config.DefaultStatuses))
 	for i, s := range config.DefaultStatuses {
 		names[i] = s.Name

@@ -14,7 +14,7 @@ import (
 // nested inside "todo:".
 // Returns (migrated bool, error).
 func migrateTodoConfig(jigPath string) (bool, error) {
-	data, err := os.ReadFile(jigPath) //nolint:gosec // path from caller
+	data, err := os.ReadFile(jigPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil

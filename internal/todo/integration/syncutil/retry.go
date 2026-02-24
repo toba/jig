@@ -67,7 +67,7 @@ func DoWithRetry(httpClient *http.Client, req *http.Request, cfg RetryConfig, ho
 			// Calculate delay with exponential backoff and jitter
 			delay := min(cfg.BaseRetryDelay*time.Duration(1<<(attempt-1)), cfg.MaxRetryDelay)
 			// Add jitter (0-25% of delay)
-			jitter := time.Duration(rand.Int64N(int64(delay / 4)))
+			jitter := time.Duration(rand.Int64N(int64(delay / 4))) //nolint:gosec // jitter doesn't need crypto-strength randomness
 			delay += jitter
 
 			select {
@@ -87,7 +87,7 @@ func DoWithRetry(httpClient *http.Client, req *http.Request, cfg RetryConfig, ho
 			hooks.SetAuth(req)
 		}
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) //nolint:gosec // URL is from trusted sync config
 		if err != nil {
 			// Check for transient network errors (stream errors, connection resets, etc.)
 			if IsTransientNetworkError(err) {
@@ -162,9 +162,9 @@ var transientBodyPatterns = []string{
 
 // HTTP status code boundaries for retry classification.
 const (
-	httpErrorThreshold    = 400
-	httpServerErrorMin    = 500
-	httpServerErrorMax    = 600
+	httpErrorThreshold = 400
+	httpServerErrorMin = 500
+	httpServerErrorMax = 600
 )
 
 // IsTransientNetworkError checks if an error is a transient network error that should be retried.

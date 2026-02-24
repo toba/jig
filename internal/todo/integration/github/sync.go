@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -30,7 +31,7 @@ type Syncer struct {
 	childrenOf      map[string][]string // parent ID -> child IDs (built during sync)
 
 	// Milestone tracking
-	issueToMilestoneNumber map[string]int // local issue ID -> GitHub milestone number
+	issueToMilestoneNumber map[string]int    // local issue ID -> GitHub milestone number
 	issueTypes             map[string]string // local issue ID -> issue type
 }
 
@@ -212,7 +213,7 @@ func (s *Syncer) syncMilestone(ctx context.Context, b *issue.Issue) SyncResult {
 
 	var dueOn string
 	if b.Due != nil {
-		dueOn = b.Due.Time.Format(time.RFC3339)
+		dueOn = b.Due.Format(time.RFC3339)
 	}
 
 	// Check if already linked
@@ -346,7 +347,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 	// Check if already linked (from sync store)
 	issueNumber := s.syncStore.GetIssueNumber(b.ID)
 	if issueNumber != nil && *issueNumber != 0 {
-		result.ExternalID = fmt.Sprintf("%d", *issueNumber)
+		result.ExternalID = strconv.Itoa(*issueNumber)
 
 		// Check if issue has changed since last sync
 		if !s.opts.Force && !s.needsSync(b) {
@@ -425,7 +426,7 @@ func (s *Syncer) syncIssue(ctx context.Context, b *issue.Issue) SyncResult {
 		return result
 	}
 
-	result.ExternalID = fmt.Sprintf("%d", ghIssue.Number)
+	result.ExternalID = strconv.Itoa(ghIssue.Number)
 	result.ExternalURL = ghIssue.HTMLURL
 	s.mu.Lock()
 	s.issueToGHNumber[b.ID] = ghIssue.Number
@@ -471,8 +472,7 @@ func (s *Syncer) buildIssueBody(b *issue.Issue) string {
 	if b.Body != "" {
 		parts = append(parts, b.Body)
 	}
-	parts = append(parts, syncutil.SyncFooter)
-	parts = append(parts, fmt.Sprintf(TodoCommentFormat, b.ID))
+	parts = append(parts, syncutil.SyncFooter, fmt.Sprintf(TodoCommentFormat, b.ID))
 	return strings.Join(parts, "\n\n")
 }
 

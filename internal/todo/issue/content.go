@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -10,11 +11,11 @@ import (
 // The new string can be empty to delete the matched text.
 func ReplaceOnce(text, old, new string) (string, error) {
 	if old == "" {
-		return "", fmt.Errorf("old text cannot be empty")
+		return "", errors.New("old text cannot be empty")
 	}
 	count := strings.Count(text, old)
 	if count == 0 {
-		return "", fmt.Errorf("text not found in body")
+		return "", errors.New("text not found in body")
 	}
 	if count > 1 {
 		return "", fmt.Errorf("text found %d times in body (must be unique)", count)

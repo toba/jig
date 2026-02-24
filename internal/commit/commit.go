@@ -1,6 +1,7 @@
 package commit
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -78,7 +79,7 @@ func LatestTag() (string, error) {
 // Otherwise returns the last 20 commits so agents always have style context.
 func RecentCommits(tag string) (string, error) {
 	if tag != "" {
-		cmd := exec.Command("git", "log", tag+"..HEAD", "--format=%h %s")
+		cmd := exec.Command("git", "log", tag+"..HEAD", "--format=%h %s") //nolint:gosec // args from internal config
 		out, err := cmd.Output()
 		if err != nil {
 			return "", fmt.Errorf("git log: %w", err)
@@ -101,7 +102,8 @@ func HasStagedChanges() (bool, error) {
 	if err == nil {
 		return false, nil // exit 0 = no differences
 	}
-	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+	exitErr := &exec.ExitError{}
+	if errors.As(err, &exitErr) {
 		return true, nil // exit 1 = differences exist
 	}
 	return false, fmt.Errorf("git diff --cached --quiet: %w", err)
@@ -110,7 +112,7 @@ func HasStagedChanges() (bool, error) {
 // Commit creates a git commit with the given message.
 // Stderr is captured and included in the error so hook failures are visible.
 func Commit(message string) error {
-	cmd := exec.Command("git", "commit", "-m", message)
+	cmd := exec.Command("git", "commit", "-m", message) //nolint:gosec // args from internal config
 	cmd.WaitDelay = 10 * time.Second
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -125,7 +127,7 @@ func Commit(message string) error {
 
 // Tag creates a git tag with the given name.
 func Tag(version string) error {
-	if err := exec.Command("git", "tag", version).Run(); err != nil {
+	if err := exec.Command("git", "tag", version).Run(); err != nil { //nolint:gosec // args from internal config
 		return fmt.Errorf("git tag %s: %w", version, err)
 	}
 	return nil
@@ -149,7 +151,7 @@ func Push() error {
 	}
 
 	for _, tag := range tags {
-		if err := exec.Command("git", "push", "origin", tag).Run(); err != nil {
+		if err := exec.Command("git", "push", "origin", tag).Run(); err != nil { //nolint:gosec // args from internal config
 			return fmt.Errorf("git push origin %s: %w", tag, err)
 		}
 	}

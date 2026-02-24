@@ -33,9 +33,9 @@ func migrateCommitCommand(_ string) (bool, error) {
 
 // tryMigrateCommitCommand checks a single command/script pair.
 func tryMigrateCommitCommand(commandPath, scriptPath string) (bool, error) {
-	data, err := os.ReadFile(commandPath) //nolint:gosec // hardcoded path
+	data, err := os.ReadFile(commandPath)
 	if err != nil {
-		return false, nil // doesn't exist, nothing to migrate
+		return false, nil //nolint:nilerr // file doesn't exist, nothing to migrate
 	}
 
 	content := string(data)

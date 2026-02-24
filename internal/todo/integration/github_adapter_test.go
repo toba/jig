@@ -11,12 +11,12 @@ import (
 
 // Constants duplicated from the github sub-package to avoid import cycle.
 const (
-	ghSyncName          = "github"
+	ghSyncName           = "github"
 	ghSyncKeyIssueNumber = "issue_number"
 	ghSyncKeySyncedAt    = "synced_at"
 )
 
-func mustDetectGitHub(t *testing.T, owner, repo string, c *core.Core) *gitHubIntegration {
+func mustDetectGitHub(t *testing.T, owner, repo string, c *core.Core) *gitHubIntegration { //nolint:unparam // owner varies in intent
 	t.Helper()
 	cfgMap := map[string]any{"repo": owner + "/" + repo}
 	integ, err := detectGitHub(cfgMap, c)

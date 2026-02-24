@@ -60,11 +60,11 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 3. tap repo exists on GitHub
 	g.Go(func() error {
-		cmd := exec.Command("gh", "repo", "view", opts.Tap)
+		cmd := exec.Command("gh", "repo", "view", opts.Tap) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
 			setResult(0, fmt.Sprintf("FAIL: tap repo %s not found on GitHub: %s", opts.Tap, strings.TrimSpace(string(out))), false)
 		} else {
-			setResult(0, fmt.Sprintf("OK:   tap repo exists: %s", opts.Tap), true)
+			setResult(0, "OK:   tap repo exists: "+opts.Tap, true)
 		}
 		return nil
 	})
@@ -72,7 +72,7 @@ func RunDoctor(opts DoctorOpts) int {
 	// 4. formula exists in tap
 	g.Go(func() error {
 		formulaPath := fmt.Sprintf("repos/%s/contents/Formula/%s.rb", opts.Tap, opts.Tool)
-		cmd := exec.Command("gh", "api", formulaPath)
+		cmd := exec.Command("gh", "api", formulaPath) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
 			setResult(1, fmt.Sprintf("FAIL: formula not found at Formula/%s.rb in %s: %s", opts.Tool, opts.Tap, strings.TrimSpace(string(out))), false)
 		} else {
@@ -83,18 +83,18 @@ func RunDoctor(opts DoctorOpts) int {
 
 	// 5. source repo has releases
 	g.Go(func() error {
-		cmd := exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName")
+		cmd := exec.Command("gh", "release", "list", "--repo", opts.Repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName") //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.Output(); err != nil {
-			setResult(2, fmt.Sprintf("FAIL: no releases found for %s", opts.Repo), false)
+			setResult(2, "FAIL: no releases found for "+opts.Repo, false)
 		} else {
 			t := strings.TrimSpace(string(out))
 			if t == "" {
-				setResult(2, fmt.Sprintf("FAIL: no releases found for %s", opts.Repo), false)
+				setResult(2, "FAIL: no releases found for "+opts.Repo, false)
 			} else {
 				mu.Lock()
 				tag = t
 				mu.Unlock()
-				setResult(2, fmt.Sprintf("OK:   latest release: %s", t), true)
+				setResult(2, "OK:   latest release: "+t, true)
 			}
 		}
 		return nil
@@ -113,7 +113,7 @@ func RunDoctor(opts DoctorOpts) int {
 	// 6. latest release has darwin arm64 asset (depends on tag from check 5)
 	expectedAsset := lang.AssetName(opts.Tool, tag)
 	if tag != "" {
-		cmd := exec.Command("gh", "release", "view", tag, "--repo", opts.Repo, "--json", "assets")
+		cmd := exec.Command("gh", "release", "view", tag, "--repo", opts.Repo, "--json", "assets") //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.Output(); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL: could not fetch release %s assets\n", tag)
 			ok = false

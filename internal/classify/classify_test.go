@@ -25,12 +25,12 @@ func TestClassify(t *testing.T) {
 	results := Classify(files, paths)
 
 	expected := map[string]Level{
-		"Sources/Tools/Project/Target.swift":  High,
-		"Package.swift":                       Medium,
-		"Tests/ToolTests/ProjectTests.swift":  Medium,
-		".github/workflows/ci.yml":            Low,
-		"README.md":                           Low,
-		"Makefile":                            Unclassified,
+		"Sources/Tools/Project/Target.swift": High,
+		"Package.swift":                      Medium,
+		"Tests/ToolTests/ProjectTests.swift": Medium,
+		".github/workflows/ci.yml":           Low,
+		"README.md":                          Low,
+		"Makefile":                           Unclassified,
 	}
 
 	for _, r := range results {

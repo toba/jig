@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -25,7 +26,7 @@ var syncUnlinkCmd = &cobra.Command{
 			return fmt.Errorf("detecting integration: %w", err)
 		}
 		if integ == nil {
-			return fmt.Errorf("no integration configured")
+			return errors.New("no integration configured")
 		}
 
 		result, err := integ.Unlink(ctx, issueID)

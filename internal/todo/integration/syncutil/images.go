@@ -2,6 +2,7 @@ package syncutil
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -88,13 +89,13 @@ func ContentHash(filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only file
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%x", h.Sum(nil))[:12], nil
+	return hex.EncodeToString(h.Sum(nil))[:12], nil
 }
 
 // ImageFileName returns a content-hashed filename for the image: {hash}_{basename}.

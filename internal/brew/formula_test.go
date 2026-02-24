@@ -148,4 +148,3 @@ func TestFormulaClassName(t *testing.T) {
 		}
 	}
 }
-

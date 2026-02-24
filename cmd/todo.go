@@ -38,7 +38,7 @@ func loadConfigWithFallback(cfgPath string) (*todoconfig.Config, error) {
 
 // initTodoCore loads config, resolves data dir, and creates the core.
 // Extracted from todo's rootCmd.PersistentPreRunE.
-func initTodoCore(cmd *cobra.Command) error {
+func initTodoCore(_ *cobra.Command) error {
 	var err error
 
 	todoCfg, err = loadConfigWithFallback(configPath())

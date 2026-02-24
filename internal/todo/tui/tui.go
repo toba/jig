@@ -7,13 +7,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/config"
+	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/graph/model"
 )
@@ -379,7 +380,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				AddBlocking:    msg.toAdd,
 				RemoveBlocking: msg.toRemove,
 			}
-			a.resolver.Mutation().UpdateIssue(context.Background(), msg.issueID, input)
+			a.resolver.Mutation().UpdateIssue(context.Background(), msg.issueID, input) //nolint:errcheck // best-effort timestamp update
 		}
 		// Return to previous view and refresh
 		a.state = a.previousState
@@ -433,8 +434,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.editingIssueModTime = info.ModTime()
 		}
 
-		args := append(editorArgs, fullPath)
-		c := exec.Command(editorCmd, args...)
+		args := append(slices.Clone(editorArgs), fullPath)
+		c := exec.Command(editorCmd, args...) //nolint:gosec // user-configured editor
 		return a, tea.ExecProcess(c, func(err error) tea.Msg {
 			return editorFinishedMsg{err: err}
 		})
@@ -491,9 +492,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Set status on current view
-		if a.state == viewList {
+		switch a.state {
+		case viewList:
 			a.list.statusMessage = statusMsg
-		} else if a.state == viewDetail {
+		case viewDetail:
 			a.detail.statusMessage = statusMsg
 		}
 
@@ -698,7 +700,7 @@ func Run(core *core.Core, cfg *config.Config) error {
 	if err := core.StartWatching(); err != nil {
 		return err
 	}
-	defer core.Unwatch()
+	defer core.Unwatch() //nolint:errcheck // cleanup
 
 	// Subscribe to issue events
 	eventCh, unsubscribe := core.Subscribe()

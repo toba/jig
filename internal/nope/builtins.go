@@ -148,7 +148,7 @@ func CheckExfiltration(input string) bool {
 	}
 	var segments []segment
 	var cur []Token
-	var curKind string = "first"
+	var curKind = "first"
 
 	for _, t := range tokens {
 		if t.Operator && (t.Value == "|" || t.Value == "&&" || t.Value == "||" || t.Value == ";") {
@@ -335,10 +335,10 @@ var dangerousEnvVars = map[string]bool{
 	"NODE_OPTIONS":  true,
 	"PYTHONPATH":    true,
 	"PYTHONSTARTUP": true,
-	"PERL5OPT":     true,
-	"PERL5LIB":     true,
-	"RUBYOPT":      true,
-	"RUBYLIB":      true,
+	"PERL5OPT":      true,
+	"PERL5LIB":      true,
+	"RUBYOPT":       true,
+	"RUBYLIB":       true,
 }
 
 // CheckEnvHijack returns true if the command sets a dangerous environment

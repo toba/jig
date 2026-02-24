@@ -1,13 +1,14 @@
 package tui
 
 import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toba/jig/internal/todo/config"
-	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/graph/model"
@@ -1337,14 +1338,10 @@ func TestAppCopyIssueIDMsg(t *testing.T) {
 	app.state = viewList
 
 	msg := copyIssueIDMsg{ids: []string{"abc-123"}}
-	updatedModel, _ := app.Update(msg)
-	updated := updatedModel.(*App)
+	app.Update(msg)
 
-	// Status message should be set (may fail on CI but structure is tested)
-	if updated.list.statusMessage == "" {
-		// Clipboard may not be available in test environment, that's OK
-		// The code path is still exercised
-	}
+	// Clipboard may not be available in test environment, that's OK.
+	// The code path is still exercised regardless of statusMessage value.
 }
 
 func TestAppCopyIssueIDMsgInDetail(t *testing.T) {
@@ -1702,7 +1699,7 @@ func TestListModelErrorView(t *testing.T) {
 	m := newListModel(resolver, cfg)
 	m.width = 80
 	m.height = 24
-	m.err = fmt.Errorf("test error")
+	m.err = errors.New("test error")
 
 	v := m.View()
 	if v == "" {
@@ -1712,10 +1709,6 @@ func TestListModelErrorView(t *testing.T) {
 
 // Test renderPickerCursor
 func TestRenderPickerCursor(t *testing.T) {
-	type indexer struct{ idx int }
-	fn := func() int { return 0 }
-	_ = fn
-
 	// Can't easily test this without a list.Model, but test the function exists
 	// and doesn't panic
 	mockM := &mockIndex{index: 2}
@@ -1908,7 +1901,7 @@ func TestAppResolverMutationViaUpdate(t *testing.T) {
 
 	// Verify we can use the resolver to create issues
 	mr := app.resolver.Mutation()
-	got, err := mr.CreateIssue(nil, model.CreateIssueInput{Title: "Via Resolver"})
+	got, err := mr.CreateIssue(context.Background(), model.CreateIssueInput{Title: "Via Resolver"})
 	if err != nil {
 		t.Fatalf("CreateIssue() error = %v", err)
 	}

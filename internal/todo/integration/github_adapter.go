@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -42,7 +43,7 @@ func (gh *gitHubIntegration) Name() string { return "github" }
 func (gh *gitHubIntegration) getToken() (string, error) {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return "", fmt.Errorf("GITHUB_TOKEN environment variable not set")
+		return "", errors.New("GITHUB_TOKEN environment variable not set")
 	}
 	return token, nil
 }
@@ -367,7 +368,7 @@ func (gh *gitHubIntegration) checkSyncState(ctx context.Context, opts CheckOptio
 					numberStr := github.GetSyncString(b, github.SyncKeyIssueNumber)
 					var number int
 					if _, err := fmt.Sscanf(numberStr, "%d", &number); err != nil {
-						return nil
+						return nil //nolint:nilerr // skip issues without valid number
 					}
 					_, err := client.GetIssue(gctx, number)
 					if err != nil {

@@ -1,16 +1,17 @@
 package ui
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/config"
+	"github.com/toba/jig/internal/todo/issue"
 )
 
 // TreeNode represents a node in the issue tree hierarchy.
 type TreeNode struct {
-	Issue     *issue.Issue
+	Issue    *issue.Issue
 	Children []*TreeNode
 	Matched  bool // true if this issue matched the filter (vs. shown for context)
 }
@@ -59,7 +60,7 @@ func (n *TreeNode) ToJSON(includeFull bool) *TreeNodeJSON {
 // matchedIssues: issues that matched the filter
 // allIssues: all issues (needed to find ancestors)
 // sortFn: function to sort issues at each level
-func BuildTree(matchedIssues []*issue.Issue, allIssues []*issue.Issue, sortFn func([]*issue.Issue)) []*TreeNode {
+func BuildTree(matchedIssues, allIssues []*issue.Issue, sortFn func([]*issue.Issue)) []*TreeNode {
 	// Build index of all issues by ID
 	issueByID := make(map[string]*issue.Issue)
 	for _, b := range allIssues {
@@ -119,7 +120,7 @@ func BuildTree(matchedIssues []*issue.Issue, allIssues []*issue.Issue, sortFn fu
 }
 
 // addAncestors recursively adds all ancestors of an issue to the needed set.
-func addAncestors(b *issue.Issue, issueByID map[string]*issue.Issue, needed map[string]*issue.Issue) {
+func addAncestors(b *issue.Issue, issueByID, needed map[string]*issue.Issue) {
 	if b.Parent == "" {
 		return
 	}
@@ -139,7 +140,7 @@ func buildNodes(issues []*issue.Issue, children map[string][]*issue.Issue, match
 	nodes := make([]*TreeNode, len(issues))
 	for i, b := range issues {
 		nodes[i] = &TreeNode{
-			Issue:     b,
+			Issue:    b,
 			Matched:  matchedSet[b.ID],
 			Children: buildNodes(children[b.ID], children, matchedSet),
 		}
@@ -247,7 +248,7 @@ func renderNodes(sb *strings.Builder, nodes []*TreeNode, depth int, ancestry []b
 		if len(node.Children) > 0 {
 			var newAncestry []bool
 			if depth > 0 {
-				newAncestry = append(ancestry, isLast)
+				newAncestry = append(slices.Clone(ancestry), isLast)
 			}
 			renderNodes(sb, node.Children, depth+1, newAncestry, cfg, renderCfg)
 		}
@@ -305,7 +306,7 @@ func renderNode(sb *strings.Builder, node *TreeNode, depth int, isLast bool, anc
 // FlatItem represents a flattened tree node with rendering context.
 // Used by TUI to render tree structure in a flat list.
 type FlatItem struct {
-	Issue       *issue.Issue
+	Issue      *issue.Issue
 	Depth      int    // 0 = root, 1+ = nested
 	IsLast     bool   // last child at this level
 	Matched    bool   // true if issue matched filter (vs. shown for context)
@@ -346,7 +347,7 @@ func flattenNodes(nodes []*TreeNode, depth int, ancestry []bool, items *[]FlatIt
 		}
 
 		*items = append(*items, FlatItem{
-			Issue:       node.Issue,
+			Issue:      node.Issue,
 			Depth:      depth,
 			IsLast:     isLast,
 			Matched:    node.Matched,
@@ -358,7 +359,7 @@ func flattenNodes(nodes []*TreeNode, depth int, ancestry []bool, items *[]FlatIt
 		if len(node.Children) > 0 {
 			var newAncestry []bool
 			if depth > 0 {
-				newAncestry = append(ancestry, isLast)
+				newAncestry = append(slices.Clone(ancestry), isLast)
 			}
 			flattenNodes(node.Children, depth+1, newAncestry, items)
 		}

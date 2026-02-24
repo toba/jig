@@ -12,15 +12,15 @@ const (
 	defaultModalWidthPct = 50
 	defaultModalMaxWidth = 60
 	minModalWidth        = 40
-	modalTitlePadding    = 4  // padding subtracted from modal width for title
-	modalEllipsisLen     = 3  // length of "..." truncation suffix
+	modalTitlePadding    = 4 // padding subtracted from modal width for title
+	modalEllipsisLen     = 3 // length of "..." truncation suffix
 )
 
 // pickerModalConfig holds configuration for rendering a picker modal
 type pickerModalConfig struct {
 	Title       string // e.g., "Select Status"
-	IssueTitle   string // the issue's title
-	IssueID      string // the issue's ID
+	IssueTitle  string // the issue's title
+	IssueID     string // the issue's ID
 	ListContent string // the rendered list
 	Description string // optional description shown below list
 	Width       int    // screen width

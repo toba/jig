@@ -3,6 +3,7 @@ package cmd
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -86,7 +87,7 @@ Search Syntax (--search/-S):
 			filter.NoBlocking = &listNoBlocking
 		}
 		if listReady && listIsBlocked {
-			return fmt.Errorf("--ready and --is-blocked are mutually exclusive")
+			return errors.New("--ready and --is-blocked are mutually exclusive")
 		}
 		if listIsBlocked {
 			filter.IsBlocked = &listIsBlocked

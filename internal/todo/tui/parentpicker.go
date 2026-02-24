@@ -1,26 +1,26 @@
 package tui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
-	"cmp"
 	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toba/jig/internal/todo/issue"
-	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/config"
+	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/graph"
+	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/ui"
 )
 
 // parentSelectedMsg is sent when a parent is selected from the picker
 type parentSelectedMsg struct {
-	issueIDs  []string // the issues being modified
+	issueIDs []string // the issues being modified
 	parentID string   // the new parent ID (empty string to clear parent)
 }
 
@@ -30,7 +30,7 @@ type closeParentPickerMsg struct{}
 // parentItem wraps an issue to implement list.Item for the parent picker
 type parentItem struct {
 	issue *issue.Issue
-	cfg  *config.Config
+	cfg   *config.Config
 }
 
 func (i parentItem) Title() string       { return i.issue.Title }
@@ -64,7 +64,7 @@ func (d parentItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 	switch item := listItem.(type) {
 	case clearParentItem:
 		text := ui.Muted.Render(item.Title())
-		fmt.Fprint(w, cursor+text)
+		fmt.Fprint(w, cursor+text) //nolint:errcheck // terminal output
 
 	case parentItem:
 		// Get colors from config
@@ -78,16 +78,16 @@ func (d parentItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 		}
 		id := ui.Muted.Render(" (" + item.issue.ID + ")")
 
-		fmt.Fprint(w, cursor+typeBadge+" "+title+id)
+		fmt.Fprint(w, cursor+typeBadge+" "+title+id) //nolint:errcheck // terminal output
 	}
 }
 
 // parentPickerModel is the model for the parent picker view
 type parentPickerModel struct {
 	list          list.Model
-	issueIDs       []string // the issues we're setting the parent for
-	issueTitle     string   // display title (single title or "N selected issues")
-	issueTypes     []string // types of the issues (to filter eligible parents)
+	issueIDs      []string // the issues we're setting the parent for
+	issueTitle    string   // display title (single title or "N selected issues")
+	issueTypes    []string // types of the issues (to filter eligible parents)
 	currentParent string   // current parent ID (to highlight, only for single issue)
 	width         int
 	height        int
@@ -199,9 +199,9 @@ func newParentPickerModel(issueIDs []string, issueTitle string, issueTypes []str
 
 	return parentPickerModel{
 		list:          l,
-		issueIDs:       issueIDs,
-		issueTitle:     issueTitle,
-		issueTypes:     issueTypes,
+		issueIDs:      issueIDs,
+		issueTitle:    issueTitle,
+		issueTypes:    issueTypes,
 		currentParent: currentParent,
 		width:         width,
 		height:        height,
@@ -307,8 +307,8 @@ func (m parentPickerModel) View() string {
 
 	return renderPickerModal(pickerModalConfig{
 		Title:       "Select Parent",
-		IssueTitle:   m.issueTitle,
-		IssueID:      issueID,
+		IssueTitle:  m.issueTitle,
+		IssueID:     issueID,
 		ListContent: m.list.View(),
 		Width:       m.width,
 		WidthPct:    60,

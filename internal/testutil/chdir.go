@@ -14,5 +14,5 @@ func Chdir(t *testing.T, dir string) {
 	if err := os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.Chdir(orig) })
+	t.Cleanup(func() { os.Chdir(orig) }) //nolint:errcheck // best-effort cleanup
 }

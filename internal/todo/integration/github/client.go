@@ -37,7 +37,7 @@ type TransientError struct {
 }
 
 func (e *TransientError) Error() string {
-	return fmt.Sprintf("transient error: %s", e.Message)
+	return "transient error: " + e.Message
 }
 
 // RetryConfig holds retry settings for rate limit handling.
@@ -92,7 +92,7 @@ func NewClient(token, owner, repo string) *Client {
 // GetRepo fetches repository metadata.
 func (c *Client) GetRepo(ctx context.Context) (*Repo, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s", baseURL, c.owner, c.repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -108,7 +108,7 @@ func (c *Client) GetRepo(ctx context.Context) (*Repo, error) {
 // GetIssue fetches an issue by number.
 func (c *Client) GetIssue(ctx context.Context, number int) (*Issue, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d", baseURL, c.owner, c.repo, number)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -162,8 +162,8 @@ func (c *Client) GetAuthenticatedUser(ctx context.Context) (*User, error) {
 		return c.authenticatedUser, nil
 	}
 
-	url := fmt.Sprintf("%s/user", baseURL)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	url := baseURL + "/user"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -184,7 +184,7 @@ func (c *Client) ListLabels(ctx context.Context) ([]Label, error) {
 
 	for {
 		url := fmt.Sprintf("%s/repos/%s/%s/labels?per_page=100&page=%d", baseURL, c.owner, c.repo, page)
-		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
@@ -300,7 +300,7 @@ func (c *Client) RemoveSubIssue(ctx context.Context, parentNumber, childIssueID 
 // Returns nil, nil if the issue has no parent.
 func (c *Client) GetParentIssue(ctx context.Context, issueNumber int) (*Issue, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/parent", baseURL, c.owner, c.repo, issueNumber)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -320,7 +320,7 @@ func (c *Client) GetParentIssue(ctx context.Context, issueNumber int) (*Issue, e
 // ListBlockedBy fetches the list of issues blocking the given issue.
 func (c *Client) ListBlockedBy(ctx context.Context, issueNumber int) ([]BlockingDependency, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/dependencies/blocked_by", baseURL, c.owner, c.repo, issueNumber)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -353,7 +353,7 @@ func (c *Client) AddBlockedBy(ctx context.Context, issueNumber, blockerIssueID i
 func (c *Client) RemoveBlockedBy(ctx context.Context, issueNumber, blockerIssueID int) error {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/dependencies/blocked_by/%d", baseURL, c.owner, c.repo, issueNumber, blockerIssueID)
 
-	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
@@ -368,7 +368,7 @@ func (c *Client) RemoveBlockedBy(ctx context.Context, issueNumber, blockerIssueI
 // ListBlocking fetches the list of issues that the given issue is blocking.
 func (c *Client) ListBlocking(ctx context.Context, issueNumber int) ([]BlockingDependency, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/dependencies/blocking", baseURL, c.owner, c.repo, issueNumber)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -418,7 +418,7 @@ func (c *Client) UpdateMilestone(ctx context.Context, number int, update *Update
 // GetMilestone fetches a milestone by number.
 func (c *Client) GetMilestone(ctx context.Context, number int) (*Milestone, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/milestones/%d", baseURL, c.owner, c.repo, number)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -438,7 +438,7 @@ func (c *Client) ListMilestones(ctx context.Context, state string) ([]Milestone,
 
 	for {
 		url := fmt.Sprintf("%s/repos/%s/%s/milestones?state=%s&per_page=100&page=%d", baseURL, c.owner, c.repo, state, page)
-		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
@@ -470,7 +470,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 			r.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 		},
 		HandleRateLimit: func(resp *http.Response, body []byte) error {
-			if resp.StatusCode == 429 || (resp.StatusCode == 403 && resp.Header.Get("X-RateLimit-Remaining") == "0") {
+			if resp.StatusCode == http.StatusTooManyRequests || (resp.StatusCode == http.StatusForbidden && resp.Header.Get("X-RateLimit-Remaining") == "0") {
 				retryAfter := 60 * time.Second // default
 				if ra := resp.Header.Get("Retry-After"); ra != "" {
 					if seconds, err := strconv.Atoi(ra); err == nil {
