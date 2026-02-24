@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-24T01:09:01Z
 updated_at: 2026-02-24T01:14:58Z
+sync:
+    github:
+        issue_number: "65"
+        synced_at: "2026-02-24T01:35:02Z"
 ---
 
 Add a new `review` status that indicates an issue is code-complete but needs evaluation (code review, testing, QA, etc.) before it can be marked completed.

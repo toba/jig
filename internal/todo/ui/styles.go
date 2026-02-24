@@ -258,22 +258,37 @@ func RenderStatusIconAndLabel(status, color string, isArchiveStatus bool) string
 	return style.Render(StatusIcon(status) + " " + status)
 }
 
-// RenderTypeText returns styled type text using the specified color.
-// If color is empty, uses muted styling.
-func RenderTypeText(typeName, color string) string {
+// TypeAbbrev returns a two-letter abbreviation for a type name.
+// The first letter is uppercase and the second is lowercase (e.g., "feature" → "Fe").
+func TypeAbbrev(typeName string) string {
 	if typeName == "" {
 		return ""
 	}
+	r := []rune(typeName)
+	if len(r) == 1 {
+		return strings.ToUpper(string(r[0]))
+	}
+	return strings.ToUpper(string(r[0])) + strings.ToLower(string(r[1]))
+}
+
+// RenderTypeText returns styled type text using the specified color.
+// If color is empty, uses muted styling.
+func RenderTypeText(typeName, color string) string {
+	abbrev := TypeAbbrev(typeName)
+	if abbrev == "" {
+		return ""
+	}
 	if color == "" {
-		return Muted.Render(typeName)
+		return Muted.Render(abbrev)
 	}
 	c := ResolveColor(color)
-	return lipgloss.NewStyle().Foreground(c).Render(typeName)
+	return lipgloss.NewStyle().Foreground(c).Render(abbrev)
 }
 
 // RenderTypeWithColor returns a styled type badge with colored background.
 func RenderTypeWithColor(typeName, color string) string {
-	if typeName == "" {
+	abbrev := TypeAbbrev(typeName)
+	if abbrev == "" {
 		return ""
 	}
 	c := ResolveColor(color)
@@ -282,7 +297,7 @@ func RenderTypeWithColor(typeName, color string) string {
 		Background(c).
 		Bold(true).
 		Padding(0, 1)
-	return style.Render(typeName)
+	return style.Render(abbrev)
 }
 
 // RenderPriorityWithColor returns a styled priority badge using the specified color.
@@ -368,7 +383,7 @@ type IssueRowConfig struct {
 const (
 	ColWidthID     = 12
 	ColWidthStatus = 3
-	ColWidthType   = 10
+	ColWidthType   = 2
 	ColWidthTags   = 24
 )
 
@@ -403,7 +418,7 @@ func CalculateResponsiveColumns(totalWidth int, hasTags bool) ResponsiveColumns 
 	}
 
 	// At this point we have at least 140 columns
-	// Base usage: cursor (2) + ID (12) + status (5) + type (12) = 31
+	// Base usage: cursor (2) + ID (12) + status (5) + type (2) = 21
 	cursorWidth := 2
 	baseWidth := cursorWidth + cols.ID + cols.Status + cols.Type
 	available := totalWidth - baseWidth

@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-24T01:10:00Z
 updated_at: 2026-02-24T01:34:11Z
+sync:
+    github:
+        issue_number: "64"
+        synced_at: "2026-02-24T01:35:02Z"
 ---
 
 On the TUI list page, a set of LOS issues (core-jbag, core-gqyt, core-iwgi, core-94dd, core-1a4s, core-372t, core-wvht) are displayed as children of `core-87p9` ("Merge amenity→description + PriceLabs gap closes"), but when viewing an individual issue (e.g. core-jbag "LOS PMS interface abstraction"), the Linked Issues section correctly shows its parent as `core-r6y1` ("Length-of-Stay Rules Redesign" epic).
