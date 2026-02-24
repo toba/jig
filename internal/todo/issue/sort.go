@@ -9,6 +9,24 @@ import (
 	"github.com/toba/jig/internal/todo/config"
 )
 
+// CompareByCreatedDesc compares two issues by creation date, newest first.
+// Issues without dates sort last. Ties are broken by ID for stability.
+func CompareByCreatedDesc(a, b *Issue) int {
+	if a.CreatedAt == nil && b.CreatedAt == nil {
+		return cmp.Compare(a.ID, b.ID)
+	}
+	if a.CreatedAt == nil {
+		return 1
+	}
+	if b.CreatedAt == nil {
+		return -1
+	}
+	if c := b.CreatedAt.Compare(*a.CreatedAt); c != 0 { // newest first
+		return c
+	}
+	return cmp.Compare(a.ID, b.ID)
+}
+
 // CompareByStatusPriorityAndType returns true if a should sort before b,
 // using status order, then priority, then type, then title.
 // Unrecognized statuses, priorities, and types are sorted last within their category.
@@ -89,6 +107,50 @@ func SortByStatusPriorityAndType(issues []*Issue, statusNames, priorityNames, ty
 			return 1
 		}
 		return 0
+	})
+}
+
+// SortByStatus sorts issues by status order, then by created date (newest first).
+func SortByStatus(issues []*Issue, statusNames []string) {
+	statusOrder := make(map[string]int)
+	for i, s := range statusNames {
+		statusOrder[s] = i
+	}
+	slices.SortFunc(issues, func(a, b *Issue) int {
+		if c := cmp.Compare(statusOrder[a.Status], statusOrder[b.Status]); c != 0 {
+			return c
+		}
+		return CompareByCreatedDesc(a, b)
+	})
+}
+
+// SortByPriority sorts issues by priority order, then by created date (newest first).
+// Issues without priority are treated as "normal" priority.
+func SortByPriority(issues []*Issue, priorityNames []string) {
+	priorityOrder := make(map[string]int)
+	for i, p := range priorityNames {
+		priorityOrder[p] = i
+	}
+	normalIdx := len(priorityNames)
+	for i, p := range priorityNames {
+		if p == config.PriorityNormal {
+			normalIdx = i
+			break
+		}
+	}
+	getPriority := func(b *Issue) int {
+		if b.Priority != "" {
+			if order, ok := priorityOrder[b.Priority]; ok {
+				return order
+			}
+		}
+		return normalIdx
+	}
+	slices.SortFunc(issues, func(a, b *Issue) int {
+		if c := cmp.Compare(getPriority(a), getPriority(b)); c != 0 {
+			return c
+		}
+		return CompareByCreatedDesc(a, b)
 	})
 }
 

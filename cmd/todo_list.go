@@ -198,42 +198,9 @@ func sortIssues(issues []*issue.Issue, sortBy string, cfg *todoconfig.Config) {
 			return b.UpdatedAt.Compare(*a.UpdatedAt) // newest first
 		})
 	case "status":
-		statusOrder := make(map[string]int)
-		for i, s := range statusNames {
-			statusOrder[s] = i
-		}
-		slices.SortFunc(issues, func(a, b *issue.Issue) int {
-			if c := cmp.Compare(statusOrder[a.Status], statusOrder[b.Status]); c != 0 {
-				return c
-			}
-			return cmp.Compare(a.ID, b.ID)
-		})
+		issue.SortByStatus(issues, statusNames)
 	case "priority":
-		priorityOrder := make(map[string]int)
-		for i, p := range priorityNames {
-			priorityOrder[p] = i
-		}
-		normalIdx := len(priorityNames)
-		for i, p := range priorityNames {
-			if p == todoconfig.PriorityNormal {
-				normalIdx = i
-				break
-			}
-		}
-		getPriority := func(b *issue.Issue) int {
-			if b.Priority != "" {
-				if order, ok := priorityOrder[b.Priority]; ok {
-					return order
-				}
-			}
-			return normalIdx
-		}
-		slices.SortFunc(issues, func(a, b *issue.Issue) int {
-			if c := cmp.Compare(getPriority(a), getPriority(b)); c != 0 {
-				return c
-			}
-			return cmp.Compare(a.ID, b.ID)
-		})
+		issue.SortByPriority(issues, priorityNames)
 	case "due":
 		issue.SortByDueDate(issues)
 	case "id":
@@ -264,7 +231,7 @@ func init() {
 	listCmd.Flags().BoolVar(&listIsBlocked, "is-blocked", false, "Filter issues that are blocked by others")
 	listCmd.Flags().BoolVar(&listReady, "ready", false, "Filter issues available to start")
 	listCmd.Flags().BoolVarP(&listQuiet, "quiet", "q", false, "Only output IDs (one per line)")
-	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: created, updated, due, status, priority, id")
+	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: status, priority, created, updated, due, id")
 	listCmd.Flags().BoolVar(&listFull, "full", false, "Include issue body in JSON output")
 	todoCmd.AddCommand(listCmd)
 }

@@ -300,6 +300,14 @@ func (m listModel) loadIssues() tea.Msg {
 	// Sort function for tree building
 	var sortFn func([]*issue.Issue)
 	switch m.sortOrder {
+	case sortStatus:
+		sortFn = func(issues []*issue.Issue) {
+			issue.SortByStatus(issues, m.config.StatusNames())
+		}
+	case sortPriority:
+		sortFn = func(issues []*issue.Issue) {
+			issue.SortByPriority(issues, m.config.PriorityNames())
+		}
 	case sortCreated:
 		effectiveDates := issue.ComputeEffectiveDates(allIssues, issue.FieldCreatedAt)
 		sortFn = func(issues []*issue.Issue) {

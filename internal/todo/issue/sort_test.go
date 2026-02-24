@@ -142,6 +142,116 @@ func TestSortByStatusPriorityAndType(t *testing.T) {
 	})
 }
 
+func TestSortByStatus(t *testing.T) {
+	now := time.Now()
+	earlier := now.Add(-1 * time.Hour)
+	evenEarlier := now.Add(-2 * time.Hour)
+	statusNames := []string{"in-progress", "review", "ready", "draft", "completed", "scrapped"}
+
+	t.Run("sorts by status then newest created", func(t *testing.T) {
+		issues := []*Issue{
+			{ID: "1", Title: "Old ready", Status: "ready", CreatedAt: new(evenEarlier)},
+			{ID: "2", Title: "New ready", Status: "ready", CreatedAt: new(now)},
+			{ID: "3", Title: "In progress", Status: "in-progress", CreatedAt: new(earlier)},
+			{ID: "4", Title: "Completed", Status: "completed", CreatedAt: new(now)},
+		}
+		SortByStatus(issues, statusNames)
+
+		expected := []string{"In progress", "New ready", "Old ready", "Completed"}
+		for i, title := range expected {
+			if issues[i].Title != title {
+				t.Errorf("issues[%d].Title = %q, want %q", i, issues[i].Title, title)
+			}
+		}
+	})
+
+	t.Run("nil created dates sort last within status", func(t *testing.T) {
+		issues := []*Issue{
+			{ID: "1", Title: "No date", Status: "ready", CreatedAt: nil},
+			{ID: "2", Title: "Has date", Status: "ready", CreatedAt: new(now)},
+		}
+		SortByStatus(issues, statusNames)
+
+		if issues[0].Title != "Has date" {
+			t.Errorf("first = %q, want \"Has date\"", issues[0].Title)
+		}
+		if issues[1].Title != "No date" {
+			t.Errorf("second = %q, want \"No date\"", issues[1].Title)
+		}
+	})
+}
+
+func TestSortByPriority(t *testing.T) {
+	now := time.Now()
+	earlier := now.Add(-1 * time.Hour)
+	priorityNames := []string{"critical", "high", "normal", "low", "deferred"}
+
+	t.Run("sorts by priority then newest created", func(t *testing.T) {
+		issues := []*Issue{
+			{ID: "1", Title: "Old high", Priority: "high", CreatedAt: new(earlier)},
+			{ID: "2", Title: "New high", Priority: "high", CreatedAt: new(now)},
+			{ID: "3", Title: "Critical", Priority: "critical", CreatedAt: new(earlier)},
+			{ID: "4", Title: "Low", Priority: "low", CreatedAt: new(now)},
+		}
+		SortByPriority(issues, priorityNames)
+
+		expected := []string{"Critical", "New high", "Old high", "Low"}
+		for i, title := range expected {
+			if issues[i].Title != title {
+				t.Errorf("issues[%d].Title = %q, want %q", i, issues[i].Title, title)
+			}
+		}
+	})
+
+	t.Run("empty priority treated as normal", func(t *testing.T) {
+		issues := []*Issue{
+			{ID: "1", Title: "No priority", Priority: "", CreatedAt: new(now)},
+			{ID: "2", Title: "High", Priority: "high", CreatedAt: new(now)},
+			{ID: "3", Title: "Low", Priority: "low", CreatedAt: new(now)},
+		}
+		SortByPriority(issues, priorityNames)
+
+		if issues[0].Title != "High" {
+			t.Errorf("first = %q, want \"High\"", issues[0].Title)
+		}
+		if issues[1].Title != "No priority" {
+			t.Errorf("second = %q, want \"No priority\"", issues[1].Title)
+		}
+		if issues[2].Title != "Low" {
+			t.Errorf("third = %q, want \"Low\"", issues[2].Title)
+		}
+	})
+}
+
+func TestCompareByCreatedDesc(t *testing.T) {
+	now := time.Now()
+	earlier := now.Add(-1 * time.Hour)
+
+	t.Run("newer sorts first", func(t *testing.T) {
+		a := &Issue{ID: "1", CreatedAt: new(now)}
+		b := &Issue{ID: "2", CreatedAt: new(earlier)}
+		if c := CompareByCreatedDesc(a, b); c >= 0 {
+			t.Errorf("newer issue should sort before older, got %d", c)
+		}
+	})
+
+	t.Run("nil dates sort last", func(t *testing.T) {
+		a := &Issue{ID: "1", CreatedAt: nil}
+		b := &Issue{ID: "2", CreatedAt: new(now)}
+		if c := CompareByCreatedDesc(a, b); c <= 0 {
+			t.Errorf("nil date should sort after non-nil, got %d", c)
+		}
+	})
+
+	t.Run("both nil breaks tie by ID", func(t *testing.T) {
+		a := &Issue{ID: "aaa", CreatedAt: nil}
+		b := &Issue{ID: "bbb", CreatedAt: nil}
+		if c := CompareByCreatedDesc(a, b); c >= 0 {
+			t.Errorf("ID \"aaa\" should sort before \"bbb\", got %d", c)
+		}
+	})
+}
+
 func TestComputeEffectiveDates(t *testing.T) {
 	now := time.Now()
 

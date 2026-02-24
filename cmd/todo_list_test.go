@@ -72,17 +72,36 @@ func TestSortIssues(t *testing.T) {
 
 	t.Run("sort by status", func(t *testing.T) {
 		issues := []*issue.Issue{
-			{ID: "c1", Status: "completed"},
-			{ID: "r1", Status: "ready"},
-			{ID: "i1", Status: "in-progress"},
-			{ID: "r2", Status: "ready"},
+			{ID: "c1", Status: "completed", CreatedAt: &now},
+			{ID: "r1", Status: "ready", CreatedAt: &earlier},
+			{ID: "i1", Status: "in-progress", CreatedAt: &now},
+			{ID: "r2", Status: "ready", CreatedAt: &now},
 		}
 		sortIssues(issues, "status", testCfg)
 
-		expected := []string{"i1", "r1", "r2", "c1"}
+		// in-progress first, then ready (newest first: r2 before r1), then completed
+		expected := []string{"i1", "r2", "r1", "c1"}
 		for i, want := range expected {
 			if issues[i].ID != want {
 				t.Errorf("sort by status[%d]: got %q, want %q", i, issues[i].ID, want)
+			}
+		}
+	})
+
+	t.Run("sort by priority", func(t *testing.T) {
+		issues := []*issue.Issue{
+			{ID: "low", Priority: "low", CreatedAt: &now},
+			{ID: "crit-old", Priority: "critical", CreatedAt: &earlier},
+			{ID: "crit-new", Priority: "critical", CreatedAt: &now},
+			{ID: "norm", Priority: "", CreatedAt: &now},
+		}
+		sortIssues(issues, "priority", testCfg)
+
+		// critical (newest first), then normal (empty), then low
+		expected := []string{"crit-new", "crit-old", "norm", "low"}
+		for i, want := range expected {
+			if issues[i].ID != want {
+				t.Errorf("sort by priority[%d]: got %q, want %q", i, issues[i].ID, want)
 			}
 		}
 	})

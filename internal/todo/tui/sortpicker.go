@@ -15,10 +15,12 @@ import (
 type sortOrder string
 
 const (
-	sortDefault sortOrder = sortOrder(config.SortDefault)
-	sortCreated sortOrder = "created"
-	sortUpdated sortOrder = "updated"
-	sortDue     sortOrder = "due"
+	sortDefault  sortOrder = sortOrder(config.SortDefault)
+	sortStatus   sortOrder = "status"
+	sortPriority sortOrder = "priority"
+	sortCreated  sortOrder = "created"
+	sortUpdated  sortOrder = "updated"
+	sortDue      sortOrder = "due"
 )
 
 // sortSelectedMsg is sent when a sort order is selected from the picker
@@ -97,6 +99,8 @@ func newSortPickerModel(currentOrder sortOrder, width, height int) sortPickerMod
 		description string
 	}{
 		{"Default", sortDefault, "Status, priority, type, then title"},
+		{"Status", sortStatus, "Status order, then newest created"},
+		{"Priority", sortPriority, "Priority order, then newest created"},
 		{"Created", sortCreated, "Newest created first"},
 		{"Updated", sortUpdated, "Last updated first"},
 		{"Due", sortDue, "Soonest due first"},
