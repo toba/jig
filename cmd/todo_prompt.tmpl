@@ -17,6 +17,8 @@ BEFORE starting any task:
 
 AFTER finishing:
 - COMPLETING: add `## Summary of Changes` section
+- REVIEW NEEDED: if the user must take action (deploy, verify on screen, approve, etc.), set status to `review`
+  instead of `completed`: `jig todo update <id> -s review`
 - SCRAPPING: add `## Reasons for Scrapping` section
 - Offer to create follow-up issues for deferred work
 

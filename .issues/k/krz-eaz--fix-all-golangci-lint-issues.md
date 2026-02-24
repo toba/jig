@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-24T17:35:30Z
 updated_at: 2026-02-24T17:36:02Z
+sync:
+    github:
+        issue_number: "67"
+        synced_at: "2026-02-24T18:17:55Z"
 ---
 
 Work through all 122 remaining golangci-lint issues that require manual intervention. Run `./scripts/lint.sh` to verify progress.
