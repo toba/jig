@@ -207,6 +207,30 @@ func TestGetPrioritySymbol(t *testing.T) {
 	}
 }
 
+func TestRenderIssueRow_DimmedTypeAbbreviation(t *testing.T) {
+	// Regression test: dimmed rows must use TypeAbbrev (2-char abbreviation)
+	// not the full type name. With lipgloss Width(2), a longer name like
+	// "feature" gets word-wrapped into multiple lines, breaking TUI layout.
+	types := []string{"feature", "bug", "task", "milestone", "epic"}
+
+	for _, typeName := range types {
+		t.Run(typeName, func(t *testing.T) {
+			cfg := IssueRowConfig{
+				MaxTitleWidth: 40,
+				StatusColor:   "green",
+				TypeColor:     "blue",
+				Dimmed:        true,
+			}
+			result := RenderIssueRow("abc123", "todo", typeName, "Test Title", cfg)
+			lines := strings.Split(result, "\n")
+			if len(lines) != 1 {
+				t.Errorf("dimmed row with type %q produced %d lines, want 1:\n%s",
+					typeName, len(lines), result)
+			}
+		})
+	}
+}
+
 func TestCalculateResponsiveColumns(t *testing.T) {
 	tests := []struct {
 		name       string

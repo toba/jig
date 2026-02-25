@@ -511,7 +511,7 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 	var typeCol string
 	if typeName != "" {
 		if cfg.Dimmed {
-			typeCol = typeStyle.Render(Muted.Render(typeName))
+			typeCol = typeStyle.Render(Muted.Render(TypeAbbrev(typeName)))
 		} else {
 			typeCol = typeStyle.Render(RenderTypeText(typeName, cfg.TypeColor))
 		}
