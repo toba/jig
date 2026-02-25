@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -347,14 +348,54 @@ func (b *Issue) ETag() string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// MarshalJSON implements json.Marshaler to include computed etag field.
+// GithubIssueNumber returns the GitHub issue number from the sync metadata,
+// or 0 if not set.
+func (b *Issue) GithubIssueNumber() int {
+	if b.Sync == nil {
+		return 0
+	}
+	gh, ok := b.Sync["github"]
+	if !ok {
+		return 0
+	}
+	numStr, ok := gh["issue_number"]
+	if !ok {
+		return 0
+	}
+	s, ok := numStr.(string)
+	if !ok {
+		return 0
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// MarshalJSON implements json.Marshaler to include computed etag and github_issue fields.
 func (b *Issue) MarshalJSON() ([]byte, error) {
 	type IssueAlias Issue // Avoid infinite recursion
+
+	ghIssue := b.GithubIssueNumber()
+	if ghIssue == 0 {
+		return json.Marshal(&struct {
+			*IssueAlias
+			GithubIssue *int   `json:"github_issue"`
+			ETag        string `json:"etag"`
+		}{
+			IssueAlias:  (*IssueAlias)(b),
+			GithubIssue: nil,
+			ETag:        b.ETag(),
+		})
+	}
 	return json.Marshal(&struct {
 		*IssueAlias
-		ETag string `json:"etag"`
+		GithubIssue int    `json:"github_issue"`
+		ETag        string `json:"etag"`
 	}{
-		IssueAlias: (*IssueAlias)(b),
-		ETag:       b.ETag(),
+		IssueAlias:  (*IssueAlias)(b),
+		GithubIssue: ghIssue,
+		ETag:        b.ETag(),
 	})
 }

@@ -32,6 +32,7 @@ type Issues struct {
 
 // Result is the full changelog output.
 type Result struct {
+	GitHub  string    `json:"github,omitempty"`
 	Range   TimeRange `json:"range"`
 	Issues  Issues    `json:"issues"`
 	Commits []Commit  `json:"commits,omitempty"`

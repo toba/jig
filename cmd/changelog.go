@@ -67,6 +67,13 @@ func runChangelog(cmd *cobra.Command, _ []string) error {
 	}
 	result := changelog.Gather(all, opts)
 
+	// Add GitHub repo URL from sync config if available.
+	if ghCfg := todoCfg.SyncConfig("github"); ghCfg != nil {
+		if repo, ok := ghCfg["repo"].(string); ok && repo != "" {
+			result.GitHub = "https://github.com/" + repo
+		}
+	}
+
 	if includeGit {
 		gitCommits, err := changelog.GitCommits(since, until)
 		if err != nil {
