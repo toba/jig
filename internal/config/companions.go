@@ -9,8 +9,9 @@ import (
 
 // Companions holds git URLs for optional companion repositories.
 type Companions struct {
-	Zed  string `yaml:"zed,omitempty"`
-	Brew string `yaml:"brew,omitempty"`
+	Zed   string `yaml:"zed,omitempty"`
+	Brew  string `yaml:"brew,omitempty"`
+	Scoop string `yaml:"scoop,omitempty"`
 }
 
 // LoadCompanions extracts the companions section from a Document.

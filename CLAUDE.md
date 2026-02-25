@@ -19,9 +19,10 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
   - `cite` parent with `init`, `review` (alias `check`), `add` subcommands — citation monitoring
   - `nope` parent with `init`, `doctor`, `help` subcommands — security guard
   - `brew` parent with `init`, `doctor` subcommands — Homebrew tap management
+  - `scoop` parent with `init`, `doctor` subcommands — Scoop bucket management
   - `zed` parent with `init`, `doctor` subcommands — Zed extension management
   - `prime` — output instructions for AI coding agents
-  - `doctor` — run all doctor checks (nope, brew, zed)
+  - `doctor` — run all doctor checks (nope, brew, scoop, zed)
   - `help-all` — show all commands and flags in agent-friendly format
   - `tui` — top-level alias for `todo tui`
   - `sync` — top-level alias for `todo sync` (with `check`, `link`, `unlink` subcommands)
@@ -35,6 +36,7 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
 - `internal/companion/` — companion repo management (GitHub ops, CI workflow injection)
 - `internal/nope/` — PreToolUse guard (reads `nope:` section from `.jig.yaml`)
 - `internal/brew/` — Homebrew tap init and doctor logic
+- `internal/scoop/` — Scoop bucket init and doctor logic
 - `internal/zed/` — Zed extension init and doctor logic
 - `internal/update/` — migration logic for legacy config files
 - `internal/todo/config/` — todo config (reads `todo:` section from `.jig.yaml`, Node API for partial writes)
@@ -56,7 +58,7 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
 - `cite review` (alias `check`) always updates `last_checked_sha`/`last_checked_date`, even when there are no new commits
 - `cite add` inspects a repo via GitHub API or git clone and suggests path classification globs
 - `commit` uses a two-phase gather/apply workflow so the agent can review before committing
-- `brew init` and `zed init` use `internal/companion/` for shared GitHub repo creation and CI workflow injection
+- `brew init`, `scoop init`, and `zed init` use `internal/companion/` for shared GitHub repo creation and CI workflow injection
 - Uses `doublestar` for `**` glob support since Go's `path.Match` lacks it
 - `nope` guard reads rules from `nope:` key in `.jig.yaml` (not a separate file)
 - `nope` uses instance-based `DebugLogger` (nil-safe) instead of global state

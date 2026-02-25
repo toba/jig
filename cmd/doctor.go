@@ -25,6 +25,7 @@ var doctorCmd = &cobra.Command{
 		checks := []check{
 			{"nope", nopeDoctorCmd},
 			{"brew", brewDoctorCmd},
+			{"scoop", scoopDoctorCmd},
 			{"zed", zedDoctorCmd},
 			{"cite", citeDoctorCmd},
 		}
