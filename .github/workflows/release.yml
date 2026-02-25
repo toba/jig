@@ -79,3 +79,72 @@ jobs:
           git add Formula/jig.rb
           git commit -m "bump to ${VERSION}"
           git push
+
+  update-scoop:
+    needs: update-homebrew
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Scoop manifest
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+
+          CHECKSUMS=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt -O -)
+
+          SHA_AMD64=$(echo "$CHECKSUMS" | grep "jig_windows_amd64.zip" | awk '{print $1}')
+          SHA_ARM64=$(echo "$CHECKSUMS" | grep "jig_windows_arm64.zip" | awk '{print $1}')
+
+          if [ -z "$SHA_AMD64" ]; then
+            echo "ERROR: Could not extract SHA256 for jig_windows_amd64.zip"
+            exit 1
+          fi
+          if [ -z "$SHA_ARM64" ]; then
+            echo "ERROR: Could not extract SHA256 for jig_windows_arm64.zip"
+            exit 1
+          fi
+
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/toba/scoop-jig.git" bucket
+          cd bucket
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg sha_amd64 "$SHA_AMD64" \
+            --arg sha_arm64 "$SHA_ARM64" \
+            --arg tag "$TAG" \
+            --arg desc "Multi-tool CLI for issue tracking, citations, commits, and distribution" \
+            '{
+              version: $version,
+              description: $desc,
+              homepage: "https://github.com/toba/jig",
+              license: "Apache-2.0",
+              architecture: {
+                "64bit": {
+                  url: ("https://github.com/toba/jig/releases/download/" + $tag + "/jig_windows_amd64.zip"),
+                  hash: $sha_amd64
+                },
+                arm64: {
+                  url: ("https://github.com/toba/jig/releases/download/" + $tag + "/jig_windows_arm64.zip"),
+                  hash: $sha_arm64
+                }
+              },
+              bin: ["jig.exe"],
+              checkver: { github: "https://github.com/toba/jig" },
+              autoupdate: {
+                architecture: {
+                  "64bit": {
+                    url: "https://github.com/toba/jig/releases/download/v$version/jig_windows_amd64.zip"
+                  },
+                  arm64: {
+                    url: "https://github.com/toba/jig/releases/download/v$version/jig_windows_arm64.zip"
+                  }
+                }
+              }
+            }' > bucket/jig.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/jig.json
+          git commit -m "bump to ${VERSION}"
+          git push

@@ -4,7 +4,7 @@
 
 My dad was a cabinet maker. His perpetually sawdusted workshop was dotted with contrivances that I sometimes mistook for junk (some stories there!) that actually were thoughtful, if scrappy, efforts to make some task simpler or safer.
 
-Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
+Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker, a Claude Code security guard, and Homebrew/Scoop/Zed companion repo scaffolding. The issue tracker is derived from [hmans/beans](https://github.com/hmans/beans), itself inspired by [steveyegge/beads](https://github.com/steveyegge/beads).
 
 - [Install](#install)
 - [Configuration](#configuration)
@@ -15,7 +15,7 @@ Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker
 - **`jig`**
    - **`tui`**: alias for `todo tui`
    - **`sync`**: alias for `todo sync`
-   - **`doctor`**: run all doctor checks (brew, zed, nope)
+   - **`doctor`**: run all doctor checks (brew, scoop, zed, nope)
    - **`prime`**: output agent instructions for issue tracking
    - **`version`**: print version info
    - **[`todo`](#todo)**: file-based issue tracker for AI-first workflows
@@ -44,6 +44,9 @@ Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker
    - **[`brew`](#brew)**: Homebrew tap management
       - **`init`**: create tap repo, push initial formula, inject `update-homebrew` CI job
       - **`doctor`**: verify brew tap setup is healthy
+   - **[`scoop`](#scoop)**: Scoop bucket management
+      - **`init`**: create bucket repo, push initial manifest, inject `update-scoop` CI job
+      - **`doctor`**: verify scoop bucket setup is healthy
    - **[`zed`](#zed)**: Zed extension management
       - **`init`**: create extension repo, push scaffold, inject `sync-extension` CI job
       - **`doctor`**: verify Zed extension setup is healthy
@@ -53,6 +56,13 @@ Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker
 
 ```bash
 brew install toba/jig/jig
+```
+
+On Windows:
+
+```powershell
+scoop bucket add toba https://github.com/toba/scoop-jig
+scoop install jig
 ```
 
 Or build from source:
@@ -289,7 +299,7 @@ Built-ins use proper shell tokenization — they understand quoting, so `grep "f
 
 I am all for having the agent write nice commit messages but my eyes bleed a little very time I see tokens ticking away while it runs the same wrong commands three times before getting it right.
 
-This command uses other configuration in `.jig.yaml` to determine whether there are issues to synchronize or a companion `brew` or Zed extension repo to consider so the agent isn't always evaluating such things.
+This command uses other configuration in `.jig.yaml` to determine whether there are issues to synchronize or a companion brew, scoop, or Zed extension repo to consider so the agent isn't always evaluating such things.
 
 Instead, the agent is given the list of changes to summarize, along with the last tag, if any, and asked to respond with a description and likely next tag (version).
 
@@ -314,6 +324,24 @@ jig brew init --tap toba/homebrew-todo --tag v1.2.3 --repo toba/todo --desc "My 
 Use `--dry-run` to preview without creating anything. Use `--json` for machine-readable output.
 
 **After running**, add a `HOMEBREW_TAP_TOKEN` secret to the source repo — a GitHub PAT with Contents write access to the tap repo.
+
+## Scoop
+
+Same idea as brew, but for Windows. Creates a companion Scoop bucket repo with a JSON manifest covering both amd64 and arm64, and injects an `update-scoop` CI job into the release workflow.
+
+```bash
+jig scoop init --bucket toba/scoop-jig
+```
+
+It auto-detects the source repo, latest release tag, description, and license via `gh`. SHA256 hashes are resolved for both `_windows_amd64.zip` and `_windows_arm64.zip` archives. The manifest includes `checkver` and `autoupdate` sections so Scoop's tooling can pick up new versions automatically.
+
+```bash
+jig scoop init --bucket toba/scoop-jig --tag v1.2.3 --repo toba/jig --desc "My tool" --license MIT
+```
+
+Use `--dry-run` to preview without creating anything. Use `--json` for machine-readable output.
+
+**After running**, add a `HOMEBREW_TAP_TOKEN` secret to the source repo — a GitHub PAT with Contents write access to the bucket repo (reuses the same token as Homebrew).
 
 ## Zed
 
@@ -364,8 +392,8 @@ A [JSON Schema](https://raw.githubusercontent.com/toba/jig/main/schema.json) is 
 
 ## Requirements
 
-- macOS or Linux (Windows builds exist but are untested)
-- `gh` CLI for upstream monitoring, brew, zed, and sync commands (nope guard and todo core have no external dependencies)
+- macOS, Linux, or Windows
+- `gh` CLI for upstream monitoring, brew, scoop, zed, and sync commands (nope guard and todo core have no external dependencies)
 
 ## License
 

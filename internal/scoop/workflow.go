@@ -26,7 +26,7 @@ func GenerateWorkflowJob(p WorkflowParams) string {
     steps:
       - name: Update Scoop manifest
         env:
-          GH_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"

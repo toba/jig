@@ -85,7 +85,7 @@ automatically via CI when you push a new tag.`,
 			fmt.Println("  .github/workflows/release.yml now includes update-scoop job")
 		}
 
-		fmt.Println(dim.Render("\nReminder: add SCOOP_BUCKET_TOKEN secret to " + result.Repo))
+		fmt.Println(dim.Render("\nReminder: add HOMEBREW_TAP_TOKEN secret to " + result.Repo))
 		fmt.Println(dim.Render("  GitHub PAT with Contents write access to " + result.Bucket))
 
 		return nil
