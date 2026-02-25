@@ -1,6 +1,7 @@
 package changelog
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -118,7 +119,7 @@ func CommitTimeRange(n int) (since, until time.Time, err error) {
 
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(lines) == 0 || lines[0] == "" {
-		return time.Time{}, time.Time{}, fmt.Errorf("no commits found")
+		return time.Time{}, time.Time{}, errors.New("no commits found")
 	}
 
 	// Most recent commit is first, oldest is last

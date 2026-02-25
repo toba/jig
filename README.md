@@ -40,6 +40,7 @@ Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker
       - **`init`**: scaffold nope rules in `.jig.yaml` and hook in `.claude/settings.json`
       - **`doctor`**: validate nope configuration
       - **`help`**: show nope guard reference
+   - **[`changelog`](#changelog)**: gather recent issues and commits for changelog generation
    - **[`commit`](#commit)**: stage changes, check for gitignore candidates, signal push intent
    - **[`brew`](#brew)**: Homebrew tap management
       - **`init`**: create tap repo, push initial formula, inject `update-homebrew` CI job
@@ -306,6 +307,20 @@ Instead, the agent is given the list of changes to summarize, along with the las
 ```bash
 jig commit
 ```
+
+## Changelog
+
+Agents are great at writing changelogs but terrible at gathering the raw material — they'll spend forty turns poking around git history and issue files before producing anything useful. This command collects recent issues (created, updated, completed) and optionally git commits into a single structured dump the agent can actually work with.
+
+```bash
+jig changelog --json                    # last 7 days of issues
+jig changelog --json --days 30          # last 30 days
+jig changelog --json --days 14 --git    # with git commits
+jig changelog --json --since 2026-01-01 # explicit start date
+jig changelog --commits 50 --json       # time range from last 50 commits
+```
+
+Issues are bucketed into `created`, `updated`, and `completed` — an issue lands in exactly one bucket based on priority: completed > created > updated. The `--git` flag adds a `commits` array with hash, subject, and date. Without `--json` you get a plain text summary that's still agent-friendly but won't offend human eyes.
 
 ## Brew
 
