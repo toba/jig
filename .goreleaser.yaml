@@ -54,6 +54,7 @@ changelog:
       order: 999
 
 release:
+  mode: replace
   footer: >-
 
     ---

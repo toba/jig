@@ -81,7 +81,7 @@ jobs:
           git push
 
   update-scoop:
-    needs: update-homebrew
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Update Scoop manifest
