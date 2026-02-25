@@ -24,22 +24,22 @@ type InitOpts struct {
 
 // InitResult describes what was done (or would be done).
 type InitResult struct {
-	Bucket      string `json:"bucket"`
-	Repo        string `json:"repo"`
-	Tool        string `json:"tool"`
-	Tag         string `json:"tag"`
-	AssetAMD64  string `json:"asset_amd64"`
-	AssetARM64  string `json:"asset_arm64"`
-	SHA256AMD64 string `json:"sha256_amd64"`
-	SHA256ARM64 string `json:"sha256_arm64"`
-	Desc        string `json:"desc"`
-	License     string `json:"license"`
-	Manifest    string `json:"manifest"`
-	Readme      string `json:"readme"`
-	WorkflowJob string `json:"workflow_job"`
-	BucketCreated bool `json:"bucket_created"`
-	BucketPushed  bool `json:"bucket_pushed"`
-	WorkflowMod   bool `json:"workflow_modified"`
+	Bucket        string `json:"bucket"`
+	Repo          string `json:"repo"`
+	Tool          string `json:"tool"`
+	Tag           string `json:"tag"`
+	AssetAMD64    string `json:"asset_amd64"`
+	AssetARM64    string `json:"asset_arm64"`
+	SHA256AMD64   string `json:"sha256_amd64"`
+	SHA256ARM64   string `json:"sha256_arm64"`
+	Desc          string `json:"desc"`
+	License       string `json:"license"`
+	Manifest      string `json:"manifest"`
+	Readme        string `json:"readme"`
+	WorkflowJob   string `json:"workflow_job"`
+	BucketCreated bool   `json:"bucket_created"`
+	BucketPushed  bool   `json:"bucket_pushed"`
+	WorkflowMod   bool   `json:"workflow_modified"`
 }
 
 // RunInit performs the full scoop bucket setup workflow.
