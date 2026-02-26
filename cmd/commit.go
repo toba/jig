@@ -41,7 +41,10 @@ Exit codes:
 			return nope.ExitError{Code: 2}
 		}
 
-		// 2. Stage all changes.
+		// 2. Todo sync (if configured) — before staging so metadata changes are included.
+		syncTodoIfConfigured(cmd)
+
+		// 3. Stage all changes.
 		status, err := commitpkg.StageAll()
 		if err != nil {
 			return err
@@ -51,7 +54,7 @@ Exit codes:
 			fmt.Println(status)
 		}
 
-		// 3. Diff.
+		// 4. Diff.
 		diff, err := commitpkg.Diff()
 		if err != nil {
 			return err
@@ -62,7 +65,7 @@ Exit codes:
 			fmt.Println(diff)
 		}
 
-		// 4. Latest version tag.
+		// 5. Latest version tag.
 		tag, err := commitpkg.LatestTag()
 		if err != nil {
 			return err
@@ -74,7 +77,7 @@ Exit codes:
 			fmt.Println("LATEST_VERSION:", tag)
 		}
 
-		// 5. Recent commits (for commit message style reference).
+		// 6. Recent commits (for commit message style reference).
 		log, err := commitpkg.RecentCommits(tag)
 		if err != nil {
 			return err
@@ -84,9 +87,6 @@ Exit codes:
 		if log != "" {
 			fmt.Println(log)
 		}
-
-		// 6. Todo sync (if configured).
-		syncTodoIfConfigured(cmd)
 
 		return nil
 	},
@@ -105,9 +105,15 @@ var applyCmd = &cobra.Command{
 and pushes to the remote.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		todoSync := hasTodoSync(configPath())
+		// 1. Sync todo before commit so metadata changes are included.
+		syncTodoIfConfigured(cmd)
 
-		// 1. Commit (skip if nothing staged and push was requested).
+		// Re-stage .issues/ in case sync modified files after gather staged them.
+		if err := commitpkg.RestageIssues(); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: restage issues: %v\n", err) //nolint:errcheck // warning output
+		}
+
+		// 2. Commit (skip if nothing staged and push was requested).
 		staged, err := commitpkg.HasStagedChanges()
 		if err != nil {
 			return err
@@ -117,11 +123,6 @@ and pushes to the remote.`,
 				return err
 			}
 			fmt.Println("Committed.")
-
-			// Sync todo issues after commit (if configured).
-			if todoSync {
-				syncTodoIfConfigured(cmd)
-			}
 		} else if !applyPush {
 			// Nothing staged and no push — fail like git commit would.
 			return errors.New("nothing to commit (use --push to push existing commits)")
@@ -129,7 +130,7 @@ and pushes to the remote.`,
 			fmt.Println("Nothing to commit.")
 		}
 
-		// 2. Tag if version provided.
+		// 3. Tag if version provided.
 		if applyVersion != "" {
 			if err := commitpkg.Tag(applyVersion); err != nil {
 				return err
@@ -137,20 +138,15 @@ and pushes to the remote.`,
 			fmt.Printf("Tagged %s.\n", applyVersion)
 		}
 
-		// 3. Push if requested.
+		// 4. Push if requested.
 		if applyPush {
 			if err := commitpkg.Push(); err != nil {
 				return err
 			}
 			fmt.Println("Pushed.")
-
-			// Sync again after push so remote state is reflected.
-			if todoSync {
-				syncTodoIfConfigured(cmd)
-			}
 		}
 
-		// 4. Final status.
+		// 5. Final status.
 		status, err := commitpkg.Status()
 		if err != nil {
 			return err
