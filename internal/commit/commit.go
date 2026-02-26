@@ -198,10 +198,15 @@ func unpushedVersionTags() ([]string, error) {
 // changes are included in the upcoming commit. No-op if the directory
 // doesn't exist or has no changes.
 func RestageIssues() error {
-	if _, statErr := os.Stat(".issues"); statErr != nil {
-		return nil // directory doesn't exist, nothing to do
+	if !issuesDirExists() {
+		return nil
 	}
 	return exec.Command("git", "add", "--", ".issues").Run()
+}
+
+func issuesDirExists() bool {
+	_, err := os.Stat(".issues")
+	return err == nil
 }
 
 // Status returns the current git status output.
