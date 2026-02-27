@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toba/jig/internal/todo/config"
@@ -19,6 +20,8 @@ var (
 	ColorSubtle    = lipgloss.Color("#555555") // Dark gray (for tree lines)
 	ColorBlue      = lipgloss.Color("#3B82F6") // Blue
 	ColorCyan      = lipgloss.Color("14")      // Bright Cyan (ANSI)
+	ColorOrange    = lipgloss.Color("#F97316") // Orange
+	ColorYellow    = lipgloss.Color("#EAB308") // Yellow
 )
 
 // NamedColors maps color names to lipgloss colors.
@@ -376,7 +379,7 @@ type IssueRowConfig struct {
 	TreePrefix    string   // Tree prefix (e.g., "├─" or "  └─") to prepend to ID
 	Dimmed        bool     // Render row dimmed (for unmatched ancestor issues in tree)
 	IDColWidth    int      // Width of ID column (0 = default of ColWidthID)
-	HasDueDate    bool     // Show hourglass indicator for issues with due dates
+	DueDate       *time.Time // Due date for urgency-colored hourglass indicator
 }
 
 // Base column widths for issue lists (minimum sizes)
@@ -551,8 +554,8 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 
 	// Due date hourglass indicator (after priority symbol, before title)
 	var dueDateSymbol string
-	if !cfg.Dimmed && cfg.HasDueDate {
-		dueDateSymbol = lipgloss.NewStyle().Foreground(ColorDanger).Render("⏳") + " "
+	if !cfg.Dimmed && cfg.DueDate != nil {
+		dueDateSymbol = lipgloss.NewStyle().Foreground(dueDateColor(*cfg.DueDate)).Render("⏳") + " "
 	}
 
 	// Title (truncate if needed, accounting for priority symbol and due date width)
@@ -612,4 +615,24 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 		return cursor + idCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + dueDateSymbol + titleStyled + padding + " " + tagsCol
 	}
 	return cursor + idCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + dueDateSymbol + titleStyled
+}
+
+// dueDateColor returns a color based on how soon the due date is.
+//
+//   - Past due or ≤ 24h: red (ColorDanger)
+//   - ≤ 3 days: orange (ColorOrange)
+//   - ≤ 7 days: yellow (ColorYellow)
+//   - > 7 days: green (ColorSuccess)
+func dueDateColor(due time.Time) lipgloss.Color {
+	remaining := time.Until(due)
+	switch {
+	case remaining <= 24*time.Hour:
+		return ColorDanger
+	case remaining <= 3*24*time.Hour:
+		return ColorOrange
+	case remaining <= 7*24*time.Hour:
+		return ColorYellow
+	default:
+		return ColorSuccess
+	}
 }

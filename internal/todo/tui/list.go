@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -118,6 +119,15 @@ func (i issueItem) FilterValue() string {
 	return i.issue.Title + " " + i.issue.ID
 }
 
+// issueDueTime converts an *issue.DueDate to *time.Time for UI rendering.
+func issueDueTime(due *issue.DueDate) *time.Time {
+	if due == nil {
+		return nil
+	}
+	t := due.Time
+	return &t
+}
+
 // itemDelegate handles rendering of list items
 type itemDelegate struct {
 	cfg            *config.Config
@@ -189,7 +199,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 			TreePrefix:    item.treePrefix,
 			Dimmed:        dimmed,
 			IDColWidth:    d.idColWidth,
-			HasDueDate:    item.issue.Due != nil,
+			DueDate:       issueDueTime(item.issue.Due),
 		},
 	)
 

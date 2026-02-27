@@ -13,7 +13,7 @@ citations:
       branch: main
       notes: Original issue tracker source
       last_checked_sha: 0538bbcae06b493680ef156e80b4ecc68733fc85
-      last_checked_date: "2026-02-24T17:10:02Z"
+      last_checked_date: "2026-02-27T18:14:23Z"
       paths:
         high:
             - '**/*.go'
@@ -28,7 +28,7 @@ citations:
       branch: main
       notes: Nope alternative
       last_checked_sha: 931d277d228f59a95a3b03a0beab7beff5b74347
-      last_checked_date: "2026-02-24T17:10:02Z"
+      last_checked_date: "2026-02-27T18:14:23Z"
       paths:
         high:
             - src/**/*.rs

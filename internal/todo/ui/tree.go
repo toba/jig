@@ -3,6 +3,7 @@ package ui
 import (
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toba/jig/internal/todo/config"
@@ -282,6 +283,11 @@ func renderNode(sb *strings.Builder, node *TreeNode, depth int, isLast bool, anc
 	colors := cfg.GetIssueColors(b.Status, b.Type, b.Priority)
 
 	// Use shared RenderIssueRow function with responsive columns
+	var dueTime *time.Time
+	if b.Due != nil {
+		t := b.Due.Time
+		dueTime = &t
+	}
 	row := RenderIssueRow(b.ID, b.Status, b.Type, b.Title, IssueRowConfig{
 		StatusColor:   colors.StatusColor,
 		TypeColor:     colors.TypeColor,
@@ -297,6 +303,7 @@ func renderNode(sb *strings.Builder, node *TreeNode, depth int, isLast bool, anc
 		TreePrefix:    prefix.String(),
 		Dimmed:        !node.Matched,
 		IDColWidth:    renderCfg.treeColWidth,
+		DueDate:       dueTime,
 	})
 
 	sb.WriteString(row)

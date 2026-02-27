@@ -7,12 +7,14 @@
 - Add `changelog` command for gathering recent issues and commits by time range ([#69](https://github.com/toba/jig/issues/69))
 - Add Scoop bucket companion support; init, doctor, and CI workflow generation for Windows distribution
 - Add `review` status for code-complete issues awaiting evaluation ([#65](https://github.com/toba/jig/issues/65))
+- Color due date hourglass by urgency; red ≤24h, orange ≤3d, yellow ≤7d, green beyond
 - Add status and priority sort options with newest-created tiebreaker
 
 ### 🐞 Fixes
 
 - Fix TUI filter breaking tree hierarchy; preserve ancestor chain when filtering ([#64](https://github.com/toba/jig/issues/64))
 - Fix TUI layout; use TypeAbbrev for dimmed rows to prevent lipgloss word-wrap ([#68](https://github.com/toba/jig/issues/68))
+- Fix `jig commit` leaving dirty files after sync metadata updates ([#70](https://github.com/toba/jig/issues/70))
 - Fix release workflow; add GoReleaser replace mode, parallelize scoop job
 
 ### 🗜️ Tweaks

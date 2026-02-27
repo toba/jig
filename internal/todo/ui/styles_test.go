@@ -3,6 +3,7 @@ package ui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toba/jig/internal/todo/config"
 )
@@ -92,12 +93,14 @@ func TestRenderIssueRow_NarrowWidthWithPriority(t *testing.T) {
 }
 
 func TestRenderIssueRow_DueDateIndicator(t *testing.T) {
-	t.Run("shows hourglass when HasDueDate is true", func(t *testing.T) {
+	futureDate := time.Now().Add(48 * time.Hour)
+
+	t.Run("shows hourglass when DueDate is set", func(t *testing.T) {
 		cfg := IssueRowConfig{
 			MaxTitleWidth: 40,
 			StatusColor:   "green",
 			TypeColor:     "blue",
-			HasDueDate:    true,
+			DueDate:       &futureDate,
 		}
 		result := RenderIssueRow("abc123", "todo", "task", "Test Title", cfg)
 		if !strings.Contains(result, "⏳") {
@@ -105,12 +108,12 @@ func TestRenderIssueRow_DueDateIndicator(t *testing.T) {
 		}
 	})
 
-	t.Run("no hourglass when HasDueDate is false", func(t *testing.T) {
+	t.Run("no hourglass when DueDate is nil", func(t *testing.T) {
 		cfg := IssueRowConfig{
 			MaxTitleWidth: 40,
 			StatusColor:   "green",
 			TypeColor:     "blue",
-			HasDueDate:    false,
+			DueDate:       nil,
 		}
 		result := RenderIssueRow("abc123", "todo", "task", "Test Title", cfg)
 		if strings.Contains(result, "⏳") {
@@ -123,7 +126,7 @@ func TestRenderIssueRow_DueDateIndicator(t *testing.T) {
 			MaxTitleWidth: 40,
 			StatusColor:   "green",
 			TypeColor:     "blue",
-			HasDueDate:    true,
+			DueDate:       &futureDate,
 			Dimmed:        true,
 		}
 		result := RenderIssueRow("abc123", "todo", "task", "Test Title", cfg)
@@ -145,11 +148,39 @@ func TestRenderIssueRow_DueDateIndicator(t *testing.T) {
 			TypeColor:     "blue",
 			PriorityColor: "red",
 			Priority:      "high",
-			HasDueDate:    true,
+			DueDate:       &futureDate,
 		}
 		result := RenderIssueRow("abc123", "todo", "task", "Long title", cfg)
 		if result == "" {
 			t.Error("expected non-empty result")
+		}
+	})
+
+	t.Run("hourglass present for each urgency tier", func(t *testing.T) {
+		tiers := []struct {
+			name string
+			due  time.Time
+		}{
+			{"past due", time.Now().Add(-1 * time.Hour)},
+			{"due within 24h", time.Now().Add(12 * time.Hour)},
+			{"due within 3 days", time.Now().Add(2 * 24 * time.Hour)},
+			{"due within 7 days", time.Now().Add(5 * 24 * time.Hour)},
+			{"due in 2 weeks", time.Now().Add(14 * 24 * time.Hour)},
+		}
+		for _, tier := range tiers {
+			t.Run(tier.name, func(t *testing.T) {
+				due := tier.due
+				cfg := IssueRowConfig{
+					MaxTitleWidth: 40,
+					StatusColor:   "green",
+					TypeColor:     "blue",
+					DueDate:       &due,
+				}
+				result := RenderIssueRow("abc123", "todo", "task", "Test Title", cfg)
+				if !strings.Contains(result, "⏳") {
+					t.Errorf("expected hourglass for %s", tier.name)
+				}
+			})
 		}
 	})
 }
