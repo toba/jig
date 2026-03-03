@@ -2,6 +2,7 @@ package config
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -185,6 +186,12 @@ func FindConfig(startDir string) (string, error) {
 			}
 			// If migration failed silently, fall back to legacy
 			return legacyPath, nil
+		}
+
+		// Check for common typo: .jig.yml instead of .jig.yaml
+		typoPath := filepath.Join(dir, ".jig.yml")
+		if _, err := os.Stat(typoPath); err == nil {
+			return "", errors.New("found .jig.yml but jig expects .jig.yaml — please rename it")
 		}
 
 		parent := filepath.Dir(dir)

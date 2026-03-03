@@ -39,9 +39,12 @@ Use --skip-api to perform offline validation only.`,
 			if syncCheckJSON {
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
-				return enc.Encode(map[string]string{"error": "no integration configured"})
+				return enc.Encode(map[string]string{
+					"error": "no integration configured",
+					"hint":  "Add a sync section to .jig.yaml under the todo key. See: jig todo sync --help",
+				})
 			}
-			fmt.Println("No integration configured. Add a sync section (clickup or github) to .jig.yaml.")
+			fmt.Println(syncConfigHint)
 			return nil
 		}
 

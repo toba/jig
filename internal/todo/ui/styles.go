@@ -371,14 +371,14 @@ type IssueRowConfig struct {
 	MaxTitleWidth int  // 0 means no truncation
 	ShowCursor    bool // Show selection cursor
 	IsSelected    bool
-	IsMarked      bool     // Marked for multi-select batch operations
-	Tags          []string // Tags to display (optional)
-	ShowTags      bool     // Whether to show tags column
-	TagsColWidth  int      // Width of tags column (0 = default)
-	MaxTags       int      // Max tags to show (0 = default of 1)
-	TreePrefix    string   // Tree prefix (e.g., "├─" or "  └─") to prepend to ID
-	Dimmed        bool     // Render row dimmed (for unmatched ancestor issues in tree)
-	IDColWidth    int      // Width of ID column (0 = default of ColWidthID)
+	IsMarked      bool       // Marked for multi-select batch operations
+	Tags          []string   // Tags to display (optional)
+	ShowTags      bool       // Whether to show tags column
+	TagsColWidth  int        // Width of tags column (0 = default)
+	MaxTags       int        // Max tags to show (0 = default of 1)
+	TreePrefix    string     // Tree prefix (e.g., "├─" or "  └─") to prepend to ID
+	Dimmed        bool       // Render row dimmed (for unmatched ancestor issues in tree)
+	IDColWidth    int        // Width of ID column (0 = default of ColWidthID)
 	DueDate       *time.Time // Due date for urgency-colored hourglass indicator
 }
 

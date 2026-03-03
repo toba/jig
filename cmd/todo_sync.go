@@ -19,6 +19,23 @@ var (
 	syncJSON            bool
 )
 
+// syncConfigHint is the help text shown when no integration is configured.
+const syncConfigHint = `No integration configured.
+
+Add a sync section to .jig.yaml under the todo key:
+
+  todo:
+    sync:
+      github:
+        repo: owner/repo
+
+Or for ClickUp:
+
+  todo:
+    sync:
+      clickup:
+        list_id: "abc123"`
+
 var todoSyncCmd = &cobra.Command{
 	Use:   "sync [issue-id...]",
 	Short: "Sync issues to external integrations",
@@ -27,12 +44,22 @@ var todoSyncCmd = &cobra.Command{
 If issue IDs are provided, only those issues are synced. Otherwise, all issues
 matching the sync filter are synced.
 
-To enable sync, add a sync section to your .jig.yaml config file under todo:
+Configuration goes in .jig.yaml under the todo key:
 
   todo:
     sync:
       github:
-        repo: owner/repo`,
+        repo: owner/repo
+
+Or for ClickUp:
+
+  todo:
+    sync:
+      clickup:
+        list_id: "abc123"
+
+GitHub sync requires the gh CLI to be installed and authenticated.
+ClickUp sync requires a CLICKUP_TOKEN environment variable.`,
 	RunE: runSync,
 }
 
@@ -53,9 +80,14 @@ func runSync(cmd *cobra.Command, args []string) error {
 	}
 	if integ == nil {
 		if syncJSON {
-			return outputSyncJSON(nil)
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(map[string]string{
+				"error": "no integration configured",
+				"hint":  "Add a sync section to .jig.yaml under the todo key. See: jig todo sync --help",
+			})
 		}
-		fmt.Println("No integration configured. Add a sync section (clickup or github) to .jig.yaml.")
+		fmt.Println(syncConfigHint)
 		return nil
 	}
 

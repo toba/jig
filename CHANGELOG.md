@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Mar 1 – Mar 7, 2026
+
+### 🗜️ Tweaks
+
+- Improve sync configuration discovery; show example YAML config in error messages, detect `.jig.yml` typo, add sync doctor check
+
 ## Week of Feb 23 – Mar 1, 2026
 
 ### ✨ Features
