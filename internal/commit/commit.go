@@ -134,29 +134,73 @@ func Tag(version string) error {
 	return nil
 }
 
+// pushRetryDelays defines the backoff delays between push retry attempts.
+var pushRetryDelays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+
+// pushLogf is the function used to log retry messages. It defaults to
+// fmt.Fprintf(os.Stderr, ...) and can be overridden in tests.
+var pushLogf = func(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
+}
+
 // Push pushes the current branch, then pushes any unpushed version tags
 // individually in semver order. This prevents out-of-order GitHub releases
 // when multiple tags are pushed simultaneously.
+//
+// Transient network failures (git exit code 128) are retried with
+// exponential backoff up to 3 times.
 func Push() error {
-	if err := exec.Command("git", "push").Run(); err != nil {
-		return fmt.Errorf("git push: %w", err)
+	if err := pushWithRetry("git push", "git", "push"); err != nil {
+		return err
 	}
 
 	tags, err := unpushedVersionTags()
 	if err != nil {
 		// Can't determine unpushed tags (e.g. no remote) — push all tags.
-		if err := exec.Command("git", "push", "--tags").Run(); err != nil {
-			return fmt.Errorf("git push --tags: %w", err)
+		if err := pushWithRetry("git push --tags", "git", "push", "--tags"); err != nil {
+			return err
 		}
 		return nil
 	}
 
 	for _, tag := range tags {
-		if err := exec.Command("git", "push", "origin", tag).Run(); err != nil { //nolint:gosec // args from internal config
-			return fmt.Errorf("git push origin %s: %w", tag, err)
+		if err := pushWithRetry("git push origin "+tag, "git", "push", "origin", tag); err != nil { //nolint:gosec // args from internal config
+			return err
 		}
 	}
 	return nil
+}
+
+// pushWithRetry runs a git push command, retrying on transient failures
+// (exit code 128, which git uses for network/TLS errors).
+func pushWithRetry(desc string, args ...string) error {
+	var lastErr error
+	for attempt := range len(pushRetryDelays) + 1 {
+		cmd := exec.Command(args[0], args[1:]...) //nolint:gosec // args from internal caller
+		lastErr = cmd.Run()
+		if lastErr == nil {
+			return nil
+		}
+		if !isTransientGitError(lastErr) {
+			return fmt.Errorf("%s: %w", desc, lastErr)
+		}
+		if attempt < len(pushRetryDelays) {
+			delay := pushRetryDelays[attempt]
+			pushLogf("  %s failed (transient), retrying in %v…\n", desc, delay)
+			time.Sleep(delay)
+		}
+	}
+	return fmt.Errorf("%s: %w (after %d retries)", desc, lastErr, len(pushRetryDelays))
+}
+
+// isTransientGitError reports whether an exec error represents a transient
+// git failure (exit code 128, used for network/TLS/connection errors).
+func isTransientGitError(err error) bool {
+	exitErr := &exec.ExitError{}
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode() == 128
+	}
+	return false
 }
 
 // unpushedVersionTags returns local v* tags not present on the remote,

@@ -1,11 +1,13 @@
 package commit
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMatchesGitignorePattern(t *testing.T) {
@@ -642,6 +644,104 @@ func TestPushOrdersTags(t *testing.T) {
 			t.Errorf("remote missing tag %s", tag)
 		}
 	}
+}
+
+func TestIsTransientGitError(t *testing.T) {
+	t.Run("exit 128 is transient", func(t *testing.T) {
+		// Run a command that exits with 128.
+		err := exec.Command("sh", "-c", "exit 128").Run()
+		if !isTransientGitError(err) {
+			t.Error("exit 128 should be transient")
+		}
+	})
+
+	t.Run("exit 1 is not transient", func(t *testing.T) {
+		err := exec.Command("sh", "-c", "exit 1").Run()
+		if isTransientGitError(err) {
+			t.Error("exit 1 should not be transient")
+		}
+	})
+
+	t.Run("nil is not transient", func(t *testing.T) {
+		if isTransientGitError(nil) {
+			t.Error("nil should not be transient")
+		}
+	})
+}
+
+func TestPushWithRetry(t *testing.T) {
+	t.Run("succeeds first try", func(t *testing.T) {
+		err := pushWithRetry("test", "sh", "-c", "exit 0")
+		if err != nil {
+			t.Fatalf("pushWithRetry() error: %v", err)
+		}
+	})
+
+	t.Run("non-transient error fails immediately", func(t *testing.T) {
+		err := pushWithRetry("test cmd", "sh", "-c", "exit 1")
+		if err == nil {
+			t.Fatal("expected error for exit 1")
+		}
+		if strings.Contains(err.Error(), "retries") {
+			t.Error("non-transient error should not mention retries")
+		}
+	})
+
+	t.Run("transient error retries and exhausts", func(t *testing.T) {
+		// Shorten delays for test speed.
+		origDelays := pushRetryDelays
+		pushRetryDelays = []time.Duration{1 * time.Millisecond, 1 * time.Millisecond, 1 * time.Millisecond}
+		defer func() { pushRetryDelays = origDelays }()
+
+		// Suppress log output during test.
+		origLog := pushLogf
+		var logged []string
+		pushLogf = func(format string, args ...any) {
+			logged = append(logged, fmt.Sprintf(format, args...))
+		}
+		defer func() { pushLogf = origLog }()
+
+		err := pushWithRetry("test cmd", "sh", "-c", "exit 128")
+		if err == nil {
+			t.Fatal("expected error after retries exhausted")
+		}
+		if !strings.Contains(err.Error(), "3 retries") {
+			t.Errorf("error = %q, want mention of 3 retries", err.Error())
+		}
+		if len(logged) != 3 {
+			t.Errorf("expected 3 retry log messages, got %d", len(logged))
+		}
+	})
+
+	t.Run("transient error succeeds on retry", func(t *testing.T) {
+		origDelays := pushRetryDelays
+		pushRetryDelays = []time.Duration{1 * time.Millisecond, 1 * time.Millisecond, 1 * time.Millisecond}
+		defer func() { pushRetryDelays = origDelays }()
+
+		origLog := pushLogf
+		pushLogf = func(string, ...any) {}
+		defer func() { pushLogf = origLog }()
+
+		// Use a counter file to succeed on 2nd attempt.
+		dir := t.TempDir()
+		counterFile := filepath.Join(dir, "counter")
+		if err := os.WriteFile(counterFile, []byte("0"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Script: read counter, increment, fail with 128 on first call, succeed on second.
+		script := fmt.Sprintf(`
+			c=$(cat %q)
+			echo $((c + 1)) > %q
+			if [ "$c" = "0" ]; then exit 128; fi
+			exit 0
+		`, counterFile, counterFile)
+
+		err := pushWithRetry("test cmd", "sh", "-c", script)
+		if err != nil {
+			t.Fatalf("pushWithRetry() should succeed on retry, got: %v", err)
+		}
+	})
 }
 
 func TestGitignorePatternsCompiled(t *testing.T) {

@@ -756,6 +756,15 @@ func TestNopeCmdSilenceFlags(t *testing.T) {
 	}
 }
 
+func TestCommitCmdSilenceFlags(t *testing.T) {
+	if !commitCmd.SilenceUsage {
+		t.Error("commitCmd should have SilenceUsage set")
+	}
+	if !commitCmd.SilenceErrors {
+		t.Error("commitCmd should have SilenceErrors set")
+	}
+}
+
 // --- todo PersistentPreRunE bypass test ---
 
 func TestTodoPersistentPreRunESkipsInit(t *testing.T) {

@@ -4,6 +4,7 @@
 
 ### 🐞 Fixes
 
+- Fix `commit apply --push` printing usage text on push failure; add retry with exponential backoff for transient network errors
 - Fix `cite review` saving oldest commit SHA instead of newest; use correct index based on API response order ([#72](https://github.com/toba/jig/issues/72))
 
 ### 🗜️ Tweaks

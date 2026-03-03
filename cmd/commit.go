@@ -11,8 +11,10 @@ import (
 )
 
 var commitCmd = &cobra.Command{
-	Use:   "commit",
-	Short: "Two-phase commit workflow: gather context, then apply",
+	Use:           "commit",
+	Short:         "Two-phase commit workflow: gather context, then apply",
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 var gatherCmd = &cobra.Command{
