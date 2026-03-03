@@ -229,6 +229,12 @@
         }
       }
     },
+    "changelog": {
+      "type": "string",
+      "description": "How often the agent should update CHANGELOG.md. 'per-commit' updates on every commit, 'daily' updates once per day, 'weekly' updates once per week.",
+      "enum": ["per-commit", "daily", "weekly"],
+      "default": "per-commit"
+    },
     "companions": {
       "type": "object",
       "description": "Git URLs for companion repositories managed by jig.",

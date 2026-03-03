@@ -5,6 +5,7 @@ todo:
     sync:
         github:
             repo: toba/jig
+changelog: weekly
 companions:
     brew: https://github.com/toba/homebrew-jig.git
     scoop: https://github.com/toba/scoop-jig.git

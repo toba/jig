@@ -99,6 +99,7 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 
 	var commits []github.Commit
 	var aggregateFiles []github.File
+	newestFirst := true // List Commits API returns newest-first; Compare API returns oldest-first.
 
 	if src.LastCheckedSHA == "" {
 		// First run: fetch last 30 commits.
@@ -128,6 +129,7 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 		} else {
 			commits = cmp.Commits
 			aggregateFiles = cmp.Files
+			newestFirst = false // Compare API returns oldest-first.
 		}
 	}
 
@@ -141,7 +143,12 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 	}
 
 	// The most recent commit SHA becomes the new last_checked reference.
-	headSHA := commits[0].SHA
+	var headSHA string
+	if newestFirst {
+		headSHA = commits[0].SHA
+	} else {
+		headSHA = commits[len(commits)-1].SHA
+	}
 
 	// Classify aggregate files.
 	filePaths := make([]string, 0, len(aggregateFiles))
