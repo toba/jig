@@ -2,9 +2,13 @@
 
 ## Week of Mar 1 – Mar 7, 2026
 
+### 🐞 Fixes
+
+- Fix `cite review` saving oldest commit SHA instead of newest; use correct index based on API response order ([#72](https://github.com/toba/jig/issues/72))
+
 ### 🗜️ Tweaks
 
-- Improve sync configuration discovery; show example YAML config in error messages, detect `.jig.yml` typo, add sync doctor check
+- Improve sync configuration discovery; show example YAML config in error messages, detect `.jig.yml` typo, add sync doctor check ([#71](https://github.com/toba/jig/issues/71))
 
 ## Week of Feb 23 – Mar 1, 2026
 
