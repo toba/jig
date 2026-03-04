@@ -393,6 +393,11 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 			*m.flatItems = msg.items
 		}
 
+		// Skip SetItems if nothing changed — avoids resetting filter UI state
+		if m.itemsUnchanged(msg.items) {
+			return m, nil
+		}
+
 		items := make([]list.Item, len(msg.items))
 		// Check if any issues have tags
 		m.hasTags = false
@@ -641,6 +646,29 @@ func (m *listModel) updateDelegate() {
 		selectedIssues: &m.selectedIssues,
 	}
 	m.list.SetDelegate(delegate)
+}
+
+// itemsUnchanged returns true if the new flat items match what's currently displayed.
+// This avoids calling SetItems which resets the Bubble Tea filter UI state.
+func (m listModel) itemsUnchanged(newItems []ui.FlatItem) bool {
+	current := m.list.Items()
+	if len(current) != len(newItems) {
+		return false
+	}
+	for i, item := range current {
+		ii, ok := item.(issueItem)
+		if !ok {
+			return false
+		}
+		ni := newItems[i]
+		if ii.issue.ID != ni.Issue.ID ||
+			ii.issue.ETag() != ni.Issue.ETag() ||
+			ii.treePrefix != ni.TreePrefix ||
+			ii.matched != ni.Matched {
+			return false
+		}
+	}
+	return true
 }
 
 func (m listModel) View() string {

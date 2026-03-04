@@ -358,9 +358,10 @@ func TestCompareIssuesByStatusPriorityAndType(t *testing.T) {
 	})
 }
 
-func TestIssuesLoadedMsgReturnsFilterCmd(t *testing.T) {
+func TestIssuesLoadedMsgSkipsUnchangedItems(t *testing.T) {
 	cfg := config.Default()
 	deepSearch := false
+	flatItems := &[]ui.FlatItem{}
 
 	// Create a listModel with a bubbles list that has filtering enabled
 	delegate := itemDelegate{cfg: cfg}
@@ -374,6 +375,7 @@ func TestIssuesLoadedMsgReturnsFilterCmd(t *testing.T) {
 		width:      80,
 		height:     24,
 		deepSearch: &deepSearch,
+		flatItems:  flatItems,
 	}
 
 	// Set initial items so the list has content
@@ -384,10 +386,10 @@ func TestIssuesLoadedMsgReturnsFilterCmd(t *testing.T) {
 	}
 	m.list.SetItems(initialItems)
 
-	// Simulate an active filter by setting filter state to FilterApplied
-	m.list.SetFilterState(list.FilterApplied)
+	t.Run("skips SetItems when items unchanged and filter active", func(t *testing.T) {
+		// Simulate an active filter
+		m.list.SetFilterState(list.FilterApplied)
 
-	t.Run("returns non-nil cmd when filter is active", func(t *testing.T) {
 		msg := issuesLoadedMsg{
 			items: []ui.FlatItem{
 				{Issue: &issue.Issue{ID: "1", Title: "Fix login bug"}, Matched: true},
@@ -398,25 +400,40 @@ func TestIssuesLoadedMsgReturnsFilterCmd(t *testing.T) {
 		}
 
 		_, cmd := m.Update(msg)
-		if cmd == nil {
-			t.Error("expected non-nil cmd when filter is active, got nil (filter would be lost on refresh)")
+		if cmd != nil {
+			t.Error("expected nil cmd when items unchanged — filter UI should not be disturbed")
 		}
 	})
 
-	t.Run("returns nil cmd when no filter is active", func(t *testing.T) {
-		// Reset filter state to unfiltered
-		m.list.ResetFilter()
+	t.Run("calls SetItems when items changed", func(t *testing.T) {
+		// Start fresh — create a new model without filter state
+		l2 := list.New([]list.Item{}, delegate, 80, 24)
+		l2.SetFilteringEnabled(true)
+		l2.Filter = substringFilter
+		flatItems2 := &[]ui.FlatItem{}
+		m2 := listModel{
+			list:       l2,
+			config:     cfg,
+			width:      80,
+			height:     24,
+			deepSearch: &deepSearch,
+			flatItems:  flatItems2,
+		}
+		m2.list.SetItems([]list.Item{
+			issueItem{issue: &issue.Issue{ID: "1", Title: "Fix login bug"}, cfg: cfg, matched: true, deepSearch: &deepSearch},
+		})
 
 		msg := issuesLoadedMsg{
 			items: []ui.FlatItem{
 				{Issue: &issue.Issue{ID: "1", Title: "Fix login bug"}, Matched: true},
+				{Issue: &issue.Issue{ID: "4", Title: "New issue"}, Matched: true},
 			},
 			idColWidth: 3,
 		}
 
-		_, cmd := m.Update(msg)
-		if cmd != nil {
-			t.Error("expected nil cmd when no filter is active")
+		m2, _ = m2.Update(msg)
+		if len(m2.list.Items()) != 2 {
+			t.Errorf("expected 2 items after update with changed items, got %d", len(m2.list.Items()))
 		}
 	})
 }
