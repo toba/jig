@@ -112,6 +112,10 @@ func HasStagedChanges() (bool, error) {
 
 // Commit creates a git commit with the given message.
 // Stderr is captured and included in the error so hook failures are visible.
+//
+// If a pre-commit hook modifies staged files (e.g. a formatter), the
+// modifications are automatically staged and amended into the commit so
+// callers never see a dirty working tree caused by hooks.
 func Commit(message string) error {
 	cmd := exec.Command("git", "commit", "-m", message) //nolint:gosec // args from internal config
 	cmd.WaitDelay = 10 * time.Second
@@ -123,7 +127,38 @@ func Commit(message string) error {
 		}
 		return fmt.Errorf("git commit: %w", err)
 	}
+
+	// Check if pre-commit hooks left unstaged modifications (e.g. formatter
+	// rewrote files after they were committed). If so, fold them in.
+	if dirty, _ := hasUnstagedChanges(); dirty {
+		if err := exec.Command("git", "add", "-u").Run(); err != nil {
+			return fmt.Errorf("restaging hook changes: %w", err)
+		}
+		amend := exec.Command("git", "commit", "--amend", "--no-edit")
+		amend.WaitDelay = 10 * time.Second
+		if out, err := amend.CombinedOutput(); err != nil {
+			detail := strings.TrimSpace(string(out))
+			if detail != "" {
+				return fmt.Errorf("amending hook changes: %w\n%s", err, detail)
+			}
+			return fmt.Errorf("amending hook changes: %w", err)
+		}
+	}
+
 	return nil
+}
+
+// hasUnstagedChanges reports whether tracked files have unstaged modifications.
+func hasUnstagedChanges() (bool, error) {
+	err := exec.Command("git", "diff", "--quiet").Run()
+	if err == nil {
+		return false, nil
+	}
+	exitErr := &exec.ExitError{}
+	if errors.As(err, &exitErr) {
+		return true, nil
+	}
+	return false, fmt.Errorf("git diff --quiet: %w", err)
 }
 
 // Tag creates a git tag with the given name.

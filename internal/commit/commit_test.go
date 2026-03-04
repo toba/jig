@@ -362,6 +362,55 @@ func TestCommit(t *testing.T) {
 	}
 }
 
+func TestCommitAmendsHookChanges(t *testing.T) {
+	dir := setupGitRepo(t)
+
+	// Install a pre-commit hook that reformats a file (simulating SwiftFormat).
+	hookDir := filepath.Join(dir, ".git", "hooks")
+	hookScript := fmt.Sprintf(`#!/bin/sh
+# Simulate a formatter that rewrites a file during commit.
+f="%s/hello.txt"
+if [ -f "$f" ]; then
+    echo "reformatted content" > "$f"
+fi
+`, dir)
+	if err := os.WriteFile(filepath.Join(hookDir, "pre-commit"), []byte(hookScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Stage a file.
+	if err := os.WriteFile(filepath.Join(dir, "hello.txt"), []byte("original content\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("git", "add", "-A")
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Commit("test with hook"); err != nil {
+		t.Fatalf("Commit() error: %v", err)
+	}
+
+	// Working tree should be clean — hook changes folded into the commit.
+	status, err := Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != "" {
+		t.Errorf("working tree dirty after commit: %s", status)
+	}
+
+	// The committed file should contain the reformatted content.
+	out, err := exec.Command("git", "show", "HEAD:hello.txt").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), "reformatted content") {
+		t.Errorf("committed content = %q, want 'reformatted content'", string(out))
+	}
+}
+
 func TestCommitNoChanges(t *testing.T) {
 	setupGitRepo(t)
 
