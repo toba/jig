@@ -42,6 +42,12 @@ func DetectRepoInfo(repo, fields string) (*RepoInfo, error) {
 	return &info, nil
 }
 
+// RepoExists returns true if the given repo (owner/name) exists on GitHub.
+func RepoExists(repo string) bool {
+	cmd := exec.Command("gh", "repo", "view", repo) //nolint:gosec // gh CLI wrapper
+	return cmd.Run() == nil
+}
+
 // DetectLatestTag returns the tag name of the most recent release for repo.
 func DetectLatestTag(repo string) (string, error) {
 	cmd := exec.Command("gh", "release", "list", "--repo", repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName") //nolint:gosec // gh CLI wrapper

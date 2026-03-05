@@ -34,52 +34,50 @@ func GenerateWorkflowJob(p WorkflowParams) string {
           CHECKSUMS=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt -O -)
 
           SHA_AMD64=$(echo "$CHECKSUMS" | grep "%[2]s_windows_amd64.zip" | awk '{print $1}')
-          SHA_ARM64=$(echo "$CHECKSUMS" | grep "%[2]s_windows_arm64.zip" | awk '{print $1}')
+          SHA_ARM64=$(echo "$CHECKSUMS" | grep "%[2]s_windows_arm64.zip" | awk '{print $1}' || true)
 
           if [ -z "$SHA_AMD64" ]; then
             echo "ERROR: Could not extract SHA256 for %[2]s_windows_amd64.zip"
-            exit 1
-          fi
-          if [ -z "$SHA_ARM64" ]; then
-            echo "ERROR: Could not extract SHA256 for %[2]s_windows_arm64.zip"
             exit 1
           fi
 
           git clone "https://x-access-token:${GH_TOKEN}@github.com/%[3]s/scoop-%[2]s.git" bucket
           cd bucket
 
+          ARM64_ARCH=""
+          ARM64_AUTO=""
+          if [ -n "$SHA_ARM64" ]; then
+            ARM64_ARCH=$(jq -n --arg sha "$SHA_ARM64" --arg tag "$TAG" \
+              '{"arm64":{"url":("https://github.com/%[3]s/%[2]s/releases/download/"+$tag+"/%[2]s_windows_arm64.zip"),"hash":$sha}}')
+            ARM64_AUTO='{"arm64":{"url":"https://github.com/%[3]s/%[2]s/releases/download/v$version/%[2]s_windows_arm64.zip"}}'
+          fi
+
           jq -n \
             --arg version "$VERSION" \
             --arg sha_amd64 "$SHA_AMD64" \
-            --arg sha_arm64 "$SHA_ARM64" \
             --arg tag "$TAG" \
             --arg desc "%[4]s" \
+            --argjson arm64_arch "${ARM64_ARCH:-null}" \
+            --argjson arm64_auto "${ARM64_AUTO:-null}" \
             '{
               version: $version,
               description: $desc,
               homepage: "https://github.com/%[3]s/%[2]s",
               license: "%[5]s",
-              architecture: {
+              architecture: ({
                 "64bit": {
                   url: ("https://github.com/%[3]s/%[2]s/releases/download/" + $tag + "/%[2]s_windows_amd64.zip"),
                   hash: $sha_amd64
-                },
-                arm64: {
-                  url: ("https://github.com/%[3]s/%[2]s/releases/download/" + $tag + "/%[2]s_windows_arm64.zip"),
-                  hash: $sha_arm64
                 }
-              },
+              } + if $arm64_arch then $arm64_arch else {} end),
               bin: ["%[2]s.exe"],
               checkver: { github: "https://github.com/%[3]s/%[2]s" },
               autoupdate: {
-                architecture: {
+                architecture: ({
                   "64bit": {
                     url: "https://github.com/%[3]s/%[2]s/releases/download/v$version/%[2]s_windows_amd64.zip"
-                  },
-                  arm64: {
-                    url: "https://github.com/%[3]s/%[2]s/releases/download/v$version/%[2]s_windows_arm64.zip"
                   }
-                }
+                } + if $arm64_auto then $arm64_auto else {} end)
               }
             }' > bucket/%[2]s.json
 

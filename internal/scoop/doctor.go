@@ -33,8 +33,12 @@ func RunDoctor(opts DoctorOpts) int {
 	}
 	fmt.Fprintf(os.Stderr, "OK:   companions.scoop configured: %s\n", opts.Bucket)
 
-	// 2. .goreleaser.yaml has windows + amd64 builds and zip format
-	ok = checkGoreleaserScoop(opts.Tool) && ok
+	// 2. .goreleaser.yaml has windows + amd64 builds and zip format (if present)
+	if _, _, found := companion.CheckGoreleaserExists(); found {
+		ok = checkGoreleaserScoop(opts.Tool) && ok
+	} else {
+		fmt.Fprintf(os.Stderr, "WARN: .goreleaser.yaml not found (manual builds assumed)\n")
+	}
 
 	// Checks 3, 4, 5: independent gh calls — run concurrently.
 	type checkResult struct {
@@ -191,6 +195,7 @@ type goreleaserConfig struct {
 		Goarch []string `yaml:"goarch"`
 	} `yaml:"builds"`
 	Archives []struct {
+		Format          string   `yaml:"format"`
 		Formats         []string `yaml:"formats"`
 		FormatOverrides []struct {
 			Goos    string   `yaml:"goos"`
@@ -244,7 +249,7 @@ func checkGoreleaserScoop(_ string) bool {
 	// Check archive produces zip for windows (either default or format_overrides).
 	if len(cfg.Archives) > 0 {
 		a := cfg.Archives[0]
-		hasZip := false
+		hasZip := a.Format == "zip"
 		for _, f := range a.Formats {
 			if f == "zip" {
 				hasZip = true

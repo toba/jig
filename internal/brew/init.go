@@ -196,6 +196,9 @@ Report issues at [%s/%s](https://github.com/%s/%s/issues).
 }
 
 func createTapRepo(tap, tool string) error {
+	if companion.RepoExists(tap) {
+		return nil
+	}
 	cmd := exec.Command("gh", "repo", "create", tap, "--public", //nolint:gosec // gh CLI wrapper
 		"--description", "Homebrew tap for "+tool)
 	if out, err := cmd.CombinedOutput(); err != nil {

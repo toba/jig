@@ -178,6 +178,9 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 }
 
 func createExtRepo(ext, desc string) error {
+	if companion.RepoExists(ext) {
+		return nil
+	}
 	cmd := exec.Command("gh", "repo", "create", ext, "--public", //nolint:gosec // gh CLI wrapper
 		"--description", desc)
 	if out, err := cmd.CombinedOutput(); err != nil {

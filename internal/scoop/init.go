@@ -75,15 +75,12 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 	assetAMD64 := tool + "_windows_amd64.zip"
 	assetARM64 := tool + "_windows_arm64.zip"
 
-	// Step 4: Resolve SHA256 for both architectures.
+	// Step 4: Resolve SHA256 for amd64 (required) and arm64 (optional).
 	shaAMD64, err := brew.ResolveSHA256(repo, tag, assetAMD64)
 	if err != nil {
 		return nil, fmt.Errorf("resolving SHA256 for %s: %w", assetAMD64, err)
 	}
-	shaARM64, err := brew.ResolveSHA256(repo, tag, assetARM64)
-	if err != nil {
-		return nil, fmt.Errorf("resolving SHA256 for %s: %w", assetARM64, err)
-	}
+	shaARM64, _ := brew.ResolveSHA256(repo, tag, assetARM64)
 
 	// Step 5: Generate manifest.
 	manifestContent := GenerateManifest(ManifestParams{
@@ -204,6 +201,9 @@ Report issues at [%s/%s](https://github.com/%s/%s/issues).
 }
 
 func createBucketRepo(bucket, tool string) error {
+	if companion.RepoExists(bucket) {
+		return nil
+	}
 	cmd := exec.Command("gh", "repo", "create", bucket, "--public", //nolint:gosec // gh CLI wrapper
 		"--description", "Scoop bucket for "+tool)
 	if out, err := cmd.CombinedOutput(); err != nil {

@@ -73,7 +73,7 @@ func (l Language) WorkflowBuildMarkers() []string {
 	case "rust":
 		return []string{"cargo build", "cross"}
 	default: // go
-		return []string{"goreleaser/goreleaser-action"}
+		return []string{"goreleaser/goreleaser-action", "go build", "GOOS="}
 	}
 }
 
@@ -85,7 +85,7 @@ func (l Language) WorkflowBuildLabel() string {
 	case "rust":
 		return "cargo/cross build step"
 	default:
-		return "goreleaser-action"
+		return "Go build step (goreleaser-action, go build, or GOOS=)"
 	}
 }
 

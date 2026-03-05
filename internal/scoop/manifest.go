@@ -52,34 +52,39 @@ func GenerateManifest(p ManifestParams) string {
 	baseURL := "https://github.com/" + p.Repo + "/releases/download/" + p.Tag + "/"
 	autoURL := "https://github.com/" + p.Repo + "/releases/download/v$version/"
 
-	m := manifest{
-		Version:     version,
-		Description: p.Desc,
-		Homepage:    p.Homepage,
-		License:     p.License,
-		Architecture: map[string]manifestArchConfig{
-			"64bit": {
-				URL:  baseURL + p.Tool + "_windows_amd64.zip",
-				Hash: p.SHA256AMD64,
-			},
-			"arm64": {
-				URL:  baseURL + p.Tool + "_windows_arm64.zip",
-				Hash: p.SHA256ARM64,
-			},
+	arch := map[string]manifestArchConfig{
+		"64bit": {
+			URL:  baseURL + p.Tool + "_windows_amd64.zip",
+			Hash: p.SHA256AMD64,
 		},
-		Bin: []string{p.Tool + ".exe"},
+	}
+	autoArch := map[string]manifestAutoArchConfig{
+		"64bit": {
+			URL: autoURL + p.Tool + "_windows_amd64.zip",
+		},
+	}
+	if p.SHA256ARM64 != "" {
+		arch["arm64"] = manifestArchConfig{
+			URL:  baseURL + p.Tool + "_windows_arm64.zip",
+			Hash: p.SHA256ARM64,
+		}
+		autoArch["arm64"] = manifestAutoArchConfig{
+			URL: autoURL + p.Tool + "_windows_arm64.zip",
+		}
+	}
+
+	m := manifest{
+		Version:      version,
+		Description:  p.Desc,
+		Homepage:     p.Homepage,
+		License:      p.License,
+		Architecture: arch,
+		Bin:          []string{p.Tool + ".exe"},
 		Checkver: manifestCheckver{
 			Github: "https://github.com/" + p.Repo,
 		},
 		Autoupdate: manifestAutoupdate{
-			Architecture: map[string]manifestAutoArchConfig{
-				"64bit": {
-					URL: autoURL + p.Tool + "_windows_amd64.zip",
-				},
-				"arm64": {
-					URL: autoURL + p.Tool + "_windows_arm64.zip",
-				},
-			},
+			Architecture: autoArch,
 		},
 	}
 

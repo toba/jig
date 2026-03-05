@@ -236,6 +236,7 @@ type goreleaserConfig struct {
 		Goarch []string `yaml:"goarch"`
 	} `yaml:"builds"`
 	Archives []struct {
+		Format       string   `yaml:"format"`
 		Formats      []string `yaml:"formats"`
 		NameTemplate string   `yaml:"name_template"`
 	} `yaml:"archives"`
@@ -251,8 +252,8 @@ func checkGoreleaser(tool string) bool {
 
 	data, _, found := companion.CheckGoreleaserExists()
 	if !found {
-		fmt.Fprintf(os.Stderr, "FAIL: .goreleaser.yaml not found\n")
-		return false
+		fmt.Fprintf(os.Stderr, "WARN: .goreleaser.yaml not found (manual builds assumed)\n")
+		return true
 	}
 	fmt.Fprintf(os.Stderr, "OK:   .goreleaser.yaml exists\n")
 
@@ -291,7 +292,7 @@ func checkGoreleaser(tool string) bool {
 		fmt.Fprintf(os.Stderr, "WARN: goreleaser has no archives section (using defaults)\n")
 	} else {
 		a := cfg.Archives[0]
-		hasTarGz := false
+		hasTarGz := a.Format == "tar.gz"
 		for _, f := range a.Formats {
 			if f == "tar.gz" {
 				hasTarGz = true

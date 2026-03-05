@@ -87,7 +87,7 @@ func TestWorkflowBuildMarkers(t *testing.T) {
 		lang    string
 		markers []string
 	}{
-		{"go", []string{"goreleaser/goreleaser-action"}},
+		{"go", []string{"goreleaser/goreleaser-action", "go build", "GOOS="}},
 		{"swift", []string{"swift build"}},
 		{"rust", []string{"cargo build", "cross"}},
 	}
