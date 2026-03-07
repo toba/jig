@@ -144,6 +144,24 @@ func CommitTimeRange(n int) (since, until time.Time, err error) {
 	return since, until, nil
 }
 
+// ChangelogLastModified returns the author date of the last git commit that
+// touched the given file. Returns zero time if the file is untracked or missing.
+func ChangelogLastModified(path string) (time.Time, error) {
+	out, err := exec.Command("git", "log", "-1", "--format=%aI", "--", path).Output()
+	if err != nil {
+		return time.Time{}, nil //nolint:nilerr // not a git repo or git not available
+	}
+	s := strings.TrimSpace(string(out))
+	if s == "" {
+		return time.Time{}, nil // file untracked or never committed
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("parsing changelog last modified date: %w", err)
+	}
+	return t, nil
+}
+
 func minInt(a, b int) int {
 	if a < b {
 		return a

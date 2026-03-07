@@ -14,7 +14,7 @@ import (
 var changelogCmd = &cobra.Command{
 	Use:   "changelog",
 	Short: "Gather recent issues and commits for changelog generation",
-	Long:  `Collects issues created, updated, or completed within a time range, optionally with git commits.`,
+	Long:  `Collects issues created, updated, or completed within a time range, optionally with git commits. By default, uses the last commit that touched CHANGELOG.md as the start date, falling back to 7 days.`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		return initTodoCore(cmd)
 	},
@@ -22,7 +22,7 @@ var changelogCmd = &cobra.Command{
 }
 
 func init() {
-	changelogCmd.Flags().Int("days", 0, "include issues from the last N days (default 7)")
+	changelogCmd.Flags().Int("days", 0, "include issues from the last N days")
 	changelogCmd.Flags().Int("commits", 0, "include issues within the last N git commits' time range")
 	changelogCmd.Flags().String("since", "", "explicit start date (YYYY-MM-DD, overrides --days/--commits)")
 	changelogCmd.Flags().Bool("git", false, "include git commits in output")
@@ -52,11 +52,19 @@ func runChangelog(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("determining commit time range: %w", err)
 		}
-	default:
-		if days == 0 {
-			days = 7
-		}
+	case days > 0:
 		since = now.AddDate(0, 0, -days)
+	default:
+		// Default: since last CHANGELOG.md commit, falling back to 7 days.
+		lastMod, err := changelog.ChangelogLastModified("CHANGELOG.md")
+		if err != nil {
+			return err
+		}
+		if lastMod.IsZero() {
+			since = now.AddDate(0, 0, -7)
+		} else {
+			since = lastMod
+		}
 	}
 
 	all := todoStore.All()
