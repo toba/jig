@@ -221,6 +221,21 @@ func TestAppendSourceNoExistingCitations(t *testing.T) {
 	}
 }
 
+func TestHasSource(t *testing.T) {
+	path := writeTempConfig(t, testYAML)
+	doc, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !HasSource(doc, "owner/name") {
+		t.Error("expected HasSource to return true for existing repo")
+	}
+	if HasSource(doc, "other/missing") {
+		t.Error("expected HasSource to return false for missing repo")
+	}
+}
+
 func TestFindSource(t *testing.T) {
 	cfg := &Config{
 		{Repo: "owner/name", Branch: "main"},

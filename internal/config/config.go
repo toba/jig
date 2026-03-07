@@ -176,6 +176,26 @@ func ReplaceKey(root *yaml.Node, key string, value *yaml.Node) bool {
 	return false
 }
 
+// HasSource returns true if the document already contains a citation with
+// the given repo identifier (e.g. "owner/repo").
+func HasSource(doc *Document, repo string) bool {
+	citationsNode := FindKey(doc.Root, "citations")
+	if citationsNode == nil || citationsNode.Kind != yaml.SequenceNode {
+		return false
+	}
+	for _, item := range citationsNode.Content {
+		if item.Kind != yaml.MappingNode {
+			continue
+		}
+		for i := 0; i < len(item.Content)-1; i += 2 {
+			if item.Content[i].Value == "repo" && item.Content[i+1].Value == repo {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // AppendSource adds a new source to the citations section of the document.
 // If no citations section exists, one is created.
 func AppendSource(doc *Document, src Source) error {

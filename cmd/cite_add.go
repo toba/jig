@@ -54,6 +54,10 @@ func runAdd(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("loading config: %w", loadErr)
 			}
 		}
+		if config.HasSource(doc, src.Repo) {
+			fmt.Fprintf(os.Stderr, "%s is already cited in %s\n", src.Repo, path)
+			return nil
+		}
 		if err := config.AppendSource(doc, *src); err != nil {
 			return fmt.Errorf("appending source: %w", err)
 		}
