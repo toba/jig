@@ -1989,7 +1989,7 @@ func TestUpdateIssueWithRelationships(t *testing.T) {
 		}
 	})
 
-	t.Run("parent validation fails for invalid type hierarchy", func(t *testing.T) {
+	t.Run("parent auto-promotes task to epic", func(t *testing.T) {
 		task1 := &issue.Issue{ID: "task-invalid-1", Title: "Task 1", Type: "task", Status: "todo"}
 		task2 := &issue.Issue{ID: "task-invalid-2", Title: "Task 2", Type: "task", Status: "todo"}
 		c.Create(task1)
@@ -1999,9 +1999,17 @@ func TestUpdateIssueWithRelationships(t *testing.T) {
 			Parent: new("task-invalid-2"),
 		}
 
-		_, err := resolver.Mutation().UpdateIssue(ctx, "task-invalid-1", input)
-		if err == nil {
-			t.Error("UpdateIssue() should fail for invalid parent type")
+		got, err := resolver.Mutation().UpdateIssue(ctx, "task-invalid-1", input)
+		if err != nil {
+			t.Fatalf("UpdateIssue() error = %v", err)
+		}
+		if got.Parent != "task-invalid-2" {
+			t.Errorf("Parent = %q, want task-invalid-2", got.Parent)
+		}
+		// Verify parent was promoted to epic
+		parent, _ := c.Get("task-invalid-2")
+		if parent.Type != "epic" {
+			t.Errorf("parent type = %q, want epic", parent.Type)
 		}
 	})
 

@@ -481,6 +481,16 @@ func (c *Core) ValidateParent(b *issue.Issue, parentID string) error {
 		return nil
 	}
 
+	// Auto-promote parent to epic if that would make it a valid parent.
+	// Only promote types below epic in the hierarchy (feature, task, bug).
+	if slices.Contains(validTypes, config.TypeEpic) && parent.Type != config.TypeMilestone {
+		parent.Type = config.TypeEpic
+		if err := c.Update(parent, nil); err != nil {
+			return fmt.Errorf("failed to promote parent to epic: %w", err)
+		}
+		return nil
+	}
+
 	return fmt.Errorf("%s issues can only have %s as parent, not %s",
 		b.Type, joinWithOr(validTypes), parent.Type)
 }

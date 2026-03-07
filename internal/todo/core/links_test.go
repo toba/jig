@@ -578,6 +578,110 @@ func TestFindActiveBlockers(t *testing.T) {
 	})
 }
 
+func TestValidateParentAutoPromote(t *testing.T) {
+	t.Run("promotes task parent to epic", func(t *testing.T) {
+		core, _ := setupTestCore(t)
+		parent := &issue.Issue{ID: "parent-task", Title: "Parent Task", Type: "task", Status: "todo"}
+		child := &issue.Issue{ID: "child-task", Title: "Child Task", Type: "task", Status: "todo"}
+		createTestIssues(t, core, parent, child)
+
+		err := core.ValidateParent(child, "parent-task")
+		if err != nil {
+			t.Fatalf("ValidateParent() error = %v", err)
+		}
+
+		got, _ := core.Get("parent-task")
+		if got.Type != "epic" {
+			t.Errorf("parent type = %q, want epic", got.Type)
+		}
+	})
+
+	t.Run("promotes bug parent to epic", func(t *testing.T) {
+		core, _ := setupTestCore(t)
+		parent := &issue.Issue{ID: "parent-bug", Title: "Parent Bug", Type: "bug", Status: "todo"}
+		child := &issue.Issue{ID: "child-task2", Title: "Child Task", Type: "task", Status: "todo"}
+		createTestIssues(t, core, parent, child)
+
+		err := core.ValidateParent(child, "parent-bug")
+		if err != nil {
+			t.Fatalf("ValidateParent() error = %v", err)
+		}
+
+		got, _ := core.Get("parent-bug")
+		if got.Type != "epic" {
+			t.Errorf("parent type = %q, want epic", got.Type)
+		}
+	})
+
+	t.Run("promotes feature parent to epic for feature child", func(t *testing.T) {
+		core, _ := setupTestCore(t)
+		parent := &issue.Issue{ID: "parent-feat", Title: "Parent Feature", Type: "feature", Status: "todo"}
+		child := &issue.Issue{ID: "child-feat", Title: "Child Feature", Type: "feature", Status: "todo"}
+		createTestIssues(t, core, parent, child)
+
+		err := core.ValidateParent(child, "parent-feat")
+		if err != nil {
+			t.Fatalf("ValidateParent() error = %v", err)
+		}
+
+		got, _ := core.Get("parent-feat")
+		if got.Type != "epic" {
+			t.Errorf("parent type = %q, want epic", got.Type)
+		}
+	})
+
+	t.Run("does not promote feature when it can already parent task", func(t *testing.T) {
+		core, _ := setupTestCore(t)
+		parent := &issue.Issue{ID: "parent-feat2", Title: "Parent Feature", Type: "feature", Status: "todo"}
+		child := &issue.Issue{ID: "child-task3", Title: "Child Task", Type: "task", Status: "todo"}
+		createTestIssues(t, core, parent, child)
+
+		err := core.ValidateParent(child, "parent-feat2")
+		if err != nil {
+			t.Fatalf("ValidateParent() error = %v", err)
+		}
+
+		got, _ := core.Get("parent-feat2")
+		if got.Type != "feature" {
+			t.Errorf("parent type = %q, want feature (should not promote)", got.Type)
+		}
+	})
+
+	t.Run("does not promote epic", func(t *testing.T) {
+		core, _ := setupTestCore(t)
+		parent := &issue.Issue{ID: "parent-epic", Title: "Parent Epic", Type: "epic", Status: "todo"}
+		child := &issue.Issue{ID: "child-task4", Title: "Child Task", Type: "task", Status: "todo"}
+		createTestIssues(t, core, parent, child)
+
+		err := core.ValidateParent(child, "parent-epic")
+		if err != nil {
+			t.Fatalf("ValidateParent() error = %v", err)
+		}
+
+		got, _ := core.Get("parent-epic")
+		if got.Type != "epic" {
+			t.Errorf("parent type = %q, want epic", got.Type)
+		}
+	})
+
+	t.Run("does not promote milestone", func(t *testing.T) {
+		core, _ := setupTestCore(t)
+		parent := &issue.Issue{ID: "parent-ms", Title: "Parent Milestone", Type: "milestone", Status: "todo"}
+		child := &issue.Issue{ID: "child-epic", Title: "Child Epic", Type: "epic", Status: "todo"}
+		createTestIssues(t, core, parent, child)
+
+		err := core.ValidateParent(child, "parent-ms")
+		if err != nil {
+			t.Fatalf("ValidateParent() error = %v", err)
+		}
+
+		got, _ := core.Get("parent-ms")
+		if got.Type != "milestone" {
+			t.Errorf("parent type = %q, want milestone", got.Type)
+		}
+	})
+}
+
 func TestIsResolvedStatus(t *testing.T) {
 	tests := []struct {
 		status string
