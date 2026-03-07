@@ -60,7 +60,7 @@ func Gather(all []*issue.Issue, opts Options) *Result {
 	for _, iss := range all {
 		inCreated := iss.CreatedAt != nil && !iss.CreatedAt.Before(opts.Since) && iss.CreatedAt.Before(opts.Until)
 		inUpdated := iss.UpdatedAt != nil && !iss.UpdatedAt.Before(opts.Since) && iss.UpdatedAt.Before(opts.Until)
-		isCompleted := iss.Status == config.StatusCompleted && inUpdated
+		isCompleted := (iss.Status == config.StatusCompleted || iss.Status == config.StatusReview) && inUpdated
 
 		switch {
 		case isCompleted:

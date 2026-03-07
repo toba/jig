@@ -18,6 +18,7 @@
 - Fix brew/scoop doctor requiring goreleaser for projects with manual builds; downgrade to warning
 - Fix brew/scoop doctor not accepting goreleaser v2 `format` (singular) field
 - Fix `cite add` adding duplicate entry when URL already cited; skip with message
+- Fix changelog excluding `review`-status issues; include alongside `completed` in changelog output
 
 ### 🗜️ Tweaks
 

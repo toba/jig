@@ -37,13 +37,18 @@ func TestGather(t *testing.T) {
 			CreatedAt: new(now.AddDate(0, 0, -1)),
 			UpdatedAt: new(now.AddDate(0, 0, -1)),
 		},
+		{
+			ID: "review-in-range", Title: "Pending review", Type: "feature", Status: "review",
+			CreatedAt: new(now.AddDate(0, 0, -10)),
+			UpdatedAt: new(now.AddDate(0, 0, -2)),
+		},
 	}
 
 	result := Gather(issues, Options{Since: since, Until: now})
 
-	// completed-in-range and created-and-completed should be in completed
-	if len(result.Issues.Completed) != 2 {
-		t.Errorf("expected 2 completed, got %d", len(result.Issues.Completed))
+	// completed-in-range, created-and-completed, and review-in-range should be in completed
+	if len(result.Issues.Completed) != 3 {
+		t.Errorf("expected 3 completed, got %d", len(result.Issues.Completed))
 	}
 
 	// created-in-range should be in created (not completed since status != completed)
