@@ -41,12 +41,20 @@ linters:
     - intrange # go fix ./... applies the same rangeint analyzer
 
   settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+
     gosec:
       excludes:
         - G104 # unhandled errors — already covered by errcheck
+        - G120 # MaxBytesReader — only triggers in test HTTP handlers
+        - G204 # subprocess with variable args — unavoidable for CLI wrapping git/gh
         - G301 # directory perms > 0750 — 0755 is standard for non-secret dirs
         - G304 # file inclusion via variable — unavoidable for any file-based tool
         - G306 # WriteFile perms > 0600 — config/issue files should be world-readable
+        - G703 # path traversal via taint — same as G304, unavoidable for file-based tool
 
     gocritic: # https://go-critic.com/overview
       enabled-checks:
@@ -76,10 +84,6 @@ linters:
       # errcheck in tests is noisy — test helpers intentionally ignore errors
       - linters: [errcheck]
         path: _test\.go
-      # G204 (subprocess with variable) in tests is expected — args come from test data
-      - linters: [gosec]
-        path: _test\.go
-        text: "G204"
 
     paths:
       - ".*\\.my\\.go$"

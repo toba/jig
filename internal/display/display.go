@@ -31,6 +31,16 @@ type SourceResult struct {
 	Source  config.Source  `json:"source"`
 	Commits []CommitResult `json:"commits"`
 	Files   []FileResult   `json:"files,omitempty"`
+	Release *ReleaseInfo   `json:"release,omitempty"`
+}
+
+// ReleaseInfo holds release metadata for release-tracked sources.
+type ReleaseInfo struct {
+	TagName     string `json:"tag_name"`
+	Name        string `json:"name,omitempty"`
+	PublishedAt string `json:"published_at,omitempty"`
+	URL         string `json:"url,omitempty"`
+	PrevTag     string `json:"prev_tag,omitempty"`
 }
 
 // CommitResult holds a commit with its classified files.
@@ -52,35 +62,60 @@ type FileResult struct {
 func RenderText(w io.Writer, results []SourceResult) {
 	for i, r := range results {
 		if i > 0 {
-			fmt.Fprintln(w, sepStyle.Render("---")) //nolint:errcheck // terminal output
-			fmt.Fprintln(w)                         //nolint:errcheck // terminal output
+			fmt.Fprintln(w, sepStyle.Render("---"))
+			fmt.Fprintln(w)
 		}
 
-		// Header: repo  branch
-		header := repoStyle.Render(r.Source.Repo) + "  " +
-			branchStyle.Render(r.Source.Branch)
-		fmt.Fprintln(w, header) //nolint:errcheck // terminal output
+		// Header: repo  branch/tag
+		if r.Release != nil {
+			header := repoStyle.Render(r.Source.Repo) + "  " +
+				branchStyle.Render(r.Release.TagName)
+			fmt.Fprintln(w, header)
+		} else {
+			header := repoStyle.Render(r.Source.Repo) + "  " +
+				branchStyle.Render(r.Source.Branch)
+			fmt.Fprintln(w, header)
+		}
 
+		if r.Source.Scope != "" {
+			fmt.Fprintln(w, "  "+notesStyle.Render(r.Source.Scope))
+		}
 		if r.Source.Notes != "" {
-			fmt.Fprintln(w, "  "+notesStyle.Render(r.Source.Notes)) //nolint:errcheck // terminal output
+			fmt.Fprintln(w, "  "+notesStyle.Render(r.Source.Notes))
 		}
 
 		if len(r.Commits) == 0 {
-			since := "last check"
-			if r.Source.LastCheckedDate != "" {
-				since = r.Source.LastCheckedDate[:10]
+			if r.Release != nil && r.Release.PrevTag == "" && r.Release.TagName != "" {
+				// First run for release-tracked source.
+				fmt.Fprintln(w, "  "+noChangeStyle.Render("Tracking releases from "+r.Release.TagName))
+			} else if r.Source.TracksReleases() {
+				tag := "last check"
+				if r.Source.LastCheckedTag != "" {
+					tag = r.Source.LastCheckedTag
+				}
+				fmt.Fprintln(w, "  "+noChangeStyle.Render("No new releases since "+tag))
+			} else {
+				since := "last check"
+				if r.Source.LastCheckedDate != "" {
+					since = r.Source.LastCheckedDate[:10]
+				}
+				fmt.Fprintln(w, "  "+noChangeStyle.Render("No new commits since "+since))
 			}
-			fmt.Fprintln(w, "  "+noChangeStyle.Render("No new commits since "+since)) //nolint:errcheck // terminal output
-			fmt.Fprintln(w)                                                           //nolint:errcheck // terminal output
+			fmt.Fprintln(w)
 			continue
 		}
 
-		since := "first check"
-		if r.Source.LastCheckedDate != "" {
-			since = r.Source.LastCheckedDate[:10]
+		if r.Release != nil && r.Release.PrevTag != "" {
+			fmt.Fprintf(w, "  New release %s (since %s), %d commits\n",
+				r.Release.TagName, r.Release.PrevTag, len(r.Commits))
+		} else {
+			since := "first check"
+			if r.Source.LastCheckedDate != "" {
+				since = r.Source.LastCheckedDate[:10]
+			}
+			fmt.Fprintf(w, "  %d new commits since %s\n", len(r.Commits), since)
 		}
-		fmt.Fprintf(w, "  %d new commits since %s\n", len(r.Commits), since) //nolint:errcheck // terminal output
-		fmt.Fprintln(w)                                                      //nolint:errcheck // terminal output
+		fmt.Fprintln(w)
 
 		// Group commits by level, display in order: HIGH, MEDIUM, LOW, UNCLASSIFIED.
 		grouped := groupCommitsByLevel(r.Commits)
@@ -90,7 +125,7 @@ func RenderText(w io.Writer, results []SourceResult) {
 				continue
 			}
 			label := levelLabel(level, len(commits))
-			fmt.Fprintln(w, "  "+label) //nolint:errcheck // terminal output
+			fmt.Fprintln(w, "  "+label)
 			for _, c := range commits {
 				short := c.SHA[:min(7, len(c.SHA))]
 				msg := Truncate(c.Message, 50)
@@ -100,9 +135,9 @@ func RenderText(w io.Writer, results []SourceResult) {
 					authorStyle.Render("("+c.Author+")"),
 					dateStyle.Render(c.Date),
 				)
-				fmt.Fprintln(w, line) //nolint:errcheck // terminal output
+				fmt.Fprintln(w, line)
 			}
-			fmt.Fprintln(w) //nolint:errcheck // terminal output
+			fmt.Fprintln(w)
 		}
 	}
 }

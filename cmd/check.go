@@ -29,8 +29,9 @@ func init() {
 }
 
 type checkResult struct {
-	display display.SourceResult
-	headSHA string // latest commit SHA from fetched data
+	display    display.SourceResult
+	headSHA    string // latest commit SHA from fetched data
+	releaseTag string // non-empty when a release was checked
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {
@@ -50,15 +51,27 @@ func runCheck(cmd *cobra.Command, args []string) error {
 
 	for i, src := range sources {
 		wg.Go(func() {
-			result, headSHA, err := checkSource(client, src)
-			if err != nil {
-				mu.Lock()
-				fmt.Fprintf(os.Stderr, "warning: %s: %v\n", src.Repo, err)
-				mu.Unlock()
-				results[i] = checkResult{display: display.SourceResult{Source: src}}
-				return
+			if src.TracksReleases() {
+				result, headSHA, tag, err := checkSourceReleases(client, src)
+				if err != nil {
+					mu.Lock()
+					fmt.Fprintf(os.Stderr, "warning: %s: %v\n", src.Repo, err)
+					mu.Unlock()
+					results[i] = checkResult{display: display.SourceResult{Source: src}}
+					return
+				}
+				results[i] = checkResult{display: *result, headSHA: headSHA, releaseTag: tag}
+			} else {
+				result, headSHA, err := checkSource(client, src)
+				if err != nil {
+					mu.Lock()
+					fmt.Fprintf(os.Stderr, "warning: %s: %v\n", src.Repo, err)
+					mu.Unlock()
+					results[i] = checkResult{display: display.SourceResult{Source: src}}
+					return
+				}
+				results[i] = checkResult{display: *result, headSHA: headSHA}
 			}
-			results[i] = checkResult{display: *result, headSHA: headSHA}
 		})
 	}
 	wg.Wait()
@@ -73,7 +86,11 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		if origSrc == nil {
 			continue
 		}
-		config.MarkSource(origSrc, r.headSHA)
+		if r.releaseTag != "" {
+			config.MarkSourceRelease(origSrc, r.releaseTag, r.headSHA)
+		} else {
+			config.MarkSource(origSrc, r.headSHA)
+		}
 		dirty = true
 	}
 	if dirty {
@@ -190,6 +207,109 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 	}
 
 	return result, headSHA, nil
+}
+
+func checkSourceReleases(client github.Client, src config.Source) (*display.SourceResult, string, string, error) {
+	result := &display.SourceResult{Source: src}
+
+	latest, err := client.GetLatestRelease(src.Repo)
+	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			fmt.Fprintf(os.Stderr, "warning: %s: no releases found\n", src.Repo)
+			return result, "", "", nil
+		}
+		return nil, "", "", fmt.Errorf("fetching latest release: %w", err)
+	}
+
+	releaseInfo := &display.ReleaseInfo{
+		TagName:     latest.TagName,
+		Name:        latest.Name,
+		PublishedAt: latest.PublishedAt,
+		URL:         latest.HTMLURL,
+	}
+
+	if src.LastCheckedTag == latest.TagName {
+		// No new release — still update the timestamp.
+		headSHA, err := client.GetHeadSHA(src.Repo, latest.TagName)
+		if err != nil {
+			return nil, "", "", fmt.Errorf("getting tag SHA: %w", err)
+		}
+		result.Release = releaseInfo
+		return result, headSHA, latest.TagName, nil
+	}
+
+	if src.LastCheckedTag == "" {
+		// First run — record current release without showing commits.
+		headSHA, err := client.GetHeadSHA(src.Repo, latest.TagName)
+		if err != nil {
+			return nil, "", "", fmt.Errorf("getting tag SHA: %w", err)
+		}
+		result.Release = releaseInfo
+		return result, headSHA, latest.TagName, nil
+	}
+
+	// New release since last check — compare tags.
+	releaseInfo.PrevTag = src.LastCheckedTag
+
+	cmp, err := client.Compare(src.Repo, src.LastCheckedTag, latest.TagName)
+	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			// Old tag deleted/force-pushed — treat as first run.
+			headSHA, err := client.GetHeadSHA(src.Repo, latest.TagName)
+			if err != nil {
+				return nil, "", "", fmt.Errorf("getting tag SHA: %w", err)
+			}
+			releaseInfo.PrevTag = ""
+			result.Release = releaseInfo
+			return result, headSHA, latest.TagName, nil
+		}
+		return nil, "", "", fmt.Errorf("comparing tags: %w", err)
+	}
+
+	// Classify files.
+	filePaths := make([]string, 0, len(cmp.Files))
+	for _, f := range cmp.Files {
+		filePaths = append(filePaths, f.Filename)
+	}
+	fileResults := classify.Classify(filePaths, src.Paths)
+	for _, fr := range fileResults {
+		result.Files = append(result.Files, display.FileResult{Path: fr.Path, Level: fr.Level})
+	}
+
+	// Classify commits.
+	for _, c := range cmp.Commits {
+		var level classify.Level
+		if len(c.Files) > 0 {
+			cFilePaths := make([]string, 0, len(c.Files))
+			for _, f := range c.Files {
+				cFilePaths = append(cFilePaths, f.Filename)
+			}
+			cResults := classify.Classify(cFilePaths, src.Paths)
+			level = classify.MaxLevel(cResults)
+		} else {
+			level = classify.MaxLevel(fileResults)
+		}
+		result.Commits = append(result.Commits, display.CommitResult{
+			SHA:     c.SHA,
+			Message: c.Message,
+			Author:  c.Author,
+			Date:    c.Date.Format(issue.DueDateFormat),
+			Level:   level,
+		})
+	}
+
+	headSHA := ""
+	if len(cmp.Commits) > 0 {
+		headSHA = cmp.Commits[len(cmp.Commits)-1].SHA
+	} else {
+		headSHA, err = client.GetHeadSHA(src.Repo, latest.TagName)
+		if err != nil {
+			return nil, "", "", fmt.Errorf("getting tag SHA: %w", err)
+		}
+	}
+
+	result.Release = releaseInfo
+	return result, headSHA, latest.TagName, nil
 }
 
 // fetchCommitDetails fetches file details for up to limit commits in parallel,

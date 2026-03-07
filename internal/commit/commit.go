@@ -103,8 +103,7 @@ func HasStagedChanges() (bool, error) {
 	if err == nil {
 		return false, nil // exit 0 = no differences
 	}
-	exitErr := &exec.ExitError{}
-	if errors.As(err, &exitErr) {
+	if _, ok := errors.AsType[*exec.ExitError](err); ok {
 		return true, nil // exit 1 = differences exist
 	}
 	return false, fmt.Errorf("git diff --cached --quiet: %w", err)
@@ -154,8 +153,7 @@ func hasUnstagedChanges() (bool, error) {
 	if err == nil {
 		return false, nil
 	}
-	exitErr := &exec.ExitError{}
-	if errors.As(err, &exitErr) {
+	if _, ok := errors.AsType[*exec.ExitError](err); ok {
 		return true, nil
 	}
 	return false, fmt.Errorf("git diff --quiet: %w", err)
@@ -231,9 +229,8 @@ func pushWithRetry(desc string, args ...string) error {
 // isTransientGitError reports whether an exec error represents a transient
 // git failure (exit code 128, used for network/TLS/connection errors).
 func isTransientGitError(err error) bool {
-	exitErr := &exec.ExitError{}
-	if errors.As(err, &exitErr) {
-		return exitErr.ExitCode() == 128
+	if ee, ok := errors.AsType[*exec.ExitError](err); ok {
+		return ee.ExitCode() == 128
 	}
 	return false
 }

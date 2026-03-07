@@ -110,9 +110,8 @@ func (c *Client) Query(query string, variables map[string]any) ([]byte, error) {
 
 	out, err := cmd.Output()
 	if err != nil {
-		exitErr := &exec.ExitError{}
-		if errors.As(err, &exitErr) {
-			return nil, fmt.Errorf("todo query: %s", strings.TrimSpace(string(exitErr.Stderr)))
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
+			return nil, fmt.Errorf("todo query: %s", strings.TrimSpace(string(ee.Stderr)))
 		}
 		return nil, fmt.Errorf("todo query: %w", err)
 	}

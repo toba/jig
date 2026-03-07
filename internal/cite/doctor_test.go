@@ -37,6 +37,10 @@ func (m *mockClient) GetRepo(repo string) (*github.RepoInfo, error)            {
 func (m *mockClient) GetTree(repo, branch string) (*github.TreeResponse, error) {
 	return nil, nil
 }
+func (m *mockClient) GetLatestRelease(repo string) (*github.Release, error) { return nil, nil }
+func (m *mockClient) ListReleases(repo string, perPage int) ([]github.Release, error) {
+	return nil, nil
+}
 
 func TestSplitRepo(t *testing.T) {
 	tests := []struct {

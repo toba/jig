@@ -18,6 +18,8 @@ type Client interface {
 	GetRepo(repo string) (*RepoInfo, error)
 	GetTree(repo, branch string) (*TreeResponse, error)
 	GetLicense(repo string) (*LicenseInfo, error)
+	GetLatestRelease(repo string) (*Release, error)
+	ListReleases(repo string, perPage int) ([]Release, error)
 }
 
 // GHClient implements Client by shelling out to the gh CLI.
@@ -133,6 +135,30 @@ func (c *GHClient) GetLicense(repo string) (*LicenseInfo, error) {
 	return &info, nil
 }
 
+func (c *GHClient) GetLatestRelease(repo string) (*Release, error) {
+	out, err := gh("api", fmt.Sprintf("repos/%s/releases/latest", repo))
+	if err != nil {
+		return nil, err
+	}
+	var rel Release
+	if err := json.Unmarshal(out, &rel); err != nil {
+		return nil, fmt.Errorf("parsing release: %w", err)
+	}
+	return &rel, nil
+}
+
+func (c *GHClient) ListReleases(repo string, perPage int) ([]Release, error) {
+	out, err := gh("api", fmt.Sprintf("repos/%s/releases?per_page=%d", repo, perPage))
+	if err != nil {
+		return nil, err
+	}
+	var releases []Release
+	if err := json.Unmarshal(out, &releases); err != nil {
+		return nil, fmt.Errorf("parsing releases: %w", err)
+	}
+	return releases, nil
+}
+
 // ghExec is the function used to execute gh CLI commands.
 // It is a variable so tests can replace it.
 var ghExec = ghDefault
@@ -141,8 +167,7 @@ func ghDefault(args ...string) ([]byte, error) {
 	cmd := exec.Command("gh", args...) //nolint:gosec // gh CLI wrapper
 	out, err := cmd.Output()
 	if err != nil {
-		ee := &exec.ExitError{}
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			return nil, fmt.Errorf("gh %s: %s", strings.Join(args, " "), string(ee.Stderr))
 		}
 		return nil, fmt.Errorf("gh %s: %w", strings.Join(args, " "), err)

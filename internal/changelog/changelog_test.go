@@ -7,8 +7,6 @@ import (
 	"github.com/toba/jig/internal/todo/issue"
 )
 
-func tp(t time.Time) *time.Time { return &t }
-
 func TestGather(t *testing.T) {
 	now := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
 	since := now.AddDate(0, 0, -7)
@@ -16,28 +14,28 @@ func TestGather(t *testing.T) {
 	issues := []*issue.Issue{
 		{
 			ID: "created-in-range", Title: "New feature", Type: "feature", Status: "ready",
-			CreatedAt: tp(now.AddDate(0, 0, -3)),
-			UpdatedAt: tp(now.AddDate(0, 0, -3)),
+			CreatedAt: new(now.AddDate(0, 0, -3)),
+			UpdatedAt: new(now.AddDate(0, 0, -3)),
 		},
 		{
 			ID: "updated-in-range", Title: "Updated task", Type: "task", Status: "in-progress",
-			CreatedAt: tp(now.AddDate(0, 0, -30)),
-			UpdatedAt: tp(now.AddDate(0, 0, -1)),
+			CreatedAt: new(now.AddDate(0, 0, -30)),
+			UpdatedAt: new(now.AddDate(0, 0, -1)),
 		},
 		{
 			ID: "completed-in-range", Title: "Fixed bug", Type: "bug", Status: "completed",
-			CreatedAt: tp(now.AddDate(0, 0, -20)),
-			UpdatedAt: tp(now.AddDate(0, 0, -2)),
+			CreatedAt: new(now.AddDate(0, 0, -20)),
+			UpdatedAt: new(now.AddDate(0, 0, -2)),
 		},
 		{
 			ID: "outside-range", Title: "Old issue", Type: "task", Status: "ready",
-			CreatedAt: tp(now.AddDate(0, 0, -60)),
-			UpdatedAt: tp(now.AddDate(0, 0, -30)),
+			CreatedAt: new(now.AddDate(0, 0, -60)),
+			UpdatedAt: new(now.AddDate(0, 0, -30)),
 		},
 		{
 			ID: "created-and-completed", Title: "Quick fix", Type: "bug", Status: "completed",
-			CreatedAt: tp(now.AddDate(0, 0, -1)),
-			UpdatedAt: tp(now.AddDate(0, 0, -1)),
+			CreatedAt: new(now.AddDate(0, 0, -1)),
+			UpdatedAt: new(now.AddDate(0, 0, -1)),
 		},
 	}
 

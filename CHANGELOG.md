@@ -2,6 +2,11 @@
 
 ## Week of Mar 1 – Mar 7, 2026
 
+### ✨ Features
+
+- Add `scope` field to citation sources for specifying which local area a citation pertains to
+- Add citation release tracking; `track: releases` monitors GitHub releases instead of branch commits
+
 ### 🐞 Fixes
 
 - Fix `commit apply` leaving dirty working tree when pre-commit hooks reformat files; auto-amend hook changes into commit

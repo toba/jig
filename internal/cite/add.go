@@ -273,7 +273,15 @@ func addIfPresent(slice, files []string, names ...string) []string {
 func FormatSourceYAML(src *config.Source) (string, error) {
 	var b strings.Builder
 	b.WriteString("- repo: " + src.Repo + "\n")
-	b.WriteString("  branch: " + src.Branch + "\n")
+	if src.Branch != "" {
+		b.WriteString("  branch: " + src.Branch + "\n")
+	}
+	if src.Track != "" {
+		b.WriteString("  track: " + src.Track + "\n")
+	}
+	if src.Scope != "" {
+		b.WriteString("  scope: " + quote(src.Scope) + "\n")
+	}
 	if src.Notes != "" {
 		b.WriteString("  notes: " + quote(src.Notes) + "\n")
 	}

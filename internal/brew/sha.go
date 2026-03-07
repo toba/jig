@@ -87,8 +87,7 @@ var ghRelease = func(args ...string) ([]byte, error) {
 	cmd := exec.Command("gh", full...) //nolint:gosec // shasum on known file
 	out, err := cmd.Output()
 	if err != nil {
-		ee := &exec.ExitError{}
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			return nil, fmt.Errorf("gh release %s: %s", strings.Join(args, " "), string(ee.Stderr))
 		}
 		return nil, fmt.Errorf("gh release %s: %w", strings.Join(args, " "), err)

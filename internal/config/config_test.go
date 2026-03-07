@@ -14,6 +14,7 @@ other_tool:
 citations:
   - repo: owner/name
     branch: main
+    scope: "Tools subsystem — file inspection, path matching"
     notes: "Derived into Sources/Tools/"
     last_checked_sha: abc123
     last_checked_date: "2026-02-18T22:08:27Z"
@@ -59,6 +60,9 @@ func TestLoad(t *testing.T) {
 	}
 	if src.Branch != "main" {
 		t.Errorf("branch = %q, want main", src.Branch)
+	}
+	if src.Scope != "Tools subsystem — file inspection, path matching" {
+		t.Errorf("scope = %q, want Tools subsystem — file inspection, path matching", src.Scope)
 	}
 	if src.LastCheckedSHA != "abc123" {
 		t.Errorf("last_checked_sha = %q, want abc123", src.LastCheckedSHA)
@@ -233,6 +237,136 @@ func TestHasSource(t *testing.T) {
 	}
 	if HasSource(doc, "other/missing") {
 		t.Error("expected HasSource to return false for missing repo")
+	}
+}
+
+func TestTracksReleases(t *testing.T) {
+	s := Source{Track: "releases"}
+	if !s.TracksReleases() {
+		t.Error("expected TracksReleases() = true for track=releases")
+	}
+	s2 := Source{}
+	if s2.TracksReleases() {
+		t.Error("expected TracksReleases() = false for empty track")
+	}
+}
+
+func TestMarkSourceRelease(t *testing.T) {
+	src := &Source{Repo: "owner/repo"}
+	MarkSourceRelease(src, "v1.2.0", "abc123")
+	if src.LastCheckedTag != "v1.2.0" {
+		t.Errorf("tag = %q, want v1.2.0", src.LastCheckedTag)
+	}
+	if src.LastCheckedSHA != "abc123" {
+		t.Errorf("sha = %q, want abc123", src.LastCheckedSHA)
+	}
+	if src.LastCheckedDate == "" {
+		t.Error("expected date to be set")
+	}
+}
+
+func TestLoadReleaseTrackedSource(t *testing.T) {
+	yaml := `citations:
+  - repo: owner/lib
+    track: releases
+    last_checked_tag: v1.0.0
+    last_checked_sha: abc123
+    paths:
+      high:
+        - "**/*.go"
+`
+	path := writeTempConfig(t, yaml)
+	_, cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := (*cfg)[0]
+	if !src.TracksReleases() {
+		t.Error("expected TracksReleases() = true")
+	}
+	if src.LastCheckedTag != "v1.0.0" {
+		t.Errorf("tag = %q, want v1.0.0", src.LastCheckedTag)
+	}
+	// Branch should remain empty for release-tracked sources (not defaulted).
+	if src.Branch != "" {
+		t.Errorf("branch = %q, want empty for release-tracked source", src.Branch)
+	}
+}
+
+func TestSaveReleaseTrackedRoundTrip(t *testing.T) {
+	yaml := `citations:
+  - repo: owner/lib
+    track: releases
+    last_checked_tag: v1.0.0
+    last_checked_sha: abc123
+    paths:
+      high:
+        - "**/*.go"
+`
+	path := writeTempConfig(t, yaml)
+	doc, cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	MarkSourceRelease(&(*cfg)[0], "v2.0.0", "def456")
+	if err := Save(doc, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	_, cfg2, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := (*cfg2)[0]
+	if src.LastCheckedTag != "v2.0.0" {
+		t.Errorf("tag = %q, want v2.0.0", src.LastCheckedTag)
+	}
+	if src.LastCheckedSHA != "def456" {
+		t.Errorf("sha = %q, want def456", src.LastCheckedSHA)
+	}
+	if src.Track != "releases" {
+		t.Errorf("track = %q, want releases", src.Track)
+	}
+}
+
+func TestSaveUsesFlowStylePaths(t *testing.T) {
+	yaml := `citations:
+  - repo: owner/name
+    branch: main
+    last_checked_sha: abc123
+    paths:
+      high: ["**/*.go"]
+      medium: [go.mod, go.sum]
+      low: [".github/**", README.md, LICENSE]
+`
+	path := writeTempConfig(t, yaml)
+	doc, cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Modify and save.
+	(*cfg)[0].LastCheckedSHA = "def456"
+	if err := Save(doc, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+
+	// Paths must be in flow style [a, b], not bullet-list style.
+	if !strings.Contains(content, `['**/*.go']`) {
+		t.Errorf("expected flow-style high paths, got:\n%s", content)
+	}
+	if !strings.Contains(content, `[go.mod, go.sum]`) {
+		t.Errorf("expected flow-style medium paths, got:\n%s", content)
+	}
+	if !strings.Contains(content, `[.github/**, README.md, LICENSE]`) {
+		t.Errorf("expected flow-style low paths, got:\n%s", content)
 	}
 }
 

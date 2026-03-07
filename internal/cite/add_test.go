@@ -109,6 +109,7 @@ func TestFormatSourceYAML(t *testing.T) {
 	src := &config.Source{
 		Repo:   "toba/jig",
 		Branch: "main",
+		Scope:  "todo subsystem — issue model, TUI",
 		Notes:  "Multi-tool CLI",
 		Paths: config.PathDefs{
 			High:   []string{"**/*.go"},
@@ -127,10 +128,32 @@ func TestFormatSourceYAML(t *testing.T) {
 	if !strings.Contains(got, `["**/*.go"]`) {
 		t.Errorf("expected flow sequence for high paths, got:\n%s", got)
 	}
-	for _, want := range []string{"repo: toba/jig", "branch: main", "notes: Multi-tool CLI", `"**/*.go"`, "go.mod"} {
+	for _, want := range []string{"repo: toba/jig", "branch: main", "scope:", "todo subsystem", "notes: Multi-tool CLI", `"**/*.go"`, "go.mod"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("output missing %q:\n%s", want, got)
 		}
+	}
+}
+
+func TestFormatSourceYAMLWithTrack(t *testing.T) {
+	src := &config.Source{
+		Repo:  "owner/lib",
+		Track: "releases",
+		Paths: config.PathDefs{
+			High: []string{"**/*.go"},
+			Low:  []string{".github/**"},
+		},
+	}
+	got, err := FormatSourceYAML(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "track: releases") {
+		t.Errorf("expected track: releases in output:\n%s", got)
+	}
+	// Branch should not appear when empty.
+	if strings.Contains(got, "branch:") {
+		t.Errorf("expected no branch line when empty:\n%s", got)
 	}
 }
 

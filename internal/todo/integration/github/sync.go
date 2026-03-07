@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/integration/syncutil"
 	"github.com/toba/jig/internal/todo/issue"
@@ -103,7 +104,7 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	var milestones []*issue.Issue
 	var regularIssues []*issue.Issue
 	for _, b := range issues {
-		if b.Type == "milestone" {
+		if b.Type == config.TypeMilestone {
 			milestones = append(milestones, b)
 		} else {
 			regularIssues = append(regularIssues, b)
@@ -534,7 +535,7 @@ func (s *Syncer) getMilestoneForIssue(b *issue.Issue) *int {
 		return nil
 	}
 	// Check if parent is a milestone-type issue
-	if parentType, ok := s.issueTypes[b.Parent]; ok && parentType == "milestone" {
+	if parentType, ok := s.issueTypes[b.Parent]; ok && parentType == config.TypeMilestone {
 		if milestoneNum, ok := s.issueToMilestoneNumber[b.Parent]; ok {
 			return &milestoneNum
 		}
@@ -621,7 +622,7 @@ func (s *Syncer) syncSubIssueLink(ctx context.Context, b *issue.Issue, ghNumber 
 	wantParentNumber := 0
 	if b.Parent != "" {
 		// Skip sub-issue linking if parent is a milestone-type (use milestone assignment instead)
-		if parentType, ok := s.issueTypes[b.Parent]; ok && parentType == "milestone" {
+		if parentType, ok := s.issueTypes[b.Parent]; ok && parentType == config.TypeMilestone {
 			return
 		}
 		s.mu.RLock()

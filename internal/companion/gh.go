@@ -29,8 +29,7 @@ func DetectRepoInfo(repo, fields string) (*RepoInfo, error) {
 	cmd := exec.Command("gh", args...) //nolint:gosec // gh CLI wrapper
 	out, err := cmd.Output()
 	if err != nil {
-		ee := &exec.ExitError{}
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			return nil, fmt.Errorf("gh repo view: %s", strings.TrimSpace(string(ee.Stderr)))
 		}
 		return nil, err
@@ -53,8 +52,7 @@ func DetectLatestTag(repo string) (string, error) {
 	cmd := exec.Command("gh", "release", "list", "--repo", repo, "--limit", "1", "--json", "tagName", "--jq", ".[0].tagName") //nolint:gosec // gh CLI wrapper
 	out, err := cmd.Output()
 	if err != nil {
-		ee := &exec.ExitError{}
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			return "", fmt.Errorf("gh release list: %s", strings.TrimSpace(string(ee.Stderr)))
 		}
 		return "", err

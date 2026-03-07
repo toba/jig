@@ -17,10 +17,18 @@ type Config []Source
 type Source struct {
 	Repo            string   `yaml:"repo"`
 	Branch          string   `yaml:"branch"`
+	Track           string   `yaml:"track,omitempty"`
+	Scope           string   `yaml:"scope,omitempty"`
 	Notes           string   `yaml:"notes,omitempty"`
 	LastCheckedSHA  string   `yaml:"last_checked_sha,omitempty"`
+	LastCheckedTag  string   `yaml:"last_checked_tag,omitempty"`
 	LastCheckedDate string   `yaml:"last_checked_date,omitempty"`
 	Paths           PathDefs `yaml:"paths"`
+}
+
+// TracksReleases reports whether this source tracks releases instead of commits.
+func (s Source) TracksReleases() bool {
+	return s.Track == "releases"
 }
 
 // PathDefs defines glob patterns grouped by relevance level.
@@ -70,9 +78,9 @@ func Load(path string) (*Document, *Config, error) {
 		return nil, nil, fmt.Errorf("decoding citations section: %w", err)
 	}
 
-	// Default branch to "main" if not set.
+	// Default branch to "main" if not set (skip for release-tracked sources).
 	for i := range cfg {
-		if cfg[i].Branch == "" {
+		if cfg[i].Branch == "" && !cfg[i].TracksReleases() {
 			cfg[i].Branch = constants.DefaultBranch
 		}
 	}
@@ -87,6 +95,9 @@ func Save(doc *Document, cfg *Config) error {
 	if err := newCitations.Encode(cfg); err != nil {
 		return fmt.Errorf("encoding citations config: %w", err)
 	}
+
+	// Set flow style on path sequences for each source.
+	setFlowPathsAll(&newCitations)
 
 	// Find and replace the citations value node in the document tree.
 	if !ReplaceKey(doc.Root, "citations", &newCitations) {
@@ -130,6 +141,13 @@ func FindSource(cfg *Config, name string) *Source {
 
 // MarkSource updates the last_checked_sha and last_checked_date for a source.
 func MarkSource(src *Source, sha string) {
+	src.LastCheckedSHA = sha
+	src.LastCheckedDate = time.Now().UTC().Format(time.RFC3339)
+}
+
+// MarkSourceRelease updates a release-tracked source with the given tag and SHA.
+func MarkSourceRelease(src *Source, tag, sha string) {
+	src.LastCheckedTag = tag
 	src.LastCheckedSHA = sha
 	src.LastCheckedDate = time.Now().UTC().Format(time.RFC3339)
 }
@@ -226,6 +244,15 @@ func AppendSource(doc *Document, src Source) error {
 	}
 
 	return os.WriteFile(doc.Path, data, 0o644)
+}
+
+// setFlowPathsAll applies setFlowPaths to every source in a citations sequence node.
+func setFlowPathsAll(node *yaml.Node) {
+	if node.Kind == yaml.SequenceNode {
+		for _, item := range node.Content {
+			setFlowPaths(item)
+		}
+	}
 }
 
 // setFlowPaths finds the "paths" mapping inside a source node and sets

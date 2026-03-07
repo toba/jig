@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/issue"
 )
 
@@ -59,7 +60,7 @@ func Gather(all []*issue.Issue, opts Options) *Result {
 	for _, iss := range all {
 		inCreated := iss.CreatedAt != nil && !iss.CreatedAt.Before(opts.Since) && iss.CreatedAt.Before(opts.Until)
 		inUpdated := iss.UpdatedAt != nil && !iss.UpdatedAt.Before(opts.Since) && iss.UpdatedAt.Before(opts.Until)
-		isCompleted := iss.Status == "completed" && inUpdated
+		isCompleted := iss.Status == config.StatusCompleted && inUpdated
 
 		switch {
 		case isCompleted:
@@ -88,7 +89,7 @@ func GitCommits(since, until time.Time) ([]Commit, error) {
 	}
 
 	var commits []Commit
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		if line == "" {
 			continue
 		}

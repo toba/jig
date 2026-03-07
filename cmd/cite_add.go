@@ -11,6 +11,7 @@ import (
 )
 
 var addWrite bool
+var addReleases bool
 
 var addCmd = &cobra.Command{
 	Use:   "add <url>",
@@ -22,6 +23,7 @@ var addCmd = &cobra.Command{
 
 func init() {
 	addCmd.Flags().BoolVarP(&addWrite, "write", "w", false, "append the suggested source to .jig.yaml")
+	addCmd.Flags().BoolVar(&addReleases, "releases", false, "track releases instead of branch commits")
 	citeCmd.AddCommand(addCmd)
 }
 
@@ -32,6 +34,10 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	src, err := cite.Inspect(client, arg)
 	if err != nil {
 		return err
+	}
+
+	if addReleases {
+		src.Track = "releases"
 	}
 
 	yamlStr, err := cite.FormatSourceYAML(src)
