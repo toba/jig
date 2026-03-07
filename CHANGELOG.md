@@ -4,6 +4,7 @@
 
 ### ✨ Features
 
+- `changelog --markdown`; produce ready-to-paste formatted output with categorization, GitHub links, and dedup
 - Add `scope` field to citation sources for specifying which local area a citation pertains to
 - Add citation release tracking; `track: releases` monitors GitHub releases instead of branch commits
 - Auto-promote parent to epic when adding child to non-container type ([#82](https://github.com/toba/jig/issues/82))
