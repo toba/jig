@@ -135,6 +135,12 @@ func CommitTimeRange(n int) (since, until time.Time, err error) {
 		return time.Time{}, time.Time{}, fmt.Errorf("parsing oldest commit date: %w", err)
 	}
 
+	// When there's only one commit, since == until creates a zero-width range
+	// where no timestamps can match. Extend until by 1 second to include it.
+	if !until.After(since) {
+		until = since.Add(time.Second)
+	}
+
 	return since, until, nil
 }
 

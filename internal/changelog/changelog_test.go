@@ -96,6 +96,25 @@ func TestGather_NilTimestamps(t *testing.T) {
 	}
 }
 
+func TestGather_SingleCommitRange(t *testing.T) {
+	// When CommitTimeRange returns since == until (single commit), it now
+	// extends until by 1 second. Verify that Gather finds issues at that timestamp.
+	commitTime := time.Date(2026, 3, 7, 10, 0, 0, 0, time.UTC)
+	since := commitTime
+	until := commitTime.Add(time.Second) // simulates the fix in CommitTimeRange
+
+	completed := &issue.Issue{
+		ID: "done", Title: "Fixed it", Type: "bug", Status: "completed",
+		CreatedAt: new(commitTime.AddDate(0, 0, -5)),
+		UpdatedAt: new(commitTime),
+	}
+	result := Gather([]*issue.Issue{completed}, Options{Since: since, Until: until})
+
+	if len(result.Issues.Completed) != 1 {
+		t.Errorf("expected 1 completed issue, got %d", len(result.Issues.Completed))
+	}
+}
+
 func TestGather_RangeIsSet(t *testing.T) {
 	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	until := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)

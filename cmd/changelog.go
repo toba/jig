@@ -74,7 +74,7 @@ func runChangelog(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	if includeGit {
+	if includeGit || commits > 0 {
 		gitCommits, err := changelog.GitCommits(since, until)
 		if err != nil {
 			return err

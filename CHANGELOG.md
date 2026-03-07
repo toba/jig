@@ -19,6 +19,7 @@
 - Fix brew/scoop doctor not accepting goreleaser v2 `format` (singular) field
 - Fix `cite add` adding duplicate entry when URL already cited; skip with message
 - Fix changelog excluding `review`-status issues; include alongside `completed` in changelog output
+- Fix `changelog --commits 1` returning empty when no issues are completed; widen single-commit time range and auto-include git commits
 
 ### 🗜️ Tweaks
 
