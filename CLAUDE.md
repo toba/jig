@@ -2,6 +2,12 @@
 
 Multi-tool CLI combining file-based issue tracking, citation monitoring, Claude Code security guard, two-phase commit workflow, and Homebrew/Zed companion repo scaffolding.
 
+## Rules
+
+- ALWAYS write a failing test before fixing bugs
+- ALWAYS create or find an issue (`jig todo`) before starting work
+- Run `scripts/lint.sh` after editing Go files
+
 ## Build & Test
 
 ```bash
