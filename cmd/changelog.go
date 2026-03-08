@@ -26,8 +26,6 @@ func init() {
 	changelogCmd.Flags().Int("commits", 0, "include issues within the last N git commits' time range")
 	changelogCmd.Flags().String("since", "", "explicit start date (YYYY-MM-DD, overrides --days/--commits)")
 	changelogCmd.Flags().Bool("git", false, "include git commits in output")
-	changelogCmd.Flags().Bool("markdown", false, "output formatted markdown ready to paste into CHANGELOG.md")
-	changelogCmd.Flags().String("changelog-file", "CHANGELOG.md", "path to existing changelog (for --markdown dedup)")
 	rootCmd.AddCommand(changelogCmd)
 }
 
@@ -92,48 +90,13 @@ func runChangelog(cmd *cobra.Command, _ []string) error {
 		result.Commits = gitCommits
 	}
 
-	markdown, _ := cmd.Flags().GetBool("markdown")
-
 	if jsonOut {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(result)
 	}
 
-	if markdown {
-		return printChangelogMarkdown(cmd, result, commits > 0)
-	}
-
 	return printChangelogText(result)
-}
-
-func printChangelogMarkdown(cmd *cobra.Command, r *changelog.Result, isCommitMode bool) error {
-	changelogFile, _ := cmd.Flags().GetString("changelog-file")
-
-	// Determine mode for section header.
-	mode := "weekly"
-	if isCommitMode {
-		mode = "append"
-	} else if sinceStr, _ := cmd.Flags().GetString("since"); sinceStr != "" {
-		mode = "since"
-	} else if days, _ := cmd.Flags().GetInt("days"); days > 0 && days <= 1 {
-		mode = "daily"
-	}
-
-	// Read existing changelog for dedup.
-	var existing string
-	if data, err := os.ReadFile(changelogFile); err == nil {
-		existing = string(data)
-	}
-
-	md := changelog.FormatMarkdown(r, changelog.MarkdownOptions{Mode: mode}, existing)
-	if md == "" {
-		fmt.Fprintln(os.Stderr, "No new completed issues to add.")
-		return nil
-	}
-
-	fmt.Print(md)
-	return nil
 }
 
 func printChangelogText(r *changelog.Result) error {
