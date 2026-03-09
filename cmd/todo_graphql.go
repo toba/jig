@@ -24,6 +24,7 @@ var (
 	queryVariables  string
 	queryOperation  string
 	querySchemaOnly bool
+	queryFile       string
 )
 
 var graphqlCmd = &cobra.Command{
@@ -43,6 +44,9 @@ Examples:
 
   # Use variables
   jig todo graphql -v '{"id": "abc"}' 'query GetIssue($id: ID!) { issue(id: $id) { title } }'
+
+  # Read from a file (avoids shell escaping issues with backticks)
+  jig todo graphql -f query.graphql
 
   # Read from stdin
   echo '{ issues { id title } }' | jig todo graphql
@@ -64,15 +68,22 @@ Examples:
 		}
 
 		var query string
-		if len(args) == 1 {
+		switch {
+		case queryFile != "":
+			q, err := readQueryFile(queryFile)
+			if err != nil {
+				return err
+			}
+			query = q
+		case len(args) == 1:
 			query = args[0]
-		} else {
+		default:
 			stdinQuery, err := readFromStdin()
 			if err != nil {
 				return err
 			}
 			if stdinQuery == "" {
-				return errors.New("no query provided (pass as argument or pipe to stdin)")
+				return errors.New("no query provided (pass as argument, -f file, or pipe to stdin)")
 			}
 			query = stdinQuery
 		}
@@ -97,6 +108,14 @@ Examples:
 
 		return nil
 	},
+}
+
+func readQueryFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("reading query file: %w", err)
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 func readFromStdin() (string, error) {
@@ -181,5 +200,6 @@ func init() {
 	graphqlCmd.Flags().StringVarP(&queryVariables, "variables", "v", "", "Query variables as JSON string")
 	graphqlCmd.Flags().StringVarP(&queryOperation, "operation", "o", "", "Operation name (for multi-operation documents)")
 	graphqlCmd.Flags().BoolVar(&querySchemaOnly, "schema", false, "Print the GraphQL schema and exit")
+	graphqlCmd.Flags().StringVarP(&queryFile, "file", "f", "", "Read query from a file (avoids shell escaping issues)")
 	todoCmd.AddCommand(graphqlCmd)
 }

@@ -111,9 +111,10 @@ Replace text (exact match, must occur once): `--body-replace-old "old" --body-re
 Append: `--body-append "content"` (`-` for stdin)
 Both can combine with metadata flags in a single update.
 
-Multiple replacements via GraphQL:
+Multiple replacements via GraphQL (write to a temp file to avoid shell escaping issues with backticks):
 ```bash
-jig todo query 'mutation {
+cat > /tmp/jig-query.graphql <<'GRAPHQL'
+mutation {
   updateIssue(id: "<id>", input: {
     status: "completed"
     bodyMod: {
@@ -124,7 +125,9 @@ jig todo query 'mutation {
       append: "## Summary\n\nDone!"
     }
   }) { id body etag }
-}'
+}
+GRAPHQL
+jig todo query --json -f /tmp/jig-query.graphql
 ```
 
 ## Sync (External Integrations)
@@ -142,8 +145,12 @@ This project syncs with: {{range $i, $name := .SyncNames}}{{if $i}}, {{end}}**{{
 `jig todo query` supports advanced queries/mutations. Use `--help` for syntax, `--schema` for full schema.
 
 ```bash
+# Simple queries can be passed inline
 jig todo query --json '{ issues(filter: { excludeStatus: ["completed", "scrapped"], isBlocked: false }) { id title status type body } }'
 jig todo query --json '{ issue(id: "abc") { title body parent { title } children { id title status } } }'
+
+# For mutations (especially with markdown/backtick content), use -f to avoid shell escaping:
+jig todo query --json -f /tmp/jig-query.graphql
 ```
 
 ## Other jig Tools

@@ -481,6 +481,71 @@ func TestGetGraphQLSchema(t *testing.T) {
 	}
 }
 
+func TestReadQueryFromFile(t *testing.T) {
+	testCore, cleanup := setupQueryTestCore(t)
+	defer cleanup()
+
+	createQueryTestIssue(t, testCore, "file-1", "File Test Issue", "todo")
+
+	t.Run("reads query from file", func(t *testing.T) {
+		tmpFile := filepath.Join(t.TempDir(), "query.graphql")
+		if err := os.WriteFile(tmpFile, []byte(`{ issues { id title } }`), 0644); err != nil {
+			t.Fatalf("failed to write query file: %v", err)
+		}
+
+		data, err := os.ReadFile(tmpFile)
+		if err != nil {
+			t.Fatalf("failed to read query file: %v", err)
+		}
+		query := strings.TrimSpace(string(data))
+
+		result, err := executeQuery(query, nil, "")
+		if err != nil {
+			t.Fatalf("executeQuery() error = %v", err)
+		}
+
+		var resp struct {
+			Issues []struct {
+				ID string `json:"id"`
+			} `json:"issues"`
+		}
+		if err := json.Unmarshal(result, &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if len(resp.Issues) != 1 {
+			t.Errorf("expected 1 issue, got %d", len(resp.Issues))
+		}
+	})
+
+	t.Run("query file with backticks in mutation", func(t *testing.T) {
+		// This is the exact scenario that breaks when passed as a shell argument
+		tmpFile := filepath.Join(t.TempDir(), "mutation.graphql")
+		mutation := `mutation {
+			updateIssue(id: "file-1", input: {
+				bodyMod: { append: "Added some ` + "`code`" + ` content" }
+			}) { id body }
+		}`
+		if err := os.WriteFile(tmpFile, []byte(mutation), 0644); err != nil {
+			t.Fatalf("failed to write query file: %v", err)
+		}
+
+		content, err := readQueryFile(tmpFile)
+		if err != nil {
+			t.Fatalf("readQueryFile() error = %v", err)
+		}
+		if !strings.Contains(content, "`code`") {
+			t.Errorf("expected backticks to be preserved, got %q", content)
+		}
+	})
+
+	t.Run("nonexistent file returns error", func(t *testing.T) {
+		_, err := readQueryFile("/nonexistent/query.graphql")
+		if err == nil {
+			t.Fatal("expected error for nonexistent file, got nil")
+		}
+	})
+}
+
 func TestReadFromStdin(t *testing.T) {
 	t.Run("returns empty when stdin is terminal", func(t *testing.T) {
 		result, err := readFromStdin()

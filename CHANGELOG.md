@@ -1,5 +1,15 @@
 # Changelog
 
+## Week of Mar 8 – Mar 14, 2026
+
+### 🐞 Fixes
+
+- Add `-f`/`--file` flag to `jig todo query`; avoids zsh shell escaping when GraphQL mutations contain backticks
+
+### 🗜️ Tweaks
+
+- Remove `--markdown` changelog output; agents should use `--json` to avoid merge churn
+
 ## Week of Mar 1 – Mar 7, 2026
 
 ### ✨ Features
