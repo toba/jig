@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -380,6 +381,7 @@ type IssueRowConfig struct {
 	Dimmed        bool       // Render row dimmed (for unmatched ancestor issues in tree)
 	IDColWidth    int        // Width of ID column (0 = default of ColWidthID)
 	DueDate       *time.Time // Due date for urgency-colored hourglass indicator
+	LeafCount     int        // Number of leaf descendants (shown as badge when collapsed)
 }
 
 // Base column widths for issue lists (minimum sizes)
@@ -496,19 +498,26 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 	// Build ID column with manual padding
 	// (lipgloss Width() doesn't correctly handle Unicode box-drawing characters)
 	var idCol string
-	// Calculate visual width: tree prefix (in runes) + ID length
-	visualWidth := len([]rune(cfg.TreePrefix)) + len(id)
+	// Build leaf count badge if present
+	var leafBadge string
+	var leafBadgeWidth int
+	if cfg.LeafCount > 0 {
+		leafBadge = " " + lipgloss.NewStyle().Foreground(lipgloss.Color("#fff")).Render(strconv.Itoa(cfg.LeafCount))
+		leafBadgeWidth = 1 + len(strconv.Itoa(cfg.LeafCount)) // space + digits
+	}
+	// Calculate visual width: tree prefix (in runes) + ID length + leaf badge
+	visualWidth := len([]rune(cfg.TreePrefix)) + len(id) + leafBadgeWidth
 	padding := ""
 	if idColWidth > visualWidth {
 		padding = strings.Repeat(" ", idColWidth-visualWidth)
 	}
 	if cfg.Dimmed {
-		idCol = Muted.Render(cfg.TreePrefix) + Muted.Render(id) + padding
+		idCol = Muted.Render(cfg.TreePrefix) + Muted.Render(id) + leafBadge + padding
 	} else if cfg.IsMarked {
 		// Only highlight the ID when marked
-		idCol = highlightStyle.Render(cfg.TreePrefix) + highlightStyle.Render(id) + padding
+		idCol = highlightStyle.Render(cfg.TreePrefix) + highlightStyle.Render(id) + leafBadge + padding
 	} else {
-		idCol = TreeLine.Render(cfg.TreePrefix) + ID.Render(id) + padding
+		idCol = TreeLine.Render(cfg.TreePrefix) + ID.Render(id) + leafBadge + padding
 	}
 
 	var typeCol string

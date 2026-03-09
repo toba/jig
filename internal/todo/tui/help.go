@@ -91,6 +91,8 @@ func (m helpOverlayModel) View() string {
 	content.WriteString(shortcut("P", "Change priority") + "\n")
 	content.WriteString(shortcut("s", "Change status") + "\n")
 	content.WriteString(shortcut("t", "Change type") + "\n")
+	content.WriteString(shortcut("z", "Collapse/expand") + "\n")
+	content.WriteString(shortcut("Z", "Collapse/expand all") + "\n")
 	content.WriteString(shortcut("/", "Filter by title") + "\n")
 	content.WriteString(shortcut("//", "Search title + body") + "\n")
 	content.WriteString(shortcut("g t", "Filter by tag") + "\n")

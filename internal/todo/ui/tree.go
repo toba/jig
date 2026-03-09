@@ -310,6 +310,30 @@ func renderNode(sb *strings.Builder, node *TreeNode, depth int, isLast bool, anc
 	sb.WriteString("\n")
 }
 
+// LeafCounts returns a map of root node ID → number of leaf descendants.
+// Only nodes with children are included in the map.
+func LeafCounts(nodes []*TreeNode) map[string]int {
+	counts := make(map[string]int, len(nodes))
+	for _, node := range nodes {
+		if len(node.Children) > 0 {
+			counts[node.Issue.ID] = countLeaves(node)
+		}
+	}
+	return counts
+}
+
+// countLeaves recursively counts the leaf nodes under a tree node.
+func countLeaves(node *TreeNode) int {
+	if len(node.Children) == 0 {
+		return 1
+	}
+	total := 0
+	for _, child := range node.Children {
+		total += countLeaves(child)
+	}
+	return total
+}
+
 // FlatItem represents a flattened tree node with rendering context.
 // Used by TUI to render tree structure in a flat list.
 type FlatItem struct {
@@ -318,19 +342,21 @@ type FlatItem struct {
 	IsLast     bool   // last child at this level
 	Matched    bool   // true if issue matched filter (vs. shown for context)
 	TreePrefix string // pre-computed tree prefix (e.g., "  └─")
+	RootID     string // ID of the depth-0 ancestor (empty for depth-0 items themselves)
 }
 
 // FlattenTree converts a tree into a flat slice with tree context preserved.
 // Each item includes the pre-computed tree prefix for rendering.
 func FlattenTree(nodes []*TreeNode) []FlatItem {
 	var items []FlatItem
-	flattenNodes(nodes, 0, nil, &items)
+	flattenNodes(nodes, 0, nil, "", &items)
 	return items
 }
 
 // flattenNodes recursively flattens tree nodes.
 // ancestry tracks whether each parent level was a last child (true = last, no continuation line needed)
-func flattenNodes(nodes []*TreeNode, depth int, ancestry []bool, items *[]FlatItem) {
+// rootID is the ID of the depth-0 ancestor for nested items.
+func flattenNodes(nodes []*TreeNode, depth int, ancestry []bool, rootID string, items *[]FlatItem) {
 	for i, node := range nodes {
 		isLast := i == len(nodes)-1
 
@@ -353,12 +379,19 @@ func flattenNodes(nodes []*TreeNode, depth int, ancestry []bool, items *[]FlatIt
 			}
 		}
 
+		// Track root ancestor ID
+		currentRootID := rootID
+		if depth == 0 {
+			currentRootID = node.Issue.ID
+		}
+
 		*items = append(*items, FlatItem{
 			Issue:      node.Issue,
 			Depth:      depth,
 			IsLast:     isLast,
 			Matched:    node.Matched,
 			TreePrefix: prefix.String(),
+			RootID:     currentRootID,
 		})
 
 		// Recurse into children, passing updated ancestry
@@ -368,7 +401,7 @@ func flattenNodes(nodes []*TreeNode, depth int, ancestry []bool, items *[]FlatIt
 			if depth > 0 {
 				newAncestry = append(slices.Clone(ancestry), isLast)
 			}
-			flattenNodes(node.Children, depth+1, newAncestry, items)
+			flattenNodes(node.Children, depth+1, newAncestry, currentRootID, items)
 		}
 	}
 }

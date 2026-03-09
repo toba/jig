@@ -162,6 +162,81 @@ func TestBuildTree(t *testing.T) {
 	})
 }
 
+func TestLeafCounts(t *testing.T) {
+	// Tree structure:
+	// milestone1
+	//   ├── epic1
+	//   │   ├── task1 (leaf)
+	//   │   └── task2 (leaf)
+	//   └── task3 (leaf)
+	// task4 (leaf, orphan root)
+
+	task1 := &TreeNode{Issue: &issue.Issue{ID: "t1"}}
+	task2 := &TreeNode{Issue: &issue.Issue{ID: "t2"}}
+	task3 := &TreeNode{Issue: &issue.Issue{ID: "t3"}}
+	epic1 := &TreeNode{Issue: &issue.Issue{ID: "e1"}, Children: []*TreeNode{task1, task2}}
+	milestone1 := &TreeNode{Issue: &issue.Issue{ID: "m1"}, Children: []*TreeNode{epic1, task3}}
+	task4 := &TreeNode{Issue: &issue.Issue{ID: "t4"}}
+
+	nodes := []*TreeNode{milestone1, task4}
+	counts := LeafCounts(nodes)
+
+	t.Run("root with children has correct leaf count", func(t *testing.T) {
+		if counts["m1"] != 3 {
+			t.Errorf("expected 3 leaves for m1, got %d", counts["m1"])
+		}
+	})
+
+	t.Run("leaf root not in counts", func(t *testing.T) {
+		if _, ok := counts["t4"]; ok {
+			t.Error("leaf root t4 should not be in counts")
+		}
+	})
+
+	t.Run("intermediate node not in counts (only top-level)", func(t *testing.T) {
+		// LeafCounts only considers top-level nodes passed to it
+		if _, ok := counts["e1"]; ok {
+			t.Error("epic e1 should not be in counts (not a top-level node)")
+		}
+	})
+}
+
+func TestFlattenTreeRootID(t *testing.T) {
+	// Tree:
+	// root1
+	//   └── child1
+	//       └── grandchild1
+	// root2 (leaf)
+
+	grandchild1 := &TreeNode{Issue: &issue.Issue{ID: "gc1"}, Matched: true}
+	child1 := &TreeNode{Issue: &issue.Issue{ID: "c1"}, Matched: true, Children: []*TreeNode{grandchild1}}
+	root1 := &TreeNode{Issue: &issue.Issue{ID: "r1"}, Matched: true, Children: []*TreeNode{child1}}
+	root2 := &TreeNode{Issue: &issue.Issue{ID: "r2"}, Matched: true}
+
+	items := FlattenTree([]*TreeNode{root1, root2})
+
+	if len(items) != 4 {
+		t.Fatalf("expected 4 flat items, got %d", len(items))
+	}
+
+	// root1 (depth 0) → RootID = "r1"
+	if items[0].RootID != "r1" {
+		t.Errorf("root1: expected RootID 'r1', got %q", items[0].RootID)
+	}
+	// child1 (depth 1) → RootID = "r1"
+	if items[1].RootID != "r1" {
+		t.Errorf("child1: expected RootID 'r1', got %q", items[1].RootID)
+	}
+	// grandchild1 (depth 2) → RootID = "r1"
+	if items[2].RootID != "r1" {
+		t.Errorf("grandchild1: expected RootID 'r1', got %q", items[2].RootID)
+	}
+	// root2 (depth 0) → RootID = "r2"
+	if items[3].RootID != "r2" {
+		t.Errorf("root2: expected RootID 'r2', got %q", items[3].RootID)
+	}
+}
+
 func TestTreeNodeToJSON(t *testing.T) {
 	b := &issue.Issue{
 		ID:       "test-id",

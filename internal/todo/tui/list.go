@@ -108,6 +108,7 @@ type issueItem struct {
 	treePrefix string // tree prefix for rendering (e.g., "├─" or "  └─")
 	matched    bool   // true if issue matched filter (vs. ancestor shown for context)
 	deepSearch *bool  // pointer to listModel.deepSearch
+	leafCount  int    // leaf descendant count (shown as badge when collapsed)
 }
 
 func (i issueItem) Title() string       { return i.issue.Title }
@@ -200,6 +201,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 			Dimmed:        dimmed,
 			IDColWidth:    d.idColWidth,
 			DueDate:       issueDueTime(item.issue.Due),
+			LeafCount:     item.leafCount,
 		},
 	)
 
@@ -231,6 +233,10 @@ type listModel struct {
 
 	// Tree-aware filter state (heap-allocated so filter closure survives value copies)
 	flatItems *[]ui.FlatItem // current flat tree items, shared with filter closure
+
+	// Collapse state
+	collapsed  map[string]bool // root IDs that are collapsed
+	leafCounts map[string]int  // root ID → leaf descendant count
 
 	// Multi-select state
 	selectedIssues map[string]bool // IDs of issues marked for multi-edit
@@ -264,14 +270,16 @@ func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
 		sortOrder:      sortOrder(cfg.GetDefaultSort()),
 		deepSearch:     &deepSearch,
 		flatItems:      flatItems,
+		collapsed:      make(map[string]bool),
 		selectedIssues: selectedIssues,
 	}
 }
 
 // issuesLoadedMsg is sent when issues are loaded
 type issuesLoadedMsg struct {
-	items      []ui.FlatItem // flattened tree items
-	idColWidth int           // calculated ID column width for tree
+	items      []ui.FlatItem  // flattened tree items
+	idColWidth int            // calculated ID column width for tree
+	leafCounts map[string]int // root ID → leaf descendant count
 }
 
 // errMsg is sent when an error occurs
@@ -340,6 +348,7 @@ func (m listModel) loadIssues() tea.Msg {
 
 	// Build tree and flatten it
 	tree := ui.BuildTree(filteredIssues, allIssues, sortFn)
+	leafCounts := ui.LeafCounts(tree)
 	items := ui.FlattenTree(tree)
 
 	// Calculate ID column width based on max ID length and tree depth
@@ -356,7 +365,7 @@ func (m listModel) loadIssues() tea.Msg {
 		idColWidth += maxDepth * 3 // 3 chars per depth level (├─ + space)
 	}
 
-	return issuesLoadedMsg{items: items, idColWidth: idColWidth}
+	return issuesLoadedMsg{items: items, idColWidth: idColWidth, leafCounts: leafCounts}
 }
 
 // setTagFilter sets the tag filter
@@ -392,22 +401,31 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		if m.flatItems != nil {
 			*m.flatItems = msg.items
 		}
+		m.leafCounts = msg.leafCounts
+
+		// Apply collapse filtering
+		visible := m.applyCollapse(msg.items)
 
 		// Skip SetItems if nothing changed — avoids resetting filter UI state
-		if m.itemsUnchanged(msg.items) {
+		if m.itemsUnchanged(visible) {
 			return m, nil
 		}
 
-		items := make([]list.Item, len(msg.items))
+		items := make([]list.Item, len(visible))
 		// Check if any issues have tags
 		m.hasTags = false
-		for i, flatItem := range msg.items {
+		for i, flatItem := range visible {
+			var lc int
+			if flatItem.Depth == 0 && m.collapsed[flatItem.RootID] {
+				lc = m.leafCounts[flatItem.RootID]
+			}
 			items[i] = issueItem{
 				issue:      flatItem.Issue,
 				cfg:        m.config,
 				treePrefix: flatItem.TreePrefix,
 				matched:    flatItem.Matched,
 				deepSearch: m.deepSearch,
+				leafCount:  lc,
 			}
 			if len(flatItem.Issue.Tags) > 0 {
 				m.hasTags = true
@@ -607,6 +625,43 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 						return copyIssueIDMsg{ids: []string{item.issue.ID}}
 					}
 				}
+			case "z":
+				// Toggle collapse for the root ancestor of the selected item
+				if item, ok := m.list.SelectedItem().(issueItem); ok {
+					rootID := item.issue.ID
+					if m.flatItems != nil {
+						for _, fi := range *m.flatItems {
+							if fi.Issue.ID == item.issue.ID {
+								rootID = fi.RootID
+								break
+							}
+						}
+					}
+					if m.leafCounts[rootID] > 0 {
+						m.collapsed[rootID] = !m.collapsed[rootID]
+						return m, m.rebuildVisibleItems
+					}
+				}
+				return m, nil
+			case "Z":
+				// Toggle all: if any root with children is expanded, collapse all; otherwise expand all
+				anyExpanded := false
+				for rootID, count := range m.leafCounts {
+					if count > 0 && !m.collapsed[rootID] {
+						anyExpanded = true
+						break
+					}
+				}
+				if anyExpanded {
+					for rootID, count := range m.leafCounts {
+						if count > 0 {
+							m.collapsed[rootID] = true
+						}
+					}
+				} else {
+					clear(m.collapsed)
+				}
+				return m, m.rebuildVisibleItems
 			case "esc", "backspace":
 				// First clear selection if any issues are selected
 				if len(m.selectedIssues) > 0 {
@@ -669,6 +724,34 @@ func (m listModel) itemsUnchanged(newItems []ui.FlatItem) bool {
 		}
 	}
 	return true
+}
+
+// applyCollapse filters out descendants of collapsed root items.
+func (m listModel) applyCollapse(items []ui.FlatItem) []ui.FlatItem {
+	if len(m.collapsed) == 0 {
+		return items
+	}
+	result := make([]ui.FlatItem, 0, len(items))
+	for _, item := range items {
+		// Keep all depth-0 items; keep depth>0 only if root is not collapsed
+		if item.Depth == 0 || !m.collapsed[item.RootID] {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+// rebuildVisibleItems returns a tea.Cmd that rebuilds the visible item list
+// from the stored flat items without re-querying issues.
+func (m *listModel) rebuildVisibleItems() tea.Msg {
+	if m.flatItems == nil {
+		return nil
+	}
+	return issuesLoadedMsg{
+		items:      *m.flatItems,
+		idColWidth: m.idColWidth,
+		leafCounts: m.leafCounts,
+	}
 }
 
 func (m listModel) View() string {
@@ -744,6 +827,7 @@ func (m listModel) View() string {
 			helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
+			helpKeyStyle.Render("z") + " " + helpStyle.Render("collapse") + "  " +
 			helpKeyStyle.Render("/") + " " + helpStyle.Render("filter") + "  " +
 			helpKeyStyle.Render("//") + " " + helpStyle.Render("search") + "  " +
 			helpKeyStyle.Render("?") + " " + helpStyle.Render("help") + "  " +
