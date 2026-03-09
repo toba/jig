@@ -225,10 +225,11 @@ type listModel struct {
 	err      error
 
 	// Responsive column state
-	hasTags      bool                 // whether any issues have tags
-	cols         ui.ResponsiveColumns // calculated responsive columns
-	idColWidth   int                  // ID column width (accounts for tree depth)
-	leafColWidth int                  // leaf count column width (0 when nothing collapsed)
+	hasTags        bool                 // whether any issues have tags
+	cols           ui.ResponsiveColumns // calculated responsive columns
+	idColWidth     int                  // ID column width (accounts for tree depth), recalculated for visible items
+	fullIDColWidth int                  // full ID column width (for all items including nested)
+	leafColWidth   int                  // leaf count column width (0 when nothing collapsed)
 
 	// Active filters
 	tagFilter string // if set, only show issues with this tag
@@ -456,7 +457,22 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 			}
 		}
 		cmd = m.list.SetItems(items)
-		m.idColWidth = msg.idColWidth
+		m.fullIDColWidth = msg.idColWidth
+		// Recalculate ID column width from visible items
+		visibleIDColWidth := msg.idColWidth
+		if len(m.collapsed) > 0 {
+			maxVis := 0
+			for _, fi := range visible {
+				w := len([]rune(fi.TreePrefix)) + len(fi.Issue.ID)
+				if w > maxVis {
+					maxVis = w
+				}
+			}
+			if maxVis > 0 {
+				visibleIDColWidth = maxVis + 1
+			}
+		}
+		m.idColWidth = visibleIDColWidth
 		// Calculate responsive columns based on hasTags and width
 		m.cols = ui.CalculateResponsiveColumns(m.width, m.hasTags)
 		m.updateDelegate()
@@ -780,7 +796,7 @@ func (m *listModel) rebuildVisibleItems() tea.Msg {
 	}
 	return issuesLoadedMsg{
 		items:      *m.flatItems,
-		idColWidth: m.idColWidth,
+		idColWidth: m.fullIDColWidth,
 		leafCounts: m.leafCounts,
 	}
 }

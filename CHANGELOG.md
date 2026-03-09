@@ -2,9 +2,14 @@
 
 ## Week of Mar 8 – Mar 14, 2026
 
+### ✨ Features
+
+- Collapse/expand children in TUI list view; `z` toggles single root, `Z` toggles all
+
 ### 🐞 Fixes
 
 - Add `-f`/`--file` flag to `jig todo query`; avoids zsh shell escaping when GraphQL mutations contain backticks
+- Compact ID-to-leaf-count spacing in TUI collapsed view; recalculate column width from visible items
 
 ### 🗜️ Tweaks
 
