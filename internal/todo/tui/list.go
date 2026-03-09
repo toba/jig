@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -136,6 +137,7 @@ type itemDelegate struct {
 	width          int
 	cols           ui.ResponsiveColumns // cached responsive columns
 	idColWidth     int                  // ID column width (accounts for tree prefix)
+	leafColWidth   int                  // leaf count column width (0 when nothing collapsed)
 	selectedIssues *map[string]bool     // pointer to marked issues for multi-select
 }
 
@@ -166,7 +168,11 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if d.idColWidth > 0 {
 		idWidth = d.idColWidth
 	}
-	baseWidth := idWidth + d.cols.Status + d.cols.Type + 4 // 4 for cursor + padding
+	leafCol := d.leafColWidth
+	if leafCol > 0 {
+		leafCol += 1 // add spacing when column is visible
+	}
+	baseWidth := idWidth + leafCol + d.cols.Status + d.cols.Type + 4 // 4 for cursor + padding
 	if d.cols.ShowTags {
 		baseWidth += d.cols.Tags
 	}
@@ -202,6 +208,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 			IDColWidth:    d.idColWidth,
 			DueDate:       issueDueTime(item.issue.Due),
 			LeafCount:     item.leafCount,
+			LeafColWidth:  d.leafColWidth,
 		},
 	)
 
@@ -218,9 +225,10 @@ type listModel struct {
 	err      error
 
 	// Responsive column state
-	hasTags    bool                 // whether any issues have tags
-	cols       ui.ResponsiveColumns // calculated responsive columns
-	idColWidth int                  // ID column width (accounts for tree depth)
+	hasTags      bool                 // whether any issues have tags
+	cols         ui.ResponsiveColumns // calculated responsive columns
+	idColWidth   int                  // ID column width (accounts for tree depth)
+	leafColWidth int                  // leaf count column width (0 when nothing collapsed)
 
 	// Active filters
 	tagFilter string // if set, only show issues with this tag
@@ -237,6 +245,7 @@ type listModel struct {
 	// Collapse state
 	collapsed  map[string]bool // root IDs that are collapsed
 	leafCounts map[string]int  // root ID → leaf descendant count
+	firstLoad  bool            // true until first issuesLoadedMsg is processed
 
 	// Multi-select state
 	selectedIssues map[string]bool // IDs of issues marked for multi-edit
@@ -271,6 +280,7 @@ func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
 		deepSearch:     &deepSearch,
 		flatItems:      flatItems,
 		collapsed:      make(map[string]bool),
+		firstLoad:      true,
 		selectedIssues: selectedIssues,
 	}
 }
@@ -403,6 +413,16 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		}
 		m.leafCounts = msg.leafCounts
 
+		// On first load, collapse all roots that have children
+		if m.firstLoad {
+			for rootID, count := range msg.leafCounts {
+				if count > 0 {
+					m.collapsed[rootID] = true
+				}
+			}
+			m.firstLoad = false
+		}
+
 		// Apply collapse filtering
 		visible := m.applyCollapse(msg.items)
 
@@ -412,12 +432,16 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		}
 
 		items := make([]list.Item, len(visible))
-		// Check if any issues have tags
+		// Check if any issues have tags, and compute leaf column width
 		m.hasTags = false
+		m.leafColWidth = 0
 		for i, flatItem := range visible {
 			var lc int
 			if flatItem.Depth == 0 && m.collapsed[flatItem.RootID] {
 				lc = m.leafCounts[flatItem.RootID]
+				if w := len(strconv.Itoa(lc)); w > m.leafColWidth {
+					m.leafColWidth = w
+				}
 			}
 			items[i] = issueItem{
 				issue:      flatItem.Issue,
@@ -698,6 +722,7 @@ func (m *listModel) updateDelegate() {
 		width:          m.width,
 		cols:           m.cols,
 		idColWidth:     m.idColWidth,
+		leafColWidth:   m.leafColWidth,
 		selectedIssues: &m.selectedIssues,
 	}
 	m.list.SetDelegate(delegate)
@@ -727,8 +752,14 @@ func (m listModel) itemsUnchanged(newItems []ui.FlatItem) bool {
 }
 
 // applyCollapse filters out descendants of collapsed root items.
+// When filtering is active, collapse is bypassed so that matched children
+// inside collapsed parents remain visible.
 func (m listModel) applyCollapse(items []ui.FlatItem) []ui.FlatItem {
 	if len(m.collapsed) == 0 {
+		return items
+	}
+	// Bypass collapse while filtering — the filter controls visibility
+	if m.list.FilterState() == list.FilterApplied || m.list.FilterState() == list.Filtering {
 		return items
 	}
 	result := make([]ui.FlatItem, 0, len(items))
