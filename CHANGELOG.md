@@ -4,6 +4,7 @@
 
 ### ✨ Features
 
+- Auto-propagate parent issue status from children; completing all children marks parent completed
 - Collapse/expand children in TUI list view; `z` toggles single root, `Z` toggles all
 
 ### 🐞 Fixes

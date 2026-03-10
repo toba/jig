@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/toba/jig/internal/constants"
 	"gopkg.in/yaml.v3"
@@ -195,7 +196,11 @@ func CompileRules(defs []RuleDef) ([]CompiledRule, error) {
 			// (e.g. shell line continuations) should not escape pattern rules.
 			re, err := regexp.Compile("(?s)" + d.Pattern)
 			if err != nil {
-				return nil, fmt.Errorf("rule %q: bad pattern: %w", d.Name, err)
+				hint := ""
+				if strings.Contains(d.Pattern, "(?<") || strings.Contains(d.Pattern, "(?=") || strings.Contains(d.Pattern, "(?!") {
+					hint = " (Go regex uses RE2, which does not support lookahead/lookbehind — rewrite using negated character classes or word boundaries)"
+				}
+				return nil, fmt.Errorf("rule %q: bad pattern: %w%s", d.Name, err, hint)
 			}
 			check = re.MatchString
 		}

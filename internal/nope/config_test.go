@@ -67,6 +67,11 @@ func TestCompileRulesValidation(t *testing.T) {
 			wantErr: "bad pattern",
 		},
 		{
+			name:    "lookbehind not supported",
+			rules:   []RuleDef{{Name: "bad", Pattern: `(?<!\.)pgmigrate\s+(dump|ops)`, Message: "msg"}},
+			wantErr: "lookahead/lookbehind",
+		},
+		{
 			name:    "unknown builtin",
 			rules:   []RuleDef{{Name: "bad", Builtin: "nope", Message: "msg"}},
 			wantErr: "unknown builtin",

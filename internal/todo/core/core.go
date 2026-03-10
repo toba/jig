@@ -369,6 +369,9 @@ func (c *Core) Update(b *issue.Issue, ifMatch *string) error {
 		}
 	}
 
+	// Propagate status changes up the parent hierarchy
+	c.propagateStatusLocked(b.ID, map[string]bool{b.ID: true})
+
 	return nil
 }
 
