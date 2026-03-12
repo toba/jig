@@ -123,6 +123,11 @@ func (c *Core) loadFromDisk() error {
 			return err
 		}
 
+		// Skip dot-prefixed subdirectories (e.g. .git, .DS_Store dirs)
+		if d.IsDir() && strings.HasPrefix(d.Name(), ".") && path != c.root {
+			return filepath.SkipDir
+		}
+
 		// Skip non-.md files
 		if d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
 			return nil

@@ -1,10 +1,12 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1608,5 +1610,66 @@ func TestUpdateWithETagDebug(t *testing.T) {
 	err := core.Update(b, &etagAfterCreate)
 	if err != nil {
 		t.Logf("Update failed: %v", err)
+	}
+}
+
+func TestLoadFromDiskSkipsDotPrefixedDirs(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, DataDir)
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a normal issue
+	normalDir := filepath.Join(dataDir, "a")
+	os.MkdirAll(normalDir, 0755)
+	os.WriteFile(filepath.Join(normalDir, "abc-123--normal.md"), []byte("---\ntitle: Normal\nstatus: ready\ntype: task\n---\n"), 0644)
+
+	// Create a dot-prefixed subdirectory with an .md file that should be skipped
+	dotDir := filepath.Join(dataDir, ".hidden")
+	os.MkdirAll(dotDir, 0755)
+	os.WriteFile(filepath.Join(dotDir, "xyz-789--hidden.md"), []byte("---\ntitle: Hidden\nstatus: ready\ntype: task\n---\n"), 0644)
+
+	cfg := config.Default()
+	core := New(dataDir, cfg)
+	if err := core.Load(); err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	all := core.All()
+	if len(all) != 1 {
+		t.Errorf("expected 1 issue, got %d", len(all))
+		for _, b := range all {
+			t.Logf("  loaded: %s (%s)", b.ID, b.Path)
+		}
+	}
+	if _, err := core.Get("xyz-789"); err == nil {
+		t.Error("issue from dot-prefixed directory should not be loaded")
+	}
+}
+
+func TestFanOutLogsDroppedEvents(t *testing.T) {
+	core, _ := setupTestCore(t)
+
+	var buf bytes.Buffer
+	core.SetWarnWriter(&buf)
+
+	// Subscribe but never drain the channel
+	if err := core.StartWatching(); err != nil {
+		t.Fatalf("StartWatching() error = %v", err)
+	}
+	defer core.Unwatch()
+
+	_, unsub := core.Subscribe()
+	defer unsub()
+
+	// Fill the subscriber channel (buffered at 16) then overflow
+	dummyEvent := []IssueEvent{{Type: EventUpdated, IssueID: "test"}}
+	for i := 0; i < 20; i++ {
+		core.fanOut(dummyEvent)
+	}
+
+	if !strings.Contains(buf.String(), "dropping") {
+		t.Errorf("expected warning about dropping events, got: %q", buf.String())
 	}
 }

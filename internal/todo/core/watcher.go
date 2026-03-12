@@ -95,7 +95,7 @@ func (c *Core) fanOut(events []IssueEvent) {
 		case sub.ch <- events:
 			// Sent successfully
 		default:
-			// Subscriber is slow, drop events
+			c.logWarn("dropping %d event(s) for slow subscriber %d", len(events), sub.id)
 		}
 	}
 }
@@ -262,8 +262,7 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 			if !ok {
 				return
 			}
-			// Log errors but continue watching
-			_ = err // In production, you might want to log this
+			c.logWarn("filesystem watcher error: %v", err)
 		}
 	}
 }

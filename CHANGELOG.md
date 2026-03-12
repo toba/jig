@@ -9,6 +9,9 @@
 
 ### 🐞 Fixes
 
+- Fix `blockedBy` GraphQL resolver ignoring `blocked_by` frontmatter links; combine both blocking sources with dedup
+- Fix file watcher silently dropping events and discarding errors; log warnings for slow subscribers and fsnotify errors
+- Fix `loadFromDisk` loading `.md` files from dot-prefixed subdirectories in `.issues/`; skip with `filepath.SkipDir`
 - Add `-f`/`--file` flag to `jig todo query`; avoids zsh shell escaping when GraphQL mutations contain backticks
 - Compact ID-to-leaf-count spacing in TUI collapsed view; recalculate column width from visible items
 

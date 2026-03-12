@@ -70,13 +70,28 @@ func (r *issueResolver) BlockedByIds(ctx context.Context, obj *issue.Issue) ([]s
 
 // BlockedBy is the resolver for the blockedBy field.
 func (r *issueResolver) BlockedBy(ctx context.Context, obj *issue.Issue, filter *model.IssueFilter) ([]*issue.Issue, error) {
-	incoming := r.Core.FindIncomingLinks(obj.ID)
+	seen := make(map[string]bool)
 	var result []*issue.Issue
+
+	// Source 1: issues that declare obj in their blocking list
+	incoming := r.Core.FindIncomingLinks(obj.ID)
 	for _, link := range incoming {
 		if link.LinkType == issue.LinkTypeBlocking {
+			seen[link.FromIssue.ID] = true
 			result = append(result, link.FromIssue)
 		}
 	}
+
+	// Source 2: issues listed in obj's blocked_by field
+	for _, blockerID := range obj.BlockedBy {
+		if seen[blockerID] {
+			continue
+		}
+		if blocker, err := r.Core.Get(blockerID); err == nil {
+			result = append(result, blocker)
+		}
+	}
+
 	return ApplyFilter(result, filter, r.Core), nil
 }
 

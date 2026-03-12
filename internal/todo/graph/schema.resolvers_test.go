@@ -328,11 +328,26 @@ func TestIssueRelationships(t *testing.T) {
 		Status:   "todo",
 		Blocking: []string{"child-1"},
 	}
+	// blocker2 is declared via blocked_by on the blockee side
+	blocker2 := &issue.Issue{
+		ID:     "blocker-2",
+		Title:  "Blocker 2",
+		Status: "todo",
+	}
+	blockedByChild := &issue.Issue{
+		ID:        "child-3",
+		Title:     "Child 3",
+		Status:    "todo",
+		Parent:    "parent-1",
+		BlockedBy: []string{"blocker-2"},
+	}
 
 	c.Create(parent)
 	c.Create(child1)
 	c.Create(child2)
 	c.Create(blocker)
+	c.Create(blocker2)
+	c.Create(blockedByChild)
 
 	t.Run("parent resolver", func(t *testing.T) {
 		br := resolver.Issue()
@@ -354,8 +369,8 @@ func TestIssueRelationships(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Children() error = %v", err)
 		}
-		if len(got) != 2 {
-			t.Errorf("Children() count = %d, want 2", len(got))
+		if len(got) != 3 {
+			t.Errorf("Children() count = %d, want 3", len(got))
 		}
 	})
 
@@ -370,6 +385,20 @@ func TestIssueRelationships(t *testing.T) {
 		}
 		if got[0].ID != "blocker-1" {
 			t.Errorf("BlockedBy()[0].ID = %q, want %q", got[0].ID, "blocker-1")
+		}
+	})
+
+	t.Run("blockedBy resolver via blocked_by field", func(t *testing.T) {
+		br := resolver.Issue()
+		got, err := br.BlockedBy(ctx, blockedByChild, nil)
+		if err != nil {
+			t.Fatalf("BlockedBy() error = %v", err)
+		}
+		if len(got) != 1 {
+			t.Errorf("BlockedBy() count = %d, want 1", len(got))
+		}
+		if len(got) > 0 && got[0].ID != "blocker-2" {
+			t.Errorf("BlockedBy()[0].ID = %q, want %q", got[0].ID, "blocker-2")
 		}
 	})
 
