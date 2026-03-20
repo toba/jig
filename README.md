@@ -56,7 +56,7 @@ Jig is a multi-tool CLI that bundles repo monitoring, a file-based issue tracker
 ## Install
 
 ```bash
-brew install toba/jig/jig
+brew install toba/tap/jig
 ```
 
 On Windows:
