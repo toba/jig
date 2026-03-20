@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/glamour/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/issue"
@@ -151,7 +151,7 @@ func showStyledIssue(b *issue.Issue) {
 
 	if b.Body != "" {
 		renderer, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
+			glamour.WithEnvironmentConfig(),
 			glamour.WithWordWrap(80),
 		)
 		if err != nil {

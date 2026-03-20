@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/ui"
 )
 

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/graph"
@@ -147,7 +147,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width = msg.Width
 		a.height = msg.Height
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Clear status messages on any keypress
 		a.list.statusMessage = ""
 		a.detail.statusMessage = ""
@@ -587,32 +587,35 @@ func (a *App) collectTagsWithCounts() []tagWithCount {
 }
 
 // View renders the current view
-func (a *App) View() string {
+func (a *App) View() tea.View {
+	var content string
 	switch a.state {
 	case viewList:
-		return a.list.View()
+		content = a.list.View()
 	case viewDetail:
-		return a.detail.View()
+		content = a.detail.View()
 	case viewTagPicker:
-		return a.tagPicker.View()
+		content = a.tagPicker.View()
 	case viewParentPicker:
-		return a.parentPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.parentPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewStatusPicker:
-		return a.statusPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.statusPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewTypePicker:
-		return a.typePicker.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.typePicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewPriorityPicker:
-		return a.priorityPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.priorityPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewSortPicker:
-		return a.sortPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.sortPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewBlockingPicker:
-		return a.blockingPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.blockingPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewCreateModal:
-		return a.createModal.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.createModal.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewHelpOverlay:
-		return a.helpOverlay.ModalView(a.getBackgroundView(), a.width, a.height)
+		content = a.helpOverlay.ModalView(a.getBackgroundView(), a.width, a.height)
 	}
-	return ""
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
 }
 
 // getBackgroundView returns the view to show behind modal pickers
@@ -691,7 +694,7 @@ func getEditor(cfg *config.Config) (string, []string) {
 // Run starts the TUI application with file watching
 func Run(core *core.Core, cfg *config.Config) error {
 	app := New(core, cfg)
-	p := tea.NewProgram(app, tea.WithAltScreen())
+	p := tea.NewProgram(app)
 
 	// Store reference to program for sending messages from watcher
 	app.program = p

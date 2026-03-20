@@ -3,9 +3,9 @@ package tui
 import (
 	"io"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/ui"
 )
@@ -103,8 +103,9 @@ func newStatusPickerModel(issueIDs []string, issueTitle, currentStatus string, _
 	l.Filter = substringFilter
 	l.Styles.Title = listTitleStyle
 	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 0, 0)
-	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
-	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Focused.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Blurred.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Cursor.Color = ui.ColorPrimary
 
 	// Select the current status
 	if selectedIndex < len(items) {
@@ -135,7 +136,7 @@ func (m statusPickerModel) Update(msg tea.Msg) (statusPickerModel, tea.Cmd) {
 		dims := calculatePickerDimensions(msg.Width, msg.Height, defaultPickerDimensionConfig())
 		m.list.SetSize(dims.ListWidth, dims.ListHeight)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
 			case "enter":

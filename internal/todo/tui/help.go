@@ -3,8 +3,8 @@ package tui
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/ui"
 )
 
@@ -40,7 +40,7 @@ func (m helpOverlayModel) Update(msg tea.Msg) (helpOverlayModel, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "?", "esc":
 			return m, func() tea.Msg {

@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/ui"
 )
 
@@ -29,11 +29,16 @@ func newCreateModalModel(width, height int) createModalModel {
 	ti := textinput.New()
 	ti.Placeholder = "Enter issue title..."
 	ti.CharLimit = 200
-	ti.Width = 50
+	ti.SetWidth(50)
 	ti.Focus()
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
-	ti.TextStyle = lipgloss.NewStyle()
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(ui.ColorMuted)
+	styles := ti.Styles()
+	styles.Focused.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	styles.Focused.Text = lipgloss.NewStyle()
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(ui.ColorMuted)
+	styles.Blurred.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	styles.Blurred.Text = lipgloss.NewStyle()
+	styles.Blurred.Placeholder = lipgloss.NewStyle().Foreground(ui.ColorMuted)
+	ti.SetStyles(styles)
 	ti.Prompt = ""
 
 	return createModalModel{
@@ -55,9 +60,9 @@ func (m createModalModel) Update(msg tea.Msg) (createModalModel, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "enter":
 			title := m.textInput.Value()
 			if title != "" {
 				return m, func() tea.Msg {
@@ -69,7 +74,7 @@ func (m createModalModel) Update(msg tea.Msg) (createModalModel, tea.Cmd) {
 				return closeCreateModalMsg{}
 			}
 
-		case tea.KeyEsc:
+		case "esc":
 			return m, func() tea.Msg {
 				return closeCreateModalMsg{}
 			}

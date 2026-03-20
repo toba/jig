@@ -2,11 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 )
 
@@ -26,7 +27,7 @@ var (
 )
 
 // NamedColors maps color names to lipgloss colors.
-var NamedColors = map[string]lipgloss.Color{
+var NamedColors = map[string]color.Color{
 	"green":  ColorSuccess,
 	"yellow": ColorWarning,
 	"red":    ColorDanger,
@@ -37,12 +38,12 @@ var NamedColors = map[string]lipgloss.Color{
 	"cyan":   ColorCyan,
 }
 
-// ResolveColor converts a color name or hex code to a lipgloss.Color.
-func ResolveColor(color string) lipgloss.Color {
-	if strings.HasPrefix(color, "#") {
-		return lipgloss.Color(color)
+// ResolveColor converts a color name or hex code to a color.Color.
+func ResolveColor(s string) color.Color {
+	if strings.HasPrefix(s, "#") {
+		return lipgloss.Color(s)
 	}
-	if c, ok := NamedColors[strings.ToLower(color)]; ok {
+	if c, ok := NamedColors[strings.ToLower(s)]; ok {
 		return c
 	}
 	return ColorMuted
@@ -640,7 +641,7 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 //   - ≤ 3 days: orange (ColorOrange)
 //   - ≤ 7 days: yellow (ColorYellow)
 //   - > 7 days: green (ColorSuccess)
-func dueDateColor(due time.Time) lipgloss.Color {
+func dueDateColor(due time.Time) color.Color {
 	remaining := time.Until(due)
 	switch {
 	case remaining <= 24*time.Hour:

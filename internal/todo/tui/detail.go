@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/glamour/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/issue"
@@ -169,7 +169,7 @@ func newDetailModel(b *issue.Issue, resolver *graph.Resolver, cfg *config.Config
 	vpWidth := width - 4
 	vpHeight := height - headerHeight - footerHeight
 
-	m.viewport = viewport.New(vpWidth, vpHeight)
+	m.viewport = viewport.New(viewport.WithWidth(vpWidth), viewport.WithHeight(vpHeight))
 	m.viewport.SetContent(m.renderBody(vpWidth))
 
 	return m
@@ -215,8 +215,9 @@ func (m detailModel) createLinkList() list.Model {
 		Background(ui.ColorBlue).
 		Padding(0, 1)
 	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 0, 1) // Left padding to align with header title
-	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
-	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Focused.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Blurred.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Cursor.Color = ui.ColorPrimary
 	l.Styles.NoItems = lipgloss.NewStyle()
 
 	return l
@@ -257,16 +258,16 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 			msg.Height-headerHeight-footerHeight, 1)
 
 		if !m.ready {
-			m.viewport = viewport.New(vpWidth, vpHeight)
+			m.viewport = viewport.New(viewport.WithWidth(vpWidth), viewport.WithHeight(vpHeight))
 			m.viewport.SetContent(m.renderBody(vpWidth))
 			m.ready = true
 		} else {
-			m.viewport.Width = vpWidth
-			m.viewport.Height = vpHeight
+			m.viewport.SetWidth(vpWidth)
+			m.viewport.SetHeight(vpHeight)
 			m.viewport.SetContent(m.renderBody(vpWidth))
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// If links list is filtering, let it handle all keys except quit
 		if m.linksActive && m.linkList.FilterState() == list.Filtering {
 			m.linkList, cmd = m.linkList.Update(msg)

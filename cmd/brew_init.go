@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/toba/jig/internal/brew"
 	"github.com/toba/jig/internal/config"

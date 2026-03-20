@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/ui"
 )
@@ -167,7 +167,7 @@ func (m sortPickerModel) Update(msg tea.Msg) (sortPickerModel, tea.Cmd) {
 		listHeight := modalHeight - 7
 		m.list.SetSize(listWidth, listHeight)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "enter":
 			if item, ok := m.list.SelectedItem().(sortItem); ok {

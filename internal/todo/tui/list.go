@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/graph/model"
@@ -270,8 +270,9 @@ func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
 	l.Filter = treeAwareFilter(flatItems, &deepSearch)
 	l.Styles.Title = listTitleStyle
 	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 1, 1)
-	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
-	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Focused.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Blurred.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Cursor.Color = ui.ColorPrimary
 
 	return listModel{
 		list:           l,
@@ -482,7 +483,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		m.err = msg.err
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Toggle deep search: "/" while filtering with empty input
 		if m.list.FilterState() == list.Filtering && msg.String() == "/" {
 			if m.list.FilterInput.Value() == "" {
@@ -498,7 +499,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
-			case " ":
+			case "space":
 				// Toggle selection for multi-select, then move to next item
 				if item, ok := m.list.SelectedItem().(issueItem); ok {
 					if m.selectedIssues[item.issue.ID] {

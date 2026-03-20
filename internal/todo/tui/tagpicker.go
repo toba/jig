@@ -6,9 +6,9 @@ import (
 	"io"
 	"slices"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/ui"
 )
 
@@ -86,8 +86,9 @@ func newTagPickerModel(tags []tagWithCount, width, height int) tagPickerModel {
 	l.Filter = substringFilter
 	l.Styles.Title = listTitleStyle
 	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 1, 1)
-	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
-	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Focused.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Blurred.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Cursor.Color = ui.ColorPrimary
 
 	return tagPickerModel{
 		list:   l,
@@ -110,7 +111,7 @@ func (m tagPickerModel) Update(msg tea.Msg) (tagPickerModel, tea.Cmd) {
 		m.height = msg.Height
 		m.list.SetSize(msg.Width-4, msg.Height-6)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
 			case "enter":

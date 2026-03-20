@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/charmbracelet/bubbles/list"
+	"charm.land/bubbles/v2/list"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/ui"

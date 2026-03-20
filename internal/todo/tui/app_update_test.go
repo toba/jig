@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/toba/jig/internal/todo/config"
 
 	"github.com/toba/jig/internal/todo/graph"
@@ -93,7 +93,7 @@ func TestAppInitialState(t *testing.T) {
 func TestAppCtrlCQuits(t *testing.T) {
 	app := newTestApp(t)
 
-	msg := tea.KeyMsg{Type: tea.KeyCtrlC}
+	msg := tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
 	_, cmd := app.Update(msg)
 	if cmd == nil {
 		t.Fatal("ctrl+c should produce a quit command")
@@ -109,7 +109,7 @@ func TestAppQuitFromList(t *testing.T) {
 	app := newTestApp(t)
 	app.state = viewList
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
+	msg := tea.KeyPressMsg{Code: 'q', Text: "q"}
 	_, cmd := app.Update(msg)
 	if cmd == nil {
 		t.Fatal("q from list should produce a quit command")
@@ -124,7 +124,7 @@ func TestAppQuitFromDetail(t *testing.T) {
 	app := newTestApp(t)
 	app.state = viewDetail
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
+	msg := tea.KeyPressMsg{Code: 'q', Text: "q"}
 	_, cmd := app.Update(msg)
 	if cmd == nil {
 		t.Fatal("q from detail should produce a quit command")
@@ -139,7 +139,7 @@ func TestAppQuitFromHelpOverlay(t *testing.T) {
 	app := newTestApp(t)
 	app.state = viewHelpOverlay
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
+	msg := tea.KeyPressMsg{Code: 'q', Text: "q"}
 	_, cmd := app.Update(msg)
 	if cmd == nil {
 		t.Fatal("q from help overlay should produce a quit command")
@@ -150,7 +150,7 @@ func TestAppQuitFromTagPicker(t *testing.T) {
 	app := newTestApp(t)
 	app.state = viewTagPicker
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
+	msg := tea.KeyPressMsg{Code: 'q', Text: "q"}
 	_, cmd := app.Update(msg)
 	if cmd == nil {
 		t.Fatal("q from tag picker should produce a quit command")
@@ -173,7 +173,7 @@ func TestAppQuitFromAllPickerViews(t *testing.T) {
 		app := newTestApp(t)
 		app.state = state
 
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
+		msg := tea.KeyPressMsg{Code: 'q', Text: "q"}
 		_, cmd := app.Update(msg)
 		if cmd == nil {
 			t.Errorf("q from state %d should produce a quit command", state)
@@ -185,7 +185,7 @@ func TestAppHelpOverlayOpensFromList(t *testing.T) {
 	app := newTestApp(t)
 	app.state = viewList
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")}
+	msg := tea.KeyPressMsg{Code: '?', Text: "?"}
 	updatedModel, _ := app.Update(msg)
 	updated := updatedModel.(*App)
 
@@ -201,7 +201,7 @@ func TestAppHelpOverlayOpensFromDetail(t *testing.T) {
 	app := newTestApp(t)
 	app.state = viewDetail
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")}
+	msg := tea.KeyPressMsg{Code: '?', Text: "?"}
 	updatedModel, _ := app.Update(msg)
 	updated := updatedModel.(*App)
 
@@ -220,7 +220,7 @@ func TestAppHelpDoesNotOpenFromPicker(t *testing.T) {
 	app.createModal = newCreateModalModel(80, 24)
 	app.state = viewCreateModal
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")}
+	msg := tea.KeyPressMsg{Code: '?', Text: "?"}
 	updatedModel, _ := app.Update(msg)
 	updated := updatedModel.(*App)
 
@@ -250,7 +250,7 @@ func TestAppKeyChordGT(t *testing.T) {
 	app.state = viewList
 
 	// Press "g" - should set pending key
-	gMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")}
+	gMsg := tea.KeyPressMsg{Code: 'g', Text: "g"}
 	updatedModel, _ := app.Update(gMsg)
 	updated := updatedModel.(*App)
 
@@ -259,7 +259,7 @@ func TestAppKeyChordGT(t *testing.T) {
 	}
 
 	// Press "t" - should produce openTagPickerMsg
-	tMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")}
+	tMsg := tea.KeyPressMsg{Code: 't', Text: "t"}
 	updatedModel, cmd := updated.Update(tMsg)
 	updated = updatedModel.(*App)
 
@@ -281,7 +281,7 @@ func TestAppKeyChordInvalidSecond(t *testing.T) {
 	app.state = viewList
 
 	// Press "g"
-	gMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")}
+	gMsg := tea.KeyPressMsg{Code: 'g', Text: "g"}
 	updatedModel, _ := app.Update(gMsg)
 	updated := updatedModel.(*App)
 
@@ -290,7 +290,7 @@ func TestAppKeyChordInvalidSecond(t *testing.T) {
 	}
 
 	// Press "x" (invalid second key)
-	xMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")}
+	xMsg := tea.KeyPressMsg{Code: 'x', Text: "x"}
 	updatedModel, cmd := updated.Update(xMsg)
 	updated = updatedModel.(*App)
 
@@ -778,7 +778,7 @@ func TestAppKeyPressClearsStatusMessage(t *testing.T) {
 	app.list.statusMessage = "Some status"
 	app.detail.statusMessage = "Detail status"
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}
+	msg := tea.KeyPressMsg{Code: 'j', Text: "j"}
 	updatedModel, _ := app.Update(msg)
 	updated := updatedModel.(*App)
 
@@ -799,8 +799,8 @@ func TestAppViewReturnsStringForAllStates(t *testing.T) {
 		app := newTestApp(t)
 		app.state = state
 		result := app.View()
-		if result == "" {
-			t.Errorf("View() returned empty string for state %d", state)
+		if result.Content == "" {
+			t.Errorf("View() returned empty content for state %d", state)
 		}
 	}
 }
@@ -970,7 +970,7 @@ func TestHelpOverlayModel(t *testing.T) {
 	})
 
 	t.Run("? key closes", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")}
+		msg := tea.KeyPressMsg{Code: '?', Text: "?"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("? should produce close command")
@@ -982,7 +982,7 @@ func TestHelpOverlayModel(t *testing.T) {
 	})
 
 	t.Run("esc key closes", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyEsc}
+		msg := tea.KeyPressMsg{Code: tea.KeyEsc}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("esc should produce close command")
@@ -1029,7 +1029,7 @@ func TestCreateModalModel(t *testing.T) {
 	})
 
 	t.Run("esc key closes", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyEsc}
+		msg := tea.KeyPressMsg{Code: tea.KeyEsc}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("esc should produce close command")
@@ -1041,7 +1041,7 @@ func TestCreateModalModel(t *testing.T) {
 	})
 
 	t.Run("enter with empty title closes", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyEnter}
+		msg := tea.KeyPressMsg{Code: tea.KeyEnter}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("enter with empty should produce close command")
@@ -1094,7 +1094,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("esc returns backToListMsg", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyEsc}
+		msg := tea.KeyPressMsg{Code: tea.KeyEsc}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("esc should produce back command")
@@ -1106,7 +1106,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("backspace returns backToListMsg", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyBackspace}
+		msg := tea.KeyPressMsg{Code: tea.KeyBackspace}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("backspace should produce back command")
@@ -1118,7 +1118,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("p opens parent picker", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")}
+		msg := tea.KeyPressMsg{Code: 'p', Text: "p"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("p should produce parent picker command")
@@ -1130,7 +1130,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("s opens status picker", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")}
+		msg := tea.KeyPressMsg{Code: 's', Text: "s"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("s should produce status picker command")
@@ -1142,7 +1142,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("t opens type picker", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")}
+		msg := tea.KeyPressMsg{Code: 't', Text: "t"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("t should produce type picker command")
@@ -1154,7 +1154,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("P opens priority picker", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")}
+		msg := tea.KeyPressMsg{Code: 'P', Text: "P"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("P should produce priority picker command")
@@ -1166,7 +1166,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("b opens blocking picker", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("b")}
+		msg := tea.KeyPressMsg{Code: 'b', Text: "b"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("b should produce blocking picker command")
@@ -1178,7 +1178,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("e opens editor", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("e")}
+		msg := tea.KeyPressMsg{Code: 'e', Text: "e"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("e should produce editor command")
@@ -1190,7 +1190,7 @@ func TestDetailModel(t *testing.T) {
 	})
 
 	t.Run("c copies ID", func(t *testing.T) {
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")}
+		msg := tea.KeyPressMsg{Code: 'c', Text: "c"}
 		_, cmd := m.Update(msg)
 		if cmd == nil {
 			t.Fatal("c should produce copy command")
@@ -1205,7 +1205,7 @@ func TestDetailModel(t *testing.T) {
 
 	t.Run("tab toggles links with no links", func(t *testing.T) {
 		beforeLinksActive := m.linksActive
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\t'}}
+		msg := tea.KeyPressMsg{Code: tea.KeyTab}
 		// No links, so tab should be a no-op
 		if len(m.links) == 0 {
 			_, _ = m.Update(msg)

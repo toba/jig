@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/issue"
@@ -163,8 +163,9 @@ func newBlockingPickerModel(issueID, issueTitle string, currentBlocking []string
 	l.Filter = substringFilter
 	l.Styles.Title = listTitleStyle
 	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 0, 0)
-	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
-	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Focused.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Blurred.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Cursor.Color = ui.ColorPrimary
 
 	return blockingPickerModel{
 		list:             l,
@@ -195,10 +196,10 @@ func (m blockingPickerModel) Update(msg tea.Msg) (blockingPickerModel, tea.Cmd) 
 		})
 		m.list.SetSize(dims.ListWidth, dims.ListHeight)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
-			case " ":
+			case "space":
 				// Toggle the selected item's pending state
 				// The delegate reads from pendingBlocking directly, so no need to update items
 				if item, ok := m.list.SelectedItem().(blockingItem); ok {

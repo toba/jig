@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/graph"
@@ -189,8 +189,9 @@ func newParentPickerModel(issueIDs []string, issueTitle string, issueTypes []str
 	l.Filter = substringFilter
 	l.Styles.Title = listTitleStyle
 	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 0, 0)
-	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
-	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Focused.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Blurred.Prompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
+	l.Styles.Filter.Cursor.Color = ui.ColorPrimary
 
 	// Select the current parent if set
 	if selectedIndex > 0 && selectedIndex < len(items) {
@@ -267,7 +268,7 @@ func (m parentPickerModel) Update(msg tea.Msg) (parentPickerModel, tea.Cmd) {
 		listHeight := modalHeight - 7
 		m.list.SetSize(listWidth, listHeight)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
 			case "enter":
