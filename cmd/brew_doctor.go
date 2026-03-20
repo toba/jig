@@ -17,7 +17,7 @@ var brewDoctorCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		tap, err := resolveTap("", configPath())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "OK:   companions.brew not configured (nothing to check)\n")
+			fmt.Fprintf(os.Stderr, "OK:   brew not in packages (nothing to check)\n")
 			return nil
 		}
 

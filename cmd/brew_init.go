@@ -48,9 +48,9 @@ After running this, tap updates happen automatically via CI on new tags.`,
 			return err
 		}
 
-		// Save companions.brew to .jig.yaml if not already set.
+		// Add brew to packages in .jig.yaml if not already present.
 		if !brewInitDryRun {
-			saveBrewCompanion(configPath(), tap)
+			addPackage(configPath(), "brew")
 		}
 
 		if jsonOut {
@@ -96,7 +96,7 @@ After running this, tap updates happen automatically via CI on new tags.`,
 }
 
 func init() {
-	brewInitCmd.Flags().StringVar(&brewInitTap, "tap", "", "tap repo (default: companions.brew or owner/homebrew-tap)")
+	brewInitCmd.Flags().StringVar(&brewInitTap, "tap", "", "tap repo (default: owner/homebrew-tap)")
 	brewInitCmd.Flags().StringVar(&brewInitTag, "tag", "", "release tag (default: latest release)")
 	brewInitCmd.Flags().StringVar(&brewInitRepo, "repo", "", "source repo (default: current repo via gh)")
 	brewInitCmd.Flags().StringVar(&brewInitDesc, "desc", "", "formula description (default: repo description)")
@@ -105,19 +105,11 @@ func init() {
 	brewCmd.AddCommand(brewInitCmd)
 }
 
-// saveBrewCompanion persists companions.brew in .jig.yaml if not already set.
-func saveBrewCompanion(cfgPath, tap string) {
+// addPackage adds a package name to the packages list in .jig.yaml.
+func addPackage(cfgPath, name string) {
 	doc, err := config.LoadDocument(cfgPath)
 	if err != nil {
 		return
 	}
-	c := config.LoadCompanions(doc)
-	if c != nil && c.Brew != "" {
-		return // already configured
-	}
-	if c == nil {
-		c = &config.Companions{}
-	}
-	c.Brew = tap
-	_ = config.SaveCompanions(doc, c)
+	_ = config.AddPackage(doc, name)
 }

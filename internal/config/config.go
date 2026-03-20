@@ -46,7 +46,7 @@ type Document struct {
 
 // LoadDocument reads and parses a .jig.yaml file without requiring any
 // particular section to exist. Use this when you only need the Document
-// (e.g. for LoadCompanions).
+// (e.g. for LoadPackages or LoadZedExtension).
 func LoadDocument(path string) (*Document, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

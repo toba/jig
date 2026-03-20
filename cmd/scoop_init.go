@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
-	"github.com/toba/jig/internal/config"
 	"github.com/toba/jig/internal/scoop"
 )
 
@@ -48,9 +47,9 @@ After running this, bucket updates happen automatically via CI on new tags.`,
 			return err
 		}
 
-		// Save companions.scoop to .jig.yaml if not already set.
+		// Add scoop to packages in .jig.yaml if not already present.
 		if !scoopInitDryRun {
-			saveScoopCompanion(configPath(), bucket)
+			addPackage(configPath(), "scoop")
 		}
 
 		if jsonOut {
@@ -99,28 +98,11 @@ After running this, bucket updates happen automatically via CI on new tags.`,
 }
 
 func init() {
-	scoopInitCmd.Flags().StringVar(&scoopInitBucket, "bucket", "", "bucket repo (default: companions.scoop or owner/scoop-bucket)")
+	scoopInitCmd.Flags().StringVar(&scoopInitBucket, "bucket", "", "bucket repo (default: owner/scoop-bucket)")
 	scoopInitCmd.Flags().StringVar(&scoopInitTag, "tag", "", "release tag (default: latest release)")
 	scoopInitCmd.Flags().StringVar(&scoopInitRepo, "repo", "", "source repo (default: current repo via gh)")
 	scoopInitCmd.Flags().StringVar(&scoopInitDesc, "desc", "", "manifest description (default: repo description)")
 	scoopInitCmd.Flags().StringVar(&scoopInitLicense, "license", "", "license identifier (default: from repo)")
 	scoopInitCmd.Flags().BoolVar(&scoopInitDryRun, "dry-run", false, "show what would be created without doing it")
 	scoopCmd.AddCommand(scoopInitCmd)
-}
-
-// saveScoopCompanion persists companions.scoop in .jig.yaml if not already set.
-func saveScoopCompanion(cfgPath, bucket string) {
-	doc, err := config.LoadDocument(cfgPath)
-	if err != nil {
-		return
-	}
-	c := config.LoadCompanions(doc)
-	if c != nil && c.Scoop != "" {
-		return // already configured
-	}
-	if c == nil {
-		c = &config.Companions{}
-	}
-	c.Scoop = bucket
-	_ = config.SaveCompanions(doc, c)
 }

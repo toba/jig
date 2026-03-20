@@ -26,12 +26,12 @@ type DoctorOpts struct {
 func RunDoctor(opts DoctorOpts) int {
 	ok := true
 
-	// 1. companions.scoop configured
+	// 1. scoop package configured
 	if opts.Bucket == "" {
-		fmt.Fprintf(os.Stderr, "FAIL: companions.scoop not configured in .jig.yaml\n")
+		fmt.Fprintf(os.Stderr, "FAIL: scoop not configured (add to packages in .jig.yaml)\n")
 		return 1
 	}
-	fmt.Fprintf(os.Stderr, "OK:   companions.scoop configured: %s\n", opts.Bucket)
+	fmt.Fprintf(os.Stderr, "OK:   scoop configured: %s\n", opts.Bucket)
 
 	// 2. .goreleaser.yaml has windows + amd64 builds and zip format (if present)
 	if _, _, found := companion.CheckGoreleaserExists(); found {

@@ -32,12 +32,12 @@ func RunDoctor(opts DoctorOpts) int {
 	org := extParts[0]
 	extName := extParts[1]
 
-	// 1. companions.zed configured
+	// 1. zed_extension configured
 	if opts.Ext == "" {
-		fmt.Fprintf(os.Stderr, "FAIL: companions.zed not configured in .jig.yaml\n")
+		fmt.Fprintf(os.Stderr, "FAIL: zed_extension not configured in .jig.yaml\n")
 		return 1
 	}
-	fmt.Fprintf(os.Stderr, "OK:   companions.zed configured: %s\n", opts.Ext)
+	fmt.Fprintf(os.Stderr, "OK:   zed_extension configured: %s\n", opts.Ext)
 
 	// Checks 2-6: independent gh API calls — run concurrently.
 	type checkResult struct {

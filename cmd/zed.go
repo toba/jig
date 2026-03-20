@@ -17,28 +17,28 @@ func init() {
 	rootCmd.AddCommand(zedCmd)
 }
 
-// extFromCompanions reads the companions.zed git URL from .jig.yaml
+// extFromConfig reads the zed_extension value from .jig.yaml
 // and extracts the "owner/repo" identifier. Returns "" on any failure.
-func extFromCompanions(cfgPath string) string {
+func extFromConfig(cfgPath string) string {
 	doc, err := config.LoadDocument(cfgPath)
 	if err != nil {
 		return ""
 	}
-	c := config.LoadCompanions(doc)
-	if c == nil || c.Zed == "" {
+	val := config.LoadZedExtension(doc)
+	if val == "" {
 		return ""
 	}
-	return repoFromGitURL(c.Zed)
+	return repoFromGitURL(val)
 }
 
 // resolveExt determines the extension repo using (in order):
 //  1. explicit --ext flag
-//  2. companions.zed from .jig.yaml
+//  2. zed_extension from .jig.yaml
 func resolveExt(flag, cfgPath string) string {
 	if flag != "" {
 		return flag
 	}
-	if ext := extFromCompanions(cfgPath); ext != "" {
+	if ext := extFromConfig(cfgPath); ext != "" {
 		return ext
 	}
 	return ""

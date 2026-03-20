@@ -33,7 +33,7 @@ automatically via CI when you push a new tag.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ext := resolveExt(zedInitExt, configPath())
 		if ext == "" {
-			return fmt.Errorf("--ext is required (or set companions.zed in %s)", configPath())
+			return fmt.Errorf("--ext is required (or set zed_extension in %s)", configPath())
 		}
 
 		if zedInitLanguages == "" {
@@ -117,7 +117,7 @@ automatically via CI when you push a new tag.`,
 }
 
 func init() {
-	zedInitCmd.Flags().StringVar(&zedInitExt, "ext", "", "extension repo (default: companions.zed from .jig.yaml)")
+	zedInitCmd.Flags().StringVar(&zedInitExt, "ext", "", "extension repo (default: zed_extension from .jig.yaml)")
 	zedInitCmd.Flags().StringVar(&zedInitTag, "tag", "", "release tag (default: latest release)")
 	zedInitCmd.Flags().StringVar(&zedInitRepo, "repo", "", "source repo (default: current repo via gh)")
 	zedInitCmd.Flags().StringVar(&zedInitDesc, "desc", "", "extension description (default: repo description)")

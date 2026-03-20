@@ -17,7 +17,7 @@ var scoopDoctorCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bucket, err := resolveBucket("", configPath())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "OK:   companions.scoop not configured (nothing to check)\n")
+			fmt.Fprintf(os.Stderr, "OK:   scoop not in packages (nothing to check)\n")
 			return nil
 		}
 

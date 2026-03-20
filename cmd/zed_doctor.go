@@ -17,7 +17,7 @@ var zedDoctorCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ext := resolveExt("", configPath())
 		if ext == "" {
-			fmt.Fprintf(os.Stderr, "OK:   companions.zed not configured (nothing to check)\n")
+			fmt.Fprintf(os.Stderr, "OK:   zed_extension not configured (nothing to check)\n")
 			return nil
 		}
 

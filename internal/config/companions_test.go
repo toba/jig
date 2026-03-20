@@ -6,143 +6,191 @@ import (
 	"testing"
 )
 
-func TestLoadCompanions(t *testing.T) {
-	yaml := `citations: []
-companions:
-  zed: https://github.com/toba/zed-skill.git
-  brew: https://github.com/toba/homebrew-skill.git
+func TestLoadPackages(t *testing.T) {
+	yaml := `packages: [brew, scoop]
 `
 	path := writeTempConfig(t, yaml)
-	doc, _, err := Load(path)
+	doc, err := LoadDocument(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	c := LoadCompanions(doc)
-	if c == nil {
-		t.Fatal("expected companions, got nil")
-	}
-	if c.Zed != "https://github.com/toba/zed-skill.git" {
-		t.Errorf("zed = %q", c.Zed)
-	}
-	if c.Brew != "https://github.com/toba/homebrew-skill.git" {
-		t.Errorf("brew = %q", c.Brew)
+	pkgs := LoadPackages(doc)
+	if len(pkgs) != 2 || pkgs[0] != "brew" || pkgs[1] != "scoop" {
+		t.Errorf("packages = %v, want [brew scoop]", pkgs)
 	}
 }
 
-func TestLoadCompanionsPartial(t *testing.T) {
+func TestLoadPackagesMissing(t *testing.T) {
 	yaml := `citations: []
-companions:
-  brew: https://github.com/toba/homebrew-skill.git
 `
 	path := writeTempConfig(t, yaml)
-	doc, _, err := Load(path)
+	doc, err := LoadDocument(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	c := LoadCompanions(doc)
-	if c == nil {
-		t.Fatal("expected companions, got nil")
-	}
-	if c.Zed != "" {
-		t.Errorf("zed = %q, want empty", c.Zed)
-	}
-	if c.Brew != "https://github.com/toba/homebrew-skill.git" {
-		t.Errorf("brew = %q", c.Brew)
+	pkgs := LoadPackages(doc)
+	if pkgs != nil {
+		t.Errorf("expected nil, got %v", pkgs)
 	}
 }
 
-func TestLoadCompanionsMissing(t *testing.T) {
-	yaml := `citations: []
+func TestHasPackage(t *testing.T) {
+	yaml := `packages: [brew, scoop]
 `
 	path := writeTempConfig(t, yaml)
-	doc, _, err := Load(path)
+	doc, err := LoadDocument(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	c := LoadCompanions(doc)
-	if c != nil {
-		t.Errorf("expected nil, got %+v", c)
+	if !HasPackage(doc, "brew") {
+		t.Error("expected HasPackage(brew) = true")
+	}
+	if !HasPackage(doc, "scoop") {
+		t.Error("expected HasPackage(scoop) = true")
+	}
+	if HasPackage(doc, "zed") {
+		t.Error("expected HasPackage(zed) = false")
 	}
 }
 
-func TestSaveCompanionsNew(t *testing.T) {
+func TestAddPackage(t *testing.T) {
 	yaml := `citations: []
 `
 	path := writeTempConfig(t, yaml)
-	doc, _, err := Load(path)
+	doc, err := LoadDocument(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	c := &Companions{
-		Zed:  "https://github.com/toba/zed-skill.git",
-		Brew: "https://github.com/toba/homebrew-skill.git",
-	}
-	if err := SaveCompanions(doc, c); err != nil {
+	if err := AddPackage(doc, "brew"); err != nil {
 		t.Fatal(err)
 	}
 
 	// Reload and verify.
-	doc2, _, err := Load(path)
+	doc2, err := LoadDocument(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c2 := LoadCompanions(doc2)
-	if c2 == nil {
-		t.Fatal("companions missing after save")
-	}
-	if c2.Zed != c.Zed {
-		t.Errorf("zed = %q, want %q", c2.Zed, c.Zed)
-	}
-	if c2.Brew != c.Brew {
-		t.Errorf("brew = %q, want %q", c2.Brew, c.Brew)
+	if !HasPackage(doc2, "brew") {
+		t.Error("brew not found after AddPackage")
 	}
 
-	// Upstream section should be preserved.
+	// Other sections preserved.
 	data, err := os.ReadFile(path) //nolint:gosec // test path
 	if err != nil {
 		t.Fatal(err)
 	}
-	content := string(data)
-	if !strings.Contains(content, "citations:") {
+	if !strings.Contains(string(data), "citations:") {
 		t.Error("citations section was lost")
 	}
 }
 
-func TestSaveCompanionsUpdate(t *testing.T) {
-	yaml := `citations: []
-companions:
-  brew: https://github.com/toba/homebrew-old.git
+func TestAddPackageIdempotent(t *testing.T) {
+	yaml := `packages: [brew]
 `
 	path := writeTempConfig(t, yaml)
-	doc, _, err := Load(path)
+	doc, err := LoadDocument(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	c := &Companions{
-		Zed:  "https://github.com/toba/zed-new.git",
-		Brew: "https://github.com/toba/homebrew-new.git",
-	}
-	if err := SaveCompanions(doc, c); err != nil {
+	if err := AddPackage(doc, "brew"); err != nil {
 		t.Fatal(err)
 	}
 
-	doc2, _, err := Load(path)
+	doc2, err := LoadDocument(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c2 := LoadCompanions(doc2)
-	if c2 == nil {
-		t.Fatal("companions missing after update")
+	pkgs := LoadPackages(doc2)
+	if len(pkgs) != 1 {
+		t.Errorf("expected 1 package, got %v", pkgs)
 	}
-	if c2.Zed != "https://github.com/toba/zed-new.git" {
-		t.Errorf("zed = %q", c2.Zed)
+}
+
+func TestAddPackageSorted(t *testing.T) {
+	yaml := `packages: [scoop]
+`
+	path := writeTempConfig(t, yaml)
+	doc, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if c2.Brew != "https://github.com/toba/homebrew-new.git" {
-		t.Errorf("brew = %q", c2.Brew)
+
+	if err := AddPackage(doc, "brew"); err != nil {
+		t.Fatal(err)
+	}
+
+	doc2, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkgs := LoadPackages(doc2)
+	if len(pkgs) != 2 || pkgs[0] != "brew" || pkgs[1] != "scoop" {
+		t.Errorf("expected [brew scoop], got %v", pkgs)
+	}
+}
+
+func TestLoadZedExtension(t *testing.T) {
+	yaml := `zed_extension: toba/gubby
+`
+	path := writeTempConfig(t, yaml)
+	doc, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ext := LoadZedExtension(doc)
+	if ext != "toba/gubby" {
+		t.Errorf("zed_extension = %q, want toba/gubby", ext)
+	}
+}
+
+func TestLoadZedExtensionMissing(t *testing.T) {
+	yaml := `citations: []
+`
+	path := writeTempConfig(t, yaml)
+	doc, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ext := LoadZedExtension(doc)
+	if ext != "" {
+		t.Errorf("expected empty, got %q", ext)
+	}
+}
+
+func TestSaveZedExtension(t *testing.T) {
+	yaml := `citations: []
+`
+	path := writeTempConfig(t, yaml)
+	doc, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SaveZedExtension(doc, "toba/gubby"); err != nil {
+		t.Fatal(err)
+	}
+
+	doc2, err := LoadDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext := LoadZedExtension(doc2)
+	if ext != "toba/gubby" {
+		t.Errorf("zed_extension = %q after save", ext)
+	}
+
+	data, err := os.ReadFile(path) //nolint:gosec // test path
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "citations:") {
+		t.Error("citations section was lost")
 	}
 }

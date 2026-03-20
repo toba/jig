@@ -65,7 +65,9 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
 - `cite add` inspects a repo via GitHub API or git clone and suggests path classification globs
 - `commit` uses a two-phase gather/apply workflow so the agent can review before committing
 - `brew init` and `scoop init` push to existing shared repos (`owner/homebrew-tap`, `owner/scoop-bucket`); `zed init` uses `internal/companion/` for repo creation
-- `brew init` and `scoop init` auto-save `companions.brew`/`companions.scoop` to `.jig.yaml`
+- `brew init` and `scoop init` auto-add to `packages` list in `.jig.yaml`
+- Config uses `packages: [brew, scoop]` for convention-based repos (no URLs needed)
+- Config uses `zed_extension: owner/repo` for per-project Zed extension repos
 - Uses `doublestar` for `**` glob support since Go's `path.Match` lacks it
 - `nope` guard reads rules from `nope:` key in `.jig.yaml` (not a separate file)
 - `nope` uses instance-based `DebugLogger` (nil-safe) instead of global state

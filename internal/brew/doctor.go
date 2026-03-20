@@ -26,12 +26,12 @@ type DoctorOpts struct {
 func RunDoctor(opts DoctorOpts) int {
 	ok := true
 
-	// 1. companions.brew configured
+	// 1. brew package configured
 	if opts.Tap == "" {
-		fmt.Fprintf(os.Stderr, "FAIL: companions.brew not configured in .jig.yaml\n")
+		fmt.Fprintf(os.Stderr, "FAIL: brew not configured (add to packages in .jig.yaml)\n")
 		return 1
 	}
-	fmt.Fprintf(os.Stderr, "OK:   companions.brew configured: %s\n", opts.Tap)
+	fmt.Fprintf(os.Stderr, "OK:   brew configured: %s\n", opts.Tap)
 
 	lang := DetectLanguage()
 	fmt.Fprintf(os.Stderr, "OK:   detected language: %s\n", lang.Name)

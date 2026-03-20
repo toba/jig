@@ -19,35 +19,34 @@ func init() {
 	rootCmd.AddCommand(scoopCmd)
 }
 
-// bucketFromCompanions reads the companions.scoop git URL from .jig.yaml
-// and extracts the "owner/repo" bucket identifier. Returns "" on any failure.
-func bucketFromCompanions(cfgPath string) string {
-	doc, err := config.LoadDocument(cfgPath)
-	if err != nil {
-		return ""
-	}
-	c := config.LoadCompanions(doc)
-	if c == nil || c.Scoop == "" {
-		return ""
-	}
-	return repoFromGitURL(c.Scoop)
-}
-
 // resolveBucket determines the bucket repo using (in order):
 //  1. explicit --bucket flag
-//  2. companions.scoop from .jig.yaml
+//  2. packages list contains "scoop" → derive owner/scoop-bucket
 //  3. convention: owner/scoop-bucket derived from the current GitHub repo
 func resolveBucket(flag, cfgPath string) (string, error) {
 	if flag != "" {
 		return flag, nil
 	}
-	if bucket := bucketFromCompanions(cfgPath); bucket != "" {
+	if bucket := bucketFromPackages(cfgPath); bucket != "" {
 		return bucket, nil
 	}
 	if bucket := bucketFromConvention(); bucket != "" {
 		return bucket, nil
 	}
-	return "", fmt.Errorf("--bucket is required (or set companions.scoop in %s)", cfgPath)
+	return "", fmt.Errorf("--bucket is required (or add scoop to packages in %s)", cfgPath)
+}
+
+// bucketFromPackages checks if "scoop" is in the packages list and derives
+// the bucket repo from the current GitHub repo's org.
+func bucketFromPackages(cfgPath string) string {
+	doc, err := config.LoadDocument(cfgPath)
+	if err != nil {
+		return ""
+	}
+	if !config.HasPackage(doc, "scoop") {
+		return ""
+	}
+	return bucketFromConvention()
 }
 
 // bucketFromConvention derives "owner/scoop-bucket" from the current GitHub repo.
