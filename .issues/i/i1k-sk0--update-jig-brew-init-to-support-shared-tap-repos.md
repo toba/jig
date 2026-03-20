@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-03-20T19:42:09Z
 updated_at: 2026-03-20T19:43:05Z
+sync:
+    github:
+        issue_number: "96"
+        synced_at: "2026-03-20T20:29:44Z"
 ---
 
 \`jig brew init\` currently scaffolds a per-project tap repo (e.g. \`homebrew-musup\`). Now that toba uses a single shared \`homebrew-tap\` repo, the command should support pushing formulae to an existing shared tap instead of creating a new per-project repo.

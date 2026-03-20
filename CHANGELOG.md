@@ -1,5 +1,13 @@
 # Changelog
 
+## Week of Mar 15 – Mar 21, 2026
+
+### ✨ Features
+
+- Consolidate `brew init` to push formulae to shared `owner/homebrew-tap` repo; remove per-project tap creation
+- Consolidate `scoop init` to push manifests to shared `owner/scoop-bucket` repo; manifests at repo root matching charmbracelet model
+- Replace `companions` config with `packages: [brew, scoop]` list and top-level `zed_extension` key
+
 ## Week of Mar 8 – Mar 14, 2026
 
 ### ✨ Features

@@ -3,8 +3,13 @@
 title: Update jig scoop init to support shared bucket repos
 status: completed
 type: feature
+priority: normal
 created_at: 2026-03-20T19:55:05Z
 updated_at: 2026-03-20T19:55:05Z
+sync:
+    github:
+        issue_number: "95"
+        synced_at: "2026-03-20T20:29:44Z"
 ---
 
 Mirror the brew shared tap changes for scoop. Use `owner/scoop-bucket` convention (like charmbracelet/scoop-bucket). Manifests at repo root (not `bucket/` subdir). No per-project repo creation. Auto-save companions.scoop.
