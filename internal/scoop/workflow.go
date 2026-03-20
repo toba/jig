@@ -11,6 +11,7 @@ import (
 type WorkflowParams struct {
 	Tool    string // binary name, e.g. "jig"
 	Org     string // GitHub org, e.g. "toba"
+	Bucket  string // bucket repo, e.g. "toba/scoop-bucket"
 	Desc    string // one-line description
 	License string // e.g. "Apache-2.0"
 	Needs   string // job this depends on, e.g. "release"
@@ -41,7 +42,7 @@ func GenerateWorkflowJob(p WorkflowParams) string {
             exit 1
           fi
 
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/%[3]s/scoop-%[2]s.git" bucket
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/%[6]s.git" bucket
           cd bucket
 
           ARM64_ARCH=""
@@ -79,14 +80,14 @@ func GenerateWorkflowJob(p WorkflowParams) string {
                   }
                 } + if $arm64_auto then $arm64_auto else {} end)
               }
-            }' > bucket/%[2]s.json
+            }' > %[2]s.json
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bucket/%[2]s.json
-          git commit -m "bump to ${VERSION}"
+          git add %[2]s.json
+          git commit -m "bump %[2]s to ${VERSION}"
           git push
-`, needs, p.Tool, p.Org, p.Desc, p.License)
+`, needs, p.Tool, p.Org, p.Desc, p.License, p.Bucket)
 }
 
 // InjectWorkflowJob appends the update-scoop job to an existing workflow file.

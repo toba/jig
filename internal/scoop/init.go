@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/toba/jig/internal/brew"
@@ -14,7 +13,7 @@ import (
 
 // InitOpts holds the inputs for scoop init.
 type InitOpts struct {
-	Bucket  string // e.g. "toba/scoop-jig"
+	Bucket  string // e.g. "toba/scoop-bucket"
 	Tag     string // e.g. "v1.2.3" (empty = latest)
 	Repo    string // e.g. "toba/jig" (empty = detect)
 	Desc    string // manifest description (empty = detect)
@@ -24,25 +23,24 @@ type InitOpts struct {
 
 // InitResult describes what was done (or would be done).
 type InitResult struct {
-	Bucket        string `json:"bucket"`
-	Repo          string `json:"repo"`
-	Tool          string `json:"tool"`
-	Tag           string `json:"tag"`
-	AssetAMD64    string `json:"asset_amd64"`
-	AssetARM64    string `json:"asset_arm64"`
-	SHA256AMD64   string `json:"sha256_amd64"`
-	SHA256ARM64   string `json:"sha256_arm64"`
-	Desc          string `json:"desc"`
-	License       string `json:"license"`
-	Manifest      string `json:"manifest"`
-	Readme        string `json:"readme"`
-	WorkflowJob   string `json:"workflow_job"`
-	BucketCreated bool   `json:"bucket_created"`
-	BucketPushed  bool   `json:"bucket_pushed"`
-	WorkflowMod   bool   `json:"workflow_modified"`
+	Bucket       string `json:"bucket"`
+	Repo         string `json:"repo"`
+	Tool         string `json:"tool"`
+	Tag          string `json:"tag"`
+	AssetAMD64   string `json:"asset_amd64"`
+	AssetARM64   string `json:"asset_arm64"`
+	SHA256AMD64  string `json:"sha256_amd64"`
+	SHA256ARM64  string `json:"sha256_arm64"`
+	Desc         string `json:"desc"`
+	License      string `json:"license"`
+	Manifest     string `json:"manifest"`
+	WorkflowJob  string `json:"workflow_job"`
+	BucketPushed bool   `json:"bucket_pushed"`
+	WorkflowMod  bool   `json:"workflow_modified"`
 }
 
 // RunInit performs the full scoop bucket setup workflow.
+// The bucket repo is expected to already exist (shared bucket model).
 func RunInit(opts InitOpts) (*InitResult, error) {
 	// Step 1: Detect source repo info.
 	info, err := companion.DetectRepoInfo(opts.Repo, "nameWithOwner,description,licenseInfo")
@@ -94,16 +92,15 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 		SHA256ARM64: shaARM64,
 	})
 
-	// Step 6: Generate README.
-	readmeContent := generateReadme(tool, org, desc)
-
-	// Step 7: Generate workflow job.
-	workflowJob := GenerateWorkflowJob(WorkflowParams{
+	// Step 6: Generate workflow job.
+	wpParams := WorkflowParams{
 		Tool:    tool,
 		Org:     org,
+		Bucket:  opts.Bucket,
 		Desc:    desc,
 		License: license,
-	})
+	}
+	workflowJob := GenerateWorkflowJob(wpParams)
 
 	result := &InitResult{
 		Bucket:      opts.Bucket,
@@ -117,7 +114,6 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 		Desc:        desc,
 		License:     license,
 		Manifest:    manifestContent,
-		Readme:      readmeContent,
 		WorkflowJob: workflowJob,
 	}
 
@@ -125,26 +121,15 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 		return result, nil
 	}
 
-	// Step 8: Create bucket repo on GitHub.
-	if err := createBucketRepo(opts.Bucket, tool); err != nil {
-		return nil, fmt.Errorf("creating bucket repo: %w", err)
-	}
-	result.BucketCreated = true
-
-	// Step 9: Push initial content.
-	if err := pushInitialContent(opts.Bucket, tool, manifestContent, readmeContent); err != nil {
-		return nil, fmt.Errorf("pushing initial content: %w", err)
+	// Step 7: Push manifest to shared bucket repo.
+	if err := pushManifest(opts.Bucket, tool, manifestContent); err != nil {
+		return nil, fmt.Errorf("pushing manifest to bucket: %w", err)
 	}
 	result.BucketPushed = true
 
-	// Step 10: Inject workflow job into release.yml.
+	// Step 8: Inject workflow job into release.yml.
 	workflowPath := companion.WorkflowPath
-	if err := injectWorkflow(workflowPath, WorkflowParams{
-		Tool:    tool,
-		Org:     org,
-		Desc:    desc,
-		License: license,
-	}); err != nil {
+	if err := injectWorkflow(workflowPath, wpParams); err != nil {
 		// Non-fatal — print warning but don't fail.
 		fmt.Fprintf(os.Stderr, "Warning: could not inject workflow job: %v\n", err)
 	} else {
@@ -154,95 +139,27 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 	return result, nil
 }
 
-func generateReadme(tool, org, desc string) string {
-	return fmt.Sprintf(`# Scoop Bucket for %s
-
-This is the official Scoop bucket for [%s](https://github.com/%s/%s), %s.
-
-## Installation
-
-`+"`"+`powershell
-scoop bucket add %s https://github.com/%s/scoop-%s
-scoop install %s
-`+"`"+`
-
-## Usage
-
-`+"`"+`powershell
-%s version
-`+"`"+`
-
-## Updating
-
-`+"`"+`powershell
-scoop update %s
-`+"`"+`
-
-## Uninstalling
-
-`+"`"+`powershell
-scoop uninstall %s
-scoop bucket rm %s
-`+"`"+`
-
-## Requirements
-
-- Windows (amd64 or arm64)
-
-## Issues
-
-Report issues at [%s/%s](https://github.com/%s/%s/issues).
-`, tool, tool, org, tool, desc,
-		org, org, tool, tool,
-		tool,
-		tool,
-		tool, org,
-		org, tool, org, tool)
-}
-
-func createBucketRepo(bucket, tool string) error {
-	if companion.RepoExists(bucket) {
-		return nil
-	}
-	cmd := exec.Command("gh", "repo", "create", bucket, "--public", //nolint:gosec // gh CLI wrapper
-		"--description", "Scoop bucket for "+tool)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func pushInitialContent(bucket, tool, manifest, readme string) error {
-	tmp, err := os.MkdirTemp("", "scoop-init-*")
+// pushManifest clones the shared bucket repo, adds or updates a manifest, and pushes.
+// Manifests are placed at repo root (e.g. jig.json), matching the charmbracelet convention.
+func pushManifest(bucket, tool, manifest string) error {
+	tmp, err := os.MkdirTemp("", "scoop-manifest-*")
 	if err != nil {
 		return fmt.Errorf("creating temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmp) //nolint:errcheck // best-effort cleanup
 
-	// Clone the empty repo.
 	cmd := exec.Command("gh", "repo", "clone", bucket, tmp) //nolint:gosec // gh CLI wrapper
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("cloning: %s", strings.TrimSpace(string(out)))
 	}
 
-	// Write manifest.
-	bucketDir := filepath.Join(tmp, "bucket")
-	if err := os.MkdirAll(bucketDir, 0o755); err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(bucketDir, tool+".json"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(tmp+"/"+tool+".json", []byte(manifest), 0o644); err != nil {
 		return err
 	}
 
-	// Write README.
-	if err := os.WriteFile(filepath.Join(tmp, "README.md"), []byte(readme), 0o644); err != nil {
-		return err
-	}
-
-	// Commit and push.
 	cmds := [][]string{
-		{"git", "-C", tmp, "add", "."},
-		{"git", "-C", tmp, "commit", "-m", "initial manifest and README"},
+		{"git", "-C", tmp, "add", tool + ".json"},
+		{"git", "-C", tmp, "commit", "-m", "add " + tool + " manifest"},
 		{"git", "-C", tmp, "push"},
 	}
 	for _, args := range cmds {

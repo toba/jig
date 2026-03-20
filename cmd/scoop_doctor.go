@@ -28,12 +28,12 @@ var scoopDoctorCmd = &cobra.Command{
 		}
 		repo := strings.TrimSpace(string(out))
 
-		// Derive tool name from bucket repo (scoop-<tool>).
-		bucketParts := strings.SplitN(bucket, "/", 2)
-		if len(bucketParts) != 2 {
-			return fmt.Errorf("unexpected bucket format: %s", bucket)
+		// Derive tool name from source repo.
+		repoParts := strings.SplitN(repo, "/", 2)
+		if len(repoParts) != 2 {
+			return fmt.Errorf("unexpected repo format: %s", repo)
 		}
-		tool := strings.TrimPrefix(bucketParts[1], "scoop-")
+		tool := repoParts[1]
 
 		code := scoop.RunDoctor(scoop.DoctorOpts{
 			Bucket: bucket,

@@ -36,7 +36,7 @@ func bucketFromCompanions(cfgPath string) string {
 // resolveBucket determines the bucket repo using (in order):
 //  1. explicit --bucket flag
 //  2. companions.scoop from .jig.yaml
-//  3. convention: owner/scoop-<name> derived from the current GitHub repo
+//  3. convention: owner/scoop-bucket derived from the current GitHub repo
 func resolveBucket(flag, cfgPath string) (string, error) {
 	if flag != "" {
 		return flag, nil
@@ -50,7 +50,7 @@ func resolveBucket(flag, cfgPath string) (string, error) {
 	return "", fmt.Errorf("--bucket is required (or set companions.scoop in %s)", cfgPath)
 }
 
-// bucketFromConvention derives "owner/scoop-name" from the current GitHub repo.
+// bucketFromConvention derives "owner/scoop-bucket" from the current GitHub repo.
 func bucketFromConvention() string {
 	out, err := exec.Command("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner").Output()
 	if err != nil {
@@ -61,5 +61,5 @@ func bucketFromConvention() string {
 	if len(parts) != 2 {
 		return ""
 	}
-	return parts[0] + "/scoop-" + parts[1]
+	return parts[0] + "/scoop-bucket"
 }

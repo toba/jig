@@ -28,12 +28,12 @@ var brewDoctorCmd = &cobra.Command{
 		}
 		repo := strings.TrimSpace(string(out))
 
-		// Derive tool name from tap repo (homebrew-<tool>).
-		tapParts := strings.SplitN(tap, "/", 2)
-		if len(tapParts) != 2 {
-			return fmt.Errorf("unexpected tap format: %s", tap)
+		// Derive tool name from source repo (last path component).
+		repoParts := strings.SplitN(repo, "/", 2)
+		if len(repoParts) != 2 {
+			return fmt.Errorf("unexpected repo format: %s", repo)
 		}
-		tool := strings.TrimPrefix(tapParts[1], "homebrew-")
+		tool := repoParts[1]
 
 		code := brew.RunDoctor(brew.DoctorOpts{
 			Tap:  tap,

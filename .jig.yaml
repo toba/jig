@@ -7,8 +7,8 @@ todo:
             repo: toba/jig
 changelog: weekly
 companions:
-    brew: https://github.com/toba/homebrew-tap.git
-    scoop: https://github.com/toba/scoop-jig.git
+    brew: toba/homebrew-tap
+    scoop: toba/scoop-bucket
 citations:
     - repo: leegonzales/claude-guardrails
       branch: main

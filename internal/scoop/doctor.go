@@ -68,14 +68,14 @@ func RunDoctor(opts DoctorOpts) int {
 		return nil
 	})
 
-	// 4. manifest exists in bucket
+	// 4. manifest exists in bucket (at repo root)
 	g.Go(func() error {
-		manifestPath := fmt.Sprintf("repos/%s/contents/bucket/%s.json", opts.Bucket, opts.Tool)
+		manifestPath := fmt.Sprintf("repos/%s/contents/%s.json", opts.Bucket, opts.Tool)
 		cmd := exec.Command("gh", "api", manifestPath) //nolint:gosec // gh CLI wrapper
 		if out, err := cmd.CombinedOutput(); err != nil {
-			setResult(1, fmt.Sprintf("FAIL: manifest not found at bucket/%s.json in %s: %s", opts.Tool, opts.Bucket, strings.TrimSpace(string(out))), false)
+			setResult(1, fmt.Sprintf("FAIL: manifest not found at %s.json in %s: %s", opts.Tool, opts.Bucket, strings.TrimSpace(string(out))), false)
 		} else {
-			setResult(1, fmt.Sprintf("OK:   manifest exists: bucket/%s.json", opts.Tool), true)
+			setResult(1, fmt.Sprintf("OK:   manifest exists: %s.json", opts.Tool), true)
 		}
 		return nil
 	})

@@ -13,7 +13,7 @@ import (
 
 // InitOpts holds the inputs for brew init.
 type InitOpts struct {
-	Tap     string // e.g. "toba/homebrew-todo"
+	Tap     string // e.g. "toba/homebrew-tap"
 	Tag     string // e.g. "v1.2.3" (empty = latest)
 	Repo    string // e.g. "toba/todo" (empty = detect)
 	Desc    string // formula description (empty = detect)
@@ -32,14 +32,13 @@ type InitResult struct {
 	Desc        string `json:"desc"`
 	License     string `json:"license"`
 	Formula     string `json:"formula"`
-	Readme      string `json:"readme"`
 	WorkflowJob string `json:"workflow_job"`
-	TapCreated  bool   `json:"tap_created"`
 	TapPushed   bool   `json:"tap_pushed"`
 	WorkflowMod bool   `json:"workflow_modified"`
 }
 
 // RunInit performs the full brew tap setup workflow.
+// The tap repo is expected to already exist (shared tap model).
 func RunInit(opts InitOpts) (*InitResult, error) {
 	// Step 1: Detect source repo info.
 	info, err := companion.DetectRepoInfo(opts.Repo, "nameWithOwner,description,licenseInfo")
@@ -88,17 +87,16 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 		License: license,
 	})
 
-	// Step 6: Generate README.
-	readmeContent := generateReadme(tool, org, desc)
-
-	// Step 7: Generate workflow job.
-	workflowJob := GenerateWorkflowJob(WorkflowParams{
+	// Step 6: Generate workflow job.
+	wpParams := WorkflowParams{
 		Tool:    tool,
 		Org:     org,
+		Tap:     opts.Tap,
 		Desc:    desc,
 		License: license,
 		Asset:   asset,
-	})
+	}
+	workflowJob := GenerateWorkflowJob(wpParams)
 
 	result := &InitResult{
 		Tap:         opts.Tap,
@@ -110,7 +108,6 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 		Desc:        desc,
 		License:     license,
 		Formula:     formulaContent,
-		Readme:      readmeContent,
 		WorkflowJob: workflowJob,
 	}
 
@@ -118,27 +115,15 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 		return result, nil
 	}
 
-	// Step 8: Create tap repo on GitHub.
-	if err := createTapRepo(opts.Tap, tool); err != nil {
-		return nil, fmt.Errorf("creating tap repo: %w", err)
-	}
-	result.TapCreated = true
-
-	// Step 9: Push initial content.
-	if err := pushInitialContent(opts.Tap, tool, formulaContent, readmeContent); err != nil {
-		return nil, fmt.Errorf("pushing initial content: %w", err)
+	// Step 7: Push formula to shared tap repo.
+	if err := pushFormula(opts.Tap, tool, formulaContent); err != nil {
+		return nil, fmt.Errorf("pushing formula to tap: %w", err)
 	}
 	result.TapPushed = true
 
-	// Step 10: Inject workflow job into release.yml.
+	// Step 8: Inject workflow job into release.yml.
 	workflowPath := companion.WorkflowPath
-	if err := injectWorkflow(workflowPath, WorkflowParams{
-		Tool:    tool,
-		Org:     org,
-		Desc:    desc,
-		License: license,
-		Asset:   asset,
-	}); err != nil {
+	if err := injectWorkflow(workflowPath, wpParams); err != nil {
 		// Non-fatal — print warning but don't fail.
 		fmt.Fprintf(os.Stderr, "Warning: could not inject workflow job: %v\n", err)
 	} else {
@@ -148,79 +133,19 @@ func RunInit(opts InitOpts) (*InitResult, error) {
 	return result, nil
 }
 
-func generateReadme(tool, org, desc string) string {
-	return fmt.Sprintf(`# Homebrew Tap for %s
-
-This is the official Homebrew tap for [%s](https://github.com/%s/%s), %s.
-
-## Installation
-
-`+"```bash"+`
-brew tap %s/%s
-brew install %s
-`+"```"+`
-
-## Usage
-
-`+"```bash"+`
-%s version
-`+"```"+`
-
-## Updating
-
-`+"```bash"+`
-brew update
-brew upgrade %s
-`+"```"+`
-
-## Uninstalling
-
-`+"```bash"+`
-brew uninstall %s
-brew untap %s/%s
-`+"```"+`
-
-## Requirements
-
-- macOS (Apple Silicon)
-
-## Issues
-
-Report issues at [%s/%s](https://github.com/%s/%s/issues).
-`, tool, tool, org, tool, desc,
-		org, tool, tool,
-		tool,
-		tool,
-		tool, org, tool,
-		org, tool, org, tool)
-}
-
-func createTapRepo(tap, tool string) error {
-	if companion.RepoExists(tap) {
-		return nil
-	}
-	cmd := exec.Command("gh", "repo", "create", tap, "--public", //nolint:gosec // gh CLI wrapper
-		"--description", "Homebrew tap for "+tool)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func pushInitialContent(tap, tool, formula, readme string) error {
-	tmp, err := os.MkdirTemp("", "brew-init-*")
+// pushFormula clones the shared tap repo, adds or updates a formula, and pushes.
+func pushFormula(tap, tool, formula string) error {
+	tmp, err := os.MkdirTemp("", "brew-formula-*")
 	if err != nil {
 		return fmt.Errorf("creating temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmp) //nolint:errcheck // best-effort cleanup
 
-	// Clone the empty repo.
 	cmd := exec.Command("gh", "repo", "clone", tap, tmp) //nolint:gosec // gh CLI wrapper
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("cloning: %s", strings.TrimSpace(string(out)))
 	}
 
-	// Write formula.
 	formulaDir := filepath.Join(tmp, "Formula")
 	if err := os.MkdirAll(formulaDir, 0o755); err != nil {
 		return err
@@ -229,15 +154,9 @@ func pushInitialContent(tap, tool, formula, readme string) error {
 		return err
 	}
 
-	// Write README.
-	if err := os.WriteFile(filepath.Join(tmp, "README.md"), []byte(readme), 0o644); err != nil {
-		return err
-	}
-
-	// Commit and push.
 	cmds := [][]string{
-		{"git", "-C", tmp, "add", "."},
-		{"git", "-C", tmp, "commit", "-m", "initial formula and README"},
+		{"git", "-C", tmp, "add", "Formula/" + tool + ".rb"},
+		{"git", "-C", tmp, "commit", "-m", "add " + tool + " formula"},
 		{"git", "-C", tmp, "push"},
 	}
 	for _, args := range cmds {

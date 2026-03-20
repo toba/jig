@@ -11,6 +11,7 @@ import (
 type WorkflowParams struct {
 	Tool    string // binary name, e.g. "todo"
 	Org     string // GitHub org, e.g. "toba"
+	Tap     string // tap repo, e.g. "toba/homebrew-tap" (empty = Org/homebrew-Tool)
 	Desc    string // one-line description
 	License string // e.g. "Apache-2.0"
 	Asset   string // e.g. "todo_darwin_arm64.tar.gz"
@@ -21,6 +22,7 @@ type WorkflowParams struct {
 func GenerateWorkflowJob(p WorkflowParams) string {
 	className := formulaClassName(p.Tool)
 	needs := cmp.Or(p.Needs, "release")
+	tapRepo := p.Tap
 	return fmt.Sprintf(`
   update-homebrew:
     needs: %s
@@ -42,7 +44,7 @@ func GenerateWorkflowJob(p WorkflowParams) string {
             exit 1
           fi
 
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/%s/homebrew-%s.git" tap
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/%s.git" tap
           cd tap
 
           cat > Formula/%s.rb << FORMULA
@@ -72,17 +74,18 @@ func GenerateWorkflowJob(p WorkflowParams) string {
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/%s.rb
-          git commit -m "bump to ${VERSION}"
+          git commit -m "bump %s to ${VERSION}"
           git push
 `, needs,
 		p.Asset,
-		p.Org, p.Tool,
+		tapRepo,
 		p.Tool,
 		className, p.Desc, p.Org, p.Tool,
 		p.Org, p.Tool, p.Asset,
 		p.License,
 		p.Tool,
 		p.Tool, p.Tool,
+		p.Tool,
 		p.Tool,
 		p.Tool)
 }

@@ -1,4 +1,4 @@
-package brew
+package scoop
 
 import (
 	"strings"
@@ -11,23 +11,20 @@ func TestGenerateWorkflowJob(t *testing.T) {
 	job := GenerateWorkflowJob(WorkflowParams{
 		Tool:    "jig",
 		Org:     "toba",
-		Tap:     "toba/homebrew-tap",
+		Bucket:  "toba/scoop-bucket",
 		Desc:    "Multi-tool CLI",
 		License: "Apache-2.0",
-		Asset:   "jig_darwin_arm64.tar.gz",
 	})
 
 	checks := []string{
-		"update-homebrew:",
+		"update-scoop:",
 		"needs: release",
 		"HOMEBREW_TAP_TOKEN",
-		"jig_darwin_arm64.tar.gz",
-		"toba/homebrew-tap.git",
-		"Formula/jig.rb",
-		`class Jig < Formula`,
-		`desc "Multi-tool CLI"`,
-		`license "Apache-2.0"`,
-		`bin.install "jig"`,
+		"jig_windows_amd64.zip",
+		"jig_windows_arm64.zip",
+		"toba/scoop-bucket.git",
+		"jig.json",
+		`"jig.exe"`,
 		"bump jig to ${VERSION}",
 	}
 	for _, want := range checks {
@@ -35,18 +32,21 @@ func TestGenerateWorkflowJob(t *testing.T) {
 			t.Errorf("job missing %q", want)
 		}
 	}
-	if strings.Contains(job, "homebrew-jig") {
-		t.Error("job should not reference homebrew-jig (shared tap)")
+	if strings.Contains(job, "scoop-jig") {
+		t.Error("job should not reference scoop-jig (shared bucket)")
+	}
+	// Manifests should be at repo root, not bucket/ subdir.
+	if strings.Contains(job, "bucket/jig.json") {
+		t.Error("manifest should be at repo root, not bucket/ subdir")
 	}
 }
 
 func TestGenerateWorkflowJobCustomNeeds(t *testing.T) {
 	job := GenerateWorkflowJob(WorkflowParams{
-		Tool:  "tool",
-		Org:   "org",
-		Tap:   "org/homebrew-tap",
-		Asset: "tool_darwin_arm64.tar.gz",
-		Needs: "checksums",
+		Tool:   "tool",
+		Org:    "org",
+		Bucket: "org/scoop-bucket",
+		Needs:  "checksums",
 	})
 	if !strings.Contains(job, "needs: checksums") {
 		t.Error("expected needs: checksums")
@@ -69,12 +69,11 @@ jobs:
 `
 
 	p := WorkflowParams{
-		Tool:    "todo",
+		Tool:    "jig",
 		Org:     "toba",
-		Tap:     "toba/homebrew-tap",
-		Desc:    "Issue tracker",
+		Bucket:  "toba/scoop-bucket",
+		Desc:    "Multi-tool CLI",
 		License: "Apache-2.0",
-		Asset:   "todo_darwin_arm64.tar.gz",
 	}
 
 	result, err := InjectWorkflowJob(existing, p)
@@ -82,8 +81,8 @@ jobs:
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(result, "update-homebrew:") {
-		t.Error("result missing update-homebrew job")
+	if !strings.Contains(result, "update-scoop:") {
+		t.Error("result missing update-scoop job")
 	}
 	if !strings.Contains(result, "needs: release") {
 		t.Error("result should depend on release job")
@@ -94,12 +93,12 @@ func TestInjectWorkflowJobAlreadyExists(t *testing.T) {
 	existing := `jobs:
   release:
     runs-on: ubuntu-latest
-  update-homebrew:
+  update-scoop:
     needs: release
 `
-	_, err := InjectWorkflowJob(existing, WorkflowParams{Tool: "todo", Org: "toba", Tap: "toba/homebrew-tap"})
+	_, err := InjectWorkflowJob(existing, WorkflowParams{Tool: "jig", Org: "toba", Bucket: "toba/scoop-bucket"})
 	if err == nil {
-		t.Error("expected error for existing update-homebrew job")
+		t.Error("expected error for existing update-scoop job")
 	}
 }
 

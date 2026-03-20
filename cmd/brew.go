@@ -36,7 +36,7 @@ func tapFromCompanions(cfgPath string) string {
 // resolveTap determines the tap repo using (in order):
 //  1. explicit --tap flag
 //  2. companions.brew from .jig.yaml
-//  3. convention: owner/homebrew-<name> derived from the current GitHub repo
+//  3. convention: owner/homebrew-tap derived from the current GitHub repo
 func resolveTap(flag, cfgPath string) (string, error) {
 	if flag != "" {
 		return flag, nil
@@ -50,7 +50,7 @@ func resolveTap(flag, cfgPath string) (string, error) {
 	return "", fmt.Errorf("--tap is required (or set companions.brew in %s)", cfgPath)
 }
 
-// tapFromConvention derives "owner/homebrew-name" from the current GitHub repo.
+// tapFromConvention derives "owner/homebrew-tap" from the current GitHub repo.
 func tapFromConvention() string {
 	out, err := exec.Command("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner").Output()
 	if err != nil {
@@ -61,7 +61,7 @@ func tapFromConvention() string {
 	if len(parts) != 2 {
 		return ""
 	}
-	return parts[0] + "/homebrew-" + parts[1]
+	return parts[0] + "/homebrew-tap"
 }
 
 // repoFromGitURL extracts "owner/repo" from a git URL or short-form repo name.

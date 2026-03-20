@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/toba/jig/internal/brew"
+	"github.com/toba/jig/internal/config"
 )
 
 var (
@@ -21,12 +22,12 @@ var (
 
 var brewInitCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Set up a new Homebrew tap with automated releases",
-	Long: `Creates a companion Homebrew tap repo, pushes an initial formula and README,
-and injects an update-homebrew job into the source repo's release workflow.
+	Short: "Add a formula to a shared Homebrew tap",
+	Long: `Pushes a formula to an existing shared Homebrew tap repo and injects an
+update-homebrew job into the source repo's release workflow.
 
-This is a one-time setup command. After running it, tap updates happen
-automatically via CI when you push a new tag.`,
+The tap repo (e.g. org/homebrew-tap) must already exist on GitHub.
+After running this, tap updates happen automatically via CI on new tags.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		tap, err := resolveTap(brewInitTap, configPath())
 		if err != nil {
@@ -47,6 +48,11 @@ automatically via CI when you push a new tag.`,
 			return err
 		}
 
+		// Save companions.brew to .jig.yaml if not already set.
+		if !brewInitDryRun {
+			saveBrewCompanion(configPath(), tap)
+		}
+
 		if jsonOut {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
@@ -60,9 +66,6 @@ automatically via CI when you push a new tag.`,
 			fmt.Println(header.Render("=== Formula ==="))
 			fmt.Println(result.Formula)
 
-			fmt.Println(header.Render("=== README ==="))
-			fmt.Println(result.Readme)
-
 			fmt.Println(header.Render("=== Workflow Job ==="))
 			fmt.Println(result.WorkflowJob)
 
@@ -73,9 +76,10 @@ automatically via CI when you push a new tag.`,
 		ok := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true)
 		dim := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 
-		fmt.Println(ok.Render("Tap initialized"))
+		fmt.Println(ok.Render("Formula pushed to tap"))
 		fmt.Printf("  tap      %s\n", result.Tap)
 		fmt.Printf("  repo     %s\n", result.Repo)
+		fmt.Printf("  tool     %s\n", result.Tool)
 		fmt.Printf("  tag      %s\n", result.Tag)
 		fmt.Printf("  sha256   %s\n", dim.Render(result.SHA256[:12]+"…"))
 
@@ -92,11 +96,28 @@ automatically via CI when you push a new tag.`,
 }
 
 func init() {
-	brewInitCmd.Flags().StringVar(&brewInitTap, "tap", "", "tap repo (default: companions.brew from .jig.yaml)")
+	brewInitCmd.Flags().StringVar(&brewInitTap, "tap", "", "tap repo (default: companions.brew or owner/homebrew-tap)")
 	brewInitCmd.Flags().StringVar(&brewInitTag, "tag", "", "release tag (default: latest release)")
 	brewInitCmd.Flags().StringVar(&brewInitRepo, "repo", "", "source repo (default: current repo via gh)")
 	brewInitCmd.Flags().StringVar(&brewInitDesc, "desc", "", "formula description (default: repo description)")
 	brewInitCmd.Flags().StringVar(&brewInitLicense, "license", "", "license identifier (default: from repo)")
 	brewInitCmd.Flags().BoolVar(&brewInitDryRun, "dry-run", false, "show what would be created without doing it")
 	brewCmd.AddCommand(brewInitCmd)
+}
+
+// saveBrewCompanion persists companions.brew in .jig.yaml if not already set.
+func saveBrewCompanion(cfgPath, tap string) {
+	doc, err := config.LoadDocument(cfgPath)
+	if err != nil {
+		return
+	}
+	c := config.LoadCompanions(doc)
+	if c != nil && c.Brew != "" {
+		return // already configured
+	}
+	if c == nil {
+		c = &config.Companions{}
+	}
+	c.Brew = tap
+	_ = config.SaveCompanions(doc, c)
 }

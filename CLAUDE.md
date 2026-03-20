@@ -64,7 +64,8 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
 - `cite review` (alias `check`) always updates `last_checked_sha`/`last_checked_date`, even when there are no new commits
 - `cite add` inspects a repo via GitHub API or git clone and suggests path classification globs
 - `commit` uses a two-phase gather/apply workflow so the agent can review before committing
-- `brew init`, `scoop init`, and `zed init` use `internal/companion/` for shared GitHub repo creation and CI workflow injection
+- `brew init` and `scoop init` push to existing shared repos (`owner/homebrew-tap`, `owner/scoop-bucket`); `zed init` uses `internal/companion/` for repo creation
+- `brew init` and `scoop init` auto-save `companions.brew`/`companions.scoop` to `.jig.yaml`
 - Uses `doublestar` for `**` glob support since Go's `path.Match` lacks it
 - `nope` guard reads rules from `nope:` key in `.jig.yaml` (not a separate file)
 - `nope` uses instance-based `DebugLogger` (nil-safe) instead of global state
