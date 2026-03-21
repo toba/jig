@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -1068,6 +1069,57 @@ todo:
 			t.Error("GitHub sync config was lost after save")
 		}
 	})
+}
+
+func TestInitPreservesExistingConfig(t *testing.T) {
+	// Regression test: `todo init` creates a Default() config and saves it,
+	// which must not drop existing fields like sync.github.repo.
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ConfigFileName)
+
+	// Pre-existing .jig.yaml with sync config under todo:
+	existingYAML := `todo:
+    path: .issues
+    default_status: draft
+    default_type: task
+    sync:
+        github:
+            repo: owner/my-repo
+changelog: weekly
+`
+	if err := os.WriteFile(configPath, []byte(existingYAML), 0644); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+
+	// Simulate what todo init should do: load existing config, then save
+	cfg, err := LoadFromDirectory(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadFromDirectory() error = %v", err)
+	}
+	cfg.SetConfigDir(tmpDir)
+	if err := cfg.Save(tmpDir); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	// Reload and verify sync config was preserved
+	reloaded, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	ghSync := reloaded.SyncConfig("github")
+	if ghSync == nil {
+		t.Fatal("sync.github config was dropped by init save")
+	}
+	if ghSync["repo"] != "owner/my-repo" {
+		t.Errorf("sync.github.repo = %v, want \"owner/my-repo\"", ghSync["repo"])
+	}
+
+	// Verify changelog (top-level key) was also preserved
+	raw, _ := os.ReadFile(configPath)
+	if !strings.Contains(string(raw), "changelog: weekly") {
+		t.Error("top-level 'changelog' key was dropped")
+	}
 }
 
 func TestSyncConfig(t *testing.T) {

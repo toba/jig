@@ -402,10 +402,11 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// Reserve space for border and footer
-		m.list.SetSize(msg.Width-2, msg.Height-4)
-		// Recalculate responsive columns
-		m.cols = ui.CalculateResponsiveColumns(msg.Width, m.hasTags)
+		// Reserve space for border (2 chars each side in lipgloss v2 where
+		// Width/Height include border) and footer lines.
+		m.list.SetSize(msg.Width-4, msg.Height-6)
+		// Recalculate responsive columns using content width inside border
+		m.cols = ui.CalculateResponsiveColumns(msg.Width-4, m.hasTags)
 		m.updateDelegate()
 
 	case issuesLoadedMsg:

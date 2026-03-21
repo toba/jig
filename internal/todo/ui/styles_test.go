@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/lipgloss/v2"
 	"github.com/toba/jig/internal/todo/config"
 )
 
@@ -259,6 +260,59 @@ func TestRenderIssueRow_DimmedTypeAbbreviation(t *testing.T) {
 					typeName, len(lines), result)
 			}
 		})
+	}
+}
+
+func TestRenderIssueRow_RowFitsInBorderContentArea(t *testing.T) {
+	// Regression test: after Lipgloss v2 migration, titles were truncated
+	// too aggressively because Width(N) in v2 is the TOTAL width including
+	// border chars, so the content area is N - 2. The list SetSize must
+	// account for this.
+	//
+	// This test verifies that a row rendered with maxTitleWidth computed
+	// from the border's content width fits exactly within that width.
+	termWidth := 120
+	// Border uses Width(termWidth - 2). In lipgloss v2, content = Width - borderChars.
+	borderWidth := termWidth - 2
+	borderContentWidth := borderWidth - 2 // 2 for left + right border chars
+	// The list should be sized to borderContentWidth so m.Width() returns that.
+	listWidth := borderContentWidth
+
+	baseWidth := ColWidthID + ColWidthStatus + ColWidthType + 4 // cursor + separators
+	maxTitleWidth := listWidth - baseWidth
+
+	title := strings.Repeat("x", maxTitleWidth) // exact fit
+	cfg := IssueRowConfig{
+		MaxTitleWidth: maxTitleWidth,
+		StatusColor:   "green",
+		TypeColor:     "blue",
+		ShowCursor:    true,
+	}
+
+	result := RenderIssueRow("abc-123", "ready", "bug", title, cfg)
+	visualWidth := lipgloss.Width(result)
+
+	if visualWidth > listWidth {
+		t.Errorf("rendered row (%d cells) overflows border content area (%d cells)",
+			visualWidth, listWidth)
+	}
+
+	// Verify a short title is NOT truncated
+	shortTitle := "Short title that should not be truncated at all"
+	cfg.MaxTitleWidth = maxTitleWidth
+	result2 := RenderIssueRow("abc-123", "ready", "bug", shortTitle, cfg)
+	if strings.Contains(result2, "...") {
+		t.Errorf("short title should not be truncated with %d available: %s",
+			maxTitleWidth, result2)
+	}
+
+	// Verify the border actually renders at termWidth - 2 total
+	borderStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Width(borderWidth)
+	bordered := borderStyle.Render(strings.Repeat("y", listWidth))
+	if lipgloss.Width(bordered) != borderWidth {
+		t.Errorf("border total width = %d, want %d", lipgloss.Width(bordered), borderWidth)
 	}
 }
 

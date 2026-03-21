@@ -39,7 +39,7 @@ func newTestApp(t *testing.T) *App {
 	app.height = 24
 	app.list.width = 80
 	app.list.height = 24
-	app.list.list.SetSize(78, 20)
+	app.list.list.SetSize(76, 18)
 	return app
 }
 
@@ -75,7 +75,7 @@ func newTestAppWithIssues(t *testing.T) (*App, *core.Core) {
 	app.height = 24
 	app.list.width = 80
 	app.list.height = 24
-	app.list.list.SetSize(78, 20)
+	app.list.list.SetSize(76, 18)
 	return app, c
 }
 
@@ -1494,7 +1494,7 @@ func TestListModelViewWithTagFilter(t *testing.T) {
 	m := newListModel(resolver, cfg)
 	m.width = 80
 	m.height = 24
-	m.list.SetSize(78, 20)
+	m.list.SetSize(76, 18)
 	m.tagFilter = "frontend"
 
 	v := m.View()
@@ -1784,7 +1784,7 @@ func TestListModelViewWithSelectedIssues(t *testing.T) {
 	m := newListModel(resolver, cfg)
 	m.width = 80
 	m.height = 24
-	m.list.SetSize(78, 20)
+	m.list.SetSize(76, 18)
 	m.selectedIssues["test-1"] = true
 
 	v := m.View()
@@ -1800,7 +1800,7 @@ func TestListModelViewWithStatusMessage(t *testing.T) {
 	m := newListModel(resolver, cfg)
 	m.width = 80
 	m.height = 24
-	m.list.SetSize(78, 20)
+	m.list.SetSize(76, 18)
 	m.statusMessage = "Copied abc-123 to clipboard"
 
 	v := m.View()

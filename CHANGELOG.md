@@ -11,6 +11,9 @@
 ### 🐛 Fixes
 
 - Add `--body-check`/`--body-uncheck` flags; toggle checkboxes by substring match instead of fragile exact-text replacement
+- Fix TUI list truncating titles after Bubble Tea v2 migration; `Width(N)` semantics changed to include borders ([#100](https://github.com/toba/jig/issues/100))
+- Fix `todo init` dropping existing `.jig.yaml` fields like `sync.github.repo`; preserve config on re-init ([#98](https://github.com/toba/jig/issues/98))
+- Add changelog config documentation to `jig prime` agent prompt; agents now know about `changelog:` key in `.jig.yaml` ([#99](https://github.com/toba/jig/issues/99))
 
 ## Week of Mar 8 – Mar 14, 2026
 

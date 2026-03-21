@@ -252,7 +252,7 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 
 		headerHeight := m.calculateHeaderHeight()
 		footerHeight := 2
-		vpWidth := msg.Width - 4
+		vpWidth := msg.Width - 6 // border Width(m.width-4) in v2 → content = m.width-6
 		vpHeight := max(
 			// Ensure vpHeight doesn't go negative
 			msg.Height-headerHeight-footerHeight, 1)

@@ -4,10 +4,47 @@ import (
 	"testing"
 
 	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/issue"
 	"github.com/toba/jig/internal/todo/ui"
 )
+
+func TestListWidthAccountsForBorder(t *testing.T) {
+	// Regression test: after Lipgloss v2 migration, Width(N) means TOTAL
+	// width including border chars. The list.SetSize must subtract border
+	// chars so the delegate's m.Width() returns the content area width.
+	cfg := config.Default()
+	deepSearch := false
+	flatItems := &[]ui.FlatItem{}
+
+	delegate := itemDelegate{cfg: cfg}
+	l := list.New([]list.Item{}, delegate, 0, 0)
+	l.SetFilteringEnabled(true)
+	l.Filter = substringFilter
+
+	m := listModel{
+		list:       l,
+		config:     cfg,
+		width:      0,
+		height:     0,
+		deepSearch: &deepSearch,
+		flatItems:  flatItems,
+	}
+
+	// Simulate WindowSizeMsg
+	msg := tea.WindowSizeMsg{Width: 120, Height: 40}
+	m, _ = m.Update(msg)
+
+	// The border style uses Width(m.width - 2), which in v2 means
+	// total outer = m.width - 2, content = m.width - 4.
+	// The list width should match the content area: m.width - 4 = 116.
+	borderContentWidth := msg.Width - 4 // 2 for outer margin + 2 for border chars
+	if m.list.Width() != borderContentWidth {
+		t.Errorf("list.Width() = %d, want %d (border content area); list is %d cells too wide",
+			m.list.Width(), borderContentWidth, m.list.Width()-borderContentWidth)
+	}
+}
 
 func TestSortIssues(t *testing.T) {
 	// Define the expected order from DefaultStatuses, DefaultPriorities, and DefaultTypes

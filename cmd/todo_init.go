@@ -51,10 +51,16 @@ var todoInitCmd = &cobra.Command{
 			dataDir = filepath.Join(dir, todoconfig.DefaultDataPath)
 		}
 
-		// Create default config
-		defaultCfg := todoconfig.Default()
-		defaultCfg.SetConfigDir(projectDir)
-		if err := defaultCfg.Save(projectDir); err != nil {
+		// Load existing config (returns defaults if no file exists)
+		cfg, err := todoconfig.LoadFromDirectory(projectDir)
+		if err != nil {
+			if todoInitJSON {
+				return output.Error(output.ErrFileError, err.Error())
+			}
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+		cfg.SetConfigDir(projectDir)
+		if err := cfg.Save(projectDir); err != nil {
 			if todoInitJSON {
 				return output.Error(output.ErrFileError, err.Error())
 			}

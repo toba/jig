@@ -389,7 +389,7 @@ func (r *mutationResolver) DeleteIssue(ctx context.Context, id string) (bool, er
 }
 
 // SetSyncData is the resolver for the setSyncData field.
-func (r *mutationResolver) SetSyncData(ctx context.Context, id string, name string, data map[string]any, ifMatch *string) (*issue.Issue, error) {
+func (r *mutationResolver) SetSyncData(ctx context.Context, id, name string, data map[string]any, ifMatch *string) (*issue.Issue, error) {
 	if name == "" {
 		return nil, errors.New("sync name cannot be empty")
 	}
@@ -408,7 +408,7 @@ func (r *mutationResolver) SetSyncData(ctx context.Context, id string, name stri
 }
 
 // RemoveSyncData is the resolver for the removeSyncData field.
-func (r *mutationResolver) RemoveSyncData(ctx context.Context, id string, name string, ifMatch *string) (*issue.Issue, error) {
+func (r *mutationResolver) RemoveSyncData(ctx context.Context, id, name string, ifMatch *string) (*issue.Issue, error) {
 	b, err := r.Core.Get(id)
 	if err != nil {
 		return nil, err

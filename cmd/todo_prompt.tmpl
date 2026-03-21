@@ -153,6 +153,25 @@ jig todo query --json '{ issue(id: "abc") { title body parent { title } children
 jig todo query --json -f /tmp/jig-query.graphql
 ```
 
+## Changelog
+
+Configure changelog behavior via the `changelog:` key in `.jig.yaml`:
+
+```yaml
+changelog: weekly      # update CHANGELOG.md once per week (default if key present)
+changelog: per-commit  # update CHANGELOG.md on every commit
+```
+
+When set, the `/commit` skill automatically gathers recent issues and commits via `jig changelog` and updates `CHANGELOG.md`.
+
+```bash
+jig changelog --json                    # issues since last CHANGELOG.md commit (or 7 days)
+jig changelog --json --days 30          # last 30 days
+jig changelog --json --days 14 --git    # with git commits
+jig changelog --json --since 2026-01-01 # explicit start date
+jig changelog --commits 50 --json       # time range from last 50 commits
+```
+
 ## Other jig Tools
 
 `jig cite add <url> -w` — add a citation source (inspects repo, suggests path globs, writes to .jig.yaml)
