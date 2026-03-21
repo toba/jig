@@ -13,6 +13,14 @@ type BodyModification struct {
 	// Text replacements applied sequentially in array order.
 	// Each old text must match exactly once at the time it's applied.
 	Replace []*ReplaceOperation `json:"replace,omitempty"`
+	// Check checkbox items by substring match (case-insensitive).
+	// Each substring must match exactly one unchecked (- [ ]) item.
+	// Applied after replacements, before append.
+	Check []string `json:"check,omitempty"`
+	// Uncheck checkbox items by substring match (case-insensitive).
+	// Each substring must match exactly one checked (- [x]) item.
+	// Applied after check, before append.
+	Uncheck []string `json:"uncheck,omitempty"`
 	// Text to append after all replacements.
 	// Appended with blank line separator.
 	Append *string `json:"append,omitempty"`

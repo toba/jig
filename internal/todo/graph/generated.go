@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -25,20 +24,10 @@ import (
 
 // NewExecutableSchema creates an ExecutableSchema from the ResolverRoot interface.
 func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
-	return &executableSchema{
-		schema:     cfg.Schema,
-		resolvers:  cfg.Resolvers,
-		directives: cfg.Directives,
-		complexity: cfg.Complexity,
-	}
+	return &executableSchema{SchemaData: cfg.Schema, Resolvers: cfg.Resolvers, Directives: cfg.Directives, ComplexityRoot: cfg.Complexity}
 }
 
-type Config struct {
-	Schema     *ast.Schema
-	Resolvers  ResolverRoot
-	Directives DirectiveRoot
-	Complexity ComplexityRoot
-}
+type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
 	Issue() IssueResolver
@@ -117,27 +106,22 @@ type QueryResolver interface {
 	Issues(ctx context.Context, filter *model.IssueFilter) ([]*issue.Issue, error)
 }
 
-type executableSchema struct {
-	schema     *ast.Schema
-	resolvers  ResolverRoot
-	directives DirectiveRoot
-	complexity ComplexityRoot
-}
+type executableSchema graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 func (e *executableSchema) Schema() *ast.Schema {
-	if e.schema != nil {
-		return e.schema
+	if e.SchemaData != nil {
+		return e.SchemaData
 	}
 	return parsedSchema
 }
 
 func (e *executableSchema) Complexity(ctx context.Context, typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
-	ec := executionContext{nil, e, 0, 0, nil}
+	ec := newExecutionContext(nil, e, nil)
 	_ = ec
 	switch typeName + "." + field {
 
 	case "Issue.blockedBy":
-		if e.complexity.Issue.BlockedBy == nil {
+		if e.ComplexityRoot.Issue.BlockedBy == nil {
 			break
 		}
 
@@ -146,15 +130,15 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Issue.BlockedBy(childComplexity, args["filter"].(*model.IssueFilter)), true
+		return e.ComplexityRoot.Issue.BlockedBy(childComplexity, args["filter"].(*model.IssueFilter)), true
 	case "Issue.blockedByIds":
-		if e.complexity.Issue.BlockedByIds == nil {
+		if e.ComplexityRoot.Issue.BlockedByIds == nil {
 			break
 		}
 
-		return e.complexity.Issue.BlockedByIds(childComplexity), true
+		return e.ComplexityRoot.Issue.BlockedByIds(childComplexity), true
 	case "Issue.blocking":
-		if e.complexity.Issue.Blocking == nil {
+		if e.ComplexityRoot.Issue.Blocking == nil {
 			break
 		}
 
@@ -163,21 +147,21 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Issue.Blocking(childComplexity, args["filter"].(*model.IssueFilter)), true
+		return e.ComplexityRoot.Issue.Blocking(childComplexity, args["filter"].(*model.IssueFilter)), true
 	case "Issue.blockingIds":
-		if e.complexity.Issue.BlockingIds == nil {
+		if e.ComplexityRoot.Issue.BlockingIds == nil {
 			break
 		}
 
-		return e.complexity.Issue.BlockingIds(childComplexity), true
+		return e.ComplexityRoot.Issue.BlockingIds(childComplexity), true
 	case "Issue.body":
-		if e.complexity.Issue.Body == nil {
+		if e.ComplexityRoot.Issue.Body == nil {
 			break
 		}
 
-		return e.complexity.Issue.Body(childComplexity), true
+		return e.ComplexityRoot.Issue.Body(childComplexity), true
 	case "Issue.children":
-		if e.complexity.Issue.Children == nil {
+		if e.ComplexityRoot.Issue.Children == nil {
 			break
 		}
 
@@ -186,100 +170,100 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Issue.Children(childComplexity, args["filter"].(*model.IssueFilter)), true
+		return e.ComplexityRoot.Issue.Children(childComplexity, args["filter"].(*model.IssueFilter)), true
 	case "Issue.createdAt":
-		if e.complexity.Issue.CreatedAt == nil {
+		if e.ComplexityRoot.Issue.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.Issue.CreatedAt(childComplexity), true
+		return e.ComplexityRoot.Issue.CreatedAt(childComplexity), true
 	case "Issue.due":
-		if e.complexity.Issue.Due == nil {
+		if e.ComplexityRoot.Issue.Due == nil {
 			break
 		}
 
-		return e.complexity.Issue.Due(childComplexity), true
+		return e.ComplexityRoot.Issue.Due(childComplexity), true
 	case "Issue.etag":
-		if e.complexity.Issue.ETag == nil {
+		if e.ComplexityRoot.Issue.ETag == nil {
 			break
 		}
 
-		return e.complexity.Issue.ETag(childComplexity), true
+		return e.ComplexityRoot.Issue.ETag(childComplexity), true
 	case "Issue.id":
-		if e.complexity.Issue.ID == nil {
+		if e.ComplexityRoot.Issue.ID == nil {
 			break
 		}
 
-		return e.complexity.Issue.ID(childComplexity), true
+		return e.ComplexityRoot.Issue.ID(childComplexity), true
 	case "Issue.parent":
-		if e.complexity.Issue.Parent == nil {
+		if e.ComplexityRoot.Issue.Parent == nil {
 			break
 		}
 
-		return e.complexity.Issue.Parent(childComplexity), true
+		return e.ComplexityRoot.Issue.Parent(childComplexity), true
 	case "Issue.parentId":
-		if e.complexity.Issue.ParentID == nil {
+		if e.ComplexityRoot.Issue.ParentID == nil {
 			break
 		}
 
-		return e.complexity.Issue.ParentID(childComplexity), true
+		return e.ComplexityRoot.Issue.ParentID(childComplexity), true
 	case "Issue.path":
-		if e.complexity.Issue.Path == nil {
+		if e.ComplexityRoot.Issue.Path == nil {
 			break
 		}
 
-		return e.complexity.Issue.Path(childComplexity), true
+		return e.ComplexityRoot.Issue.Path(childComplexity), true
 	case "Issue.priority":
-		if e.complexity.Issue.Priority == nil {
+		if e.ComplexityRoot.Issue.Priority == nil {
 			break
 		}
 
-		return e.complexity.Issue.Priority(childComplexity), true
+		return e.ComplexityRoot.Issue.Priority(childComplexity), true
 	case "Issue.slug":
-		if e.complexity.Issue.Slug == nil {
+		if e.ComplexityRoot.Issue.Slug == nil {
 			break
 		}
 
-		return e.complexity.Issue.Slug(childComplexity), true
+		return e.ComplexityRoot.Issue.Slug(childComplexity), true
 	case "Issue.status":
-		if e.complexity.Issue.Status == nil {
+		if e.ComplexityRoot.Issue.Status == nil {
 			break
 		}
 
-		return e.complexity.Issue.Status(childComplexity), true
+		return e.ComplexityRoot.Issue.Status(childComplexity), true
 	case "Issue.sync":
-		if e.complexity.Issue.Sync == nil {
+		if e.ComplexityRoot.Issue.Sync == nil {
 			break
 		}
 
-		return e.complexity.Issue.Sync(childComplexity), true
+		return e.ComplexityRoot.Issue.Sync(childComplexity), true
 	case "Issue.tags":
-		if e.complexity.Issue.Tags == nil {
+		if e.ComplexityRoot.Issue.Tags == nil {
 			break
 		}
 
-		return e.complexity.Issue.Tags(childComplexity), true
+		return e.ComplexityRoot.Issue.Tags(childComplexity), true
 	case "Issue.title":
-		if e.complexity.Issue.Title == nil {
+		if e.ComplexityRoot.Issue.Title == nil {
 			break
 		}
 
-		return e.complexity.Issue.Title(childComplexity), true
+		return e.ComplexityRoot.Issue.Title(childComplexity), true
 	case "Issue.type":
-		if e.complexity.Issue.Type == nil {
+		if e.ComplexityRoot.Issue.Type == nil {
 			break
 		}
 
-		return e.complexity.Issue.Type(childComplexity), true
+		return e.ComplexityRoot.Issue.Type(childComplexity), true
 	case "Issue.updatedAt":
-		if e.complexity.Issue.UpdatedAt == nil {
+		if e.ComplexityRoot.Issue.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.Issue.UpdatedAt(childComplexity), true
+		return e.ComplexityRoot.Issue.UpdatedAt(childComplexity), true
 
 	case "Mutation.createIssue":
-		if e.complexity.Mutation.CreateIssue == nil {
+		if e.ComplexityRoot.Mutation.CreateIssue == nil {
 			break
 		}
 
@@ -288,9 +272,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateIssue(childComplexity, args["input"].(model.CreateIssueInput)), true
+		return e.ComplexityRoot.Mutation.CreateIssue(childComplexity, args["input"].(model.CreateIssueInput)), true
 	case "Mutation.deleteIssue":
-		if e.complexity.Mutation.DeleteIssue == nil {
+		if e.ComplexityRoot.Mutation.DeleteIssue == nil {
 			break
 		}
 
@@ -299,9 +283,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteIssue(childComplexity, args["id"].(string)), true
+		return e.ComplexityRoot.Mutation.DeleteIssue(childComplexity, args["id"].(string)), true
 	case "Mutation.removeSyncData":
-		if e.complexity.Mutation.RemoveSyncData == nil {
+		if e.ComplexityRoot.Mutation.RemoveSyncData == nil {
 			break
 		}
 
@@ -310,9 +294,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemoveSyncData(childComplexity, args["id"].(string), args["name"].(string), args["ifMatch"].(*string)), true
+		return e.ComplexityRoot.Mutation.RemoveSyncData(childComplexity, args["id"].(string), args["name"].(string), args["ifMatch"].(*string)), true
 	case "Mutation.setSyncData":
-		if e.complexity.Mutation.SetSyncData == nil {
+		if e.ComplexityRoot.Mutation.SetSyncData == nil {
 			break
 		}
 
@@ -321,9 +305,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetSyncData(childComplexity, args["id"].(string), args["name"].(string), args["data"].(map[string]any), args["ifMatch"].(*string)), true
+		return e.ComplexityRoot.Mutation.SetSyncData(childComplexity, args["id"].(string), args["name"].(string), args["data"].(map[string]any), args["ifMatch"].(*string)), true
 	case "Mutation.updateIssue":
-		if e.complexity.Mutation.UpdateIssue == nil {
+		if e.ComplexityRoot.Mutation.UpdateIssue == nil {
 			break
 		}
 
@@ -332,10 +316,10 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateIssue(childComplexity, args["id"].(string), args["input"].(model.UpdateIssueInput)), true
+		return e.ComplexityRoot.Mutation.UpdateIssue(childComplexity, args["id"].(string), args["input"].(model.UpdateIssueInput)), true
 
 	case "Query.issue":
-		if e.complexity.Query.Issue == nil {
+		if e.ComplexityRoot.Query.Issue == nil {
 			break
 		}
 
@@ -344,9 +328,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Issue(childComplexity, args["id"].(string)), true
+		return e.ComplexityRoot.Query.Issue(childComplexity, args["id"].(string)), true
 	case "Query.issues":
-		if e.complexity.Query.Issues == nil {
+		if e.ComplexityRoot.Query.Issues == nil {
 			break
 		}
 
@@ -355,20 +339,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Issues(childComplexity, args["filter"].(*model.IssueFilter)), true
+		return e.ComplexityRoot.Query.Issues(childComplexity, args["filter"].(*model.IssueFilter)), true
 
 	case "SyncEntry.data":
-		if e.complexity.SyncEntry.Data == nil {
+		if e.ComplexityRoot.SyncEntry.Data == nil {
 			break
 		}
 
-		return e.complexity.SyncEntry.Data(childComplexity), true
+		return e.ComplexityRoot.SyncEntry.Data(childComplexity), true
 	case "SyncEntry.name":
-		if e.complexity.SyncEntry.Name == nil {
+		if e.ComplexityRoot.SyncEntry.Name == nil {
 			break
 		}
 
-		return e.complexity.SyncEntry.Name(childComplexity), true
+		return e.ComplexityRoot.SyncEntry.Name(childComplexity), true
 
 	}
 	return 0, false
@@ -376,7 +360,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
-	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
+	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputBodyModification,
 		ec.unmarshalInputCreateIssueInput,
@@ -396,9 +380,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 				data = ec._Query(ctx, opCtx.Operation.SelectionSet)
 			} else {
-				if atomic.LoadInt32(&ec.pendingDeferred) > 0 {
-					result := <-ec.deferredResults
-					atomic.AddInt32(&ec.pendingDeferred, -1)
+				if atomic.LoadInt32(&ec.PendingDeferred) > 0 {
+					result := <-ec.DeferredResults
+					atomic.AddInt32(&ec.PendingDeferred, -1)
 					data = result.Result
 					response.Path = result.Path
 					response.Label = result.Label
@@ -410,8 +394,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			var buf bytes.Buffer
 			data.MarshalGQL(&buf)
 			response.Data = buf.Bytes()
-			if atomic.LoadInt32(&ec.deferred) > 0 {
-				hasNext := atomic.LoadInt32(&ec.pendingDeferred) > 0
+			if atomic.LoadInt32(&ec.Deferred) > 0 {
+				hasNext := atomic.LoadInt32(&ec.PendingDeferred) > 0
 				response.HasNext = &hasNext
 			}
 
@@ -439,44 +423,22 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 }
 
 type executionContext struct {
-	*graphql.OperationContext
-	*executableSchema
-	deferred        int32
-	pendingDeferred int32
-	deferredResults chan graphql.DeferredResult
+	*graphql.ExecutionContextState[ResolverRoot, DirectiveRoot, ComplexityRoot]
 }
 
-func (ec *executionContext) processDeferredGroup(dg graphql.DeferredGroup) {
-	atomic.AddInt32(&ec.pendingDeferred, 1)
-	go func() {
-		ctx := graphql.WithFreshResponseContext(dg.Context)
-		dg.FieldSet.Dispatch(ctx)
-		ds := graphql.DeferredResult{
-			Path:   dg.Path,
-			Label:  dg.Label,
-			Result: dg.FieldSet,
-			Errors: graphql.GetErrors(ctx),
-		}
-		// null fields should bubble up
-		if dg.FieldSet.Invalids > 0 {
-			ds.Result = graphql.Null
-		}
-		ec.deferredResults <- ds
-	}()
-}
-
-func (ec *executionContext) introspectSchema() (*introspection.Schema, error) {
-	if ec.DisableIntrospection {
-		return nil, errors.New("introspection disabled")
+func newExecutionContext(
+	opCtx *graphql.OperationContext,
+	execSchema *executableSchema,
+	deferredResults chan graphql.DeferredResult,
+) executionContext {
+	return executionContext{
+		ExecutionContextState: graphql.NewExecutionContextState[ResolverRoot, DirectiveRoot, ComplexityRoot](
+			opCtx,
+			(*graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot])(execSchema),
+			parsedSchema,
+			deferredResults,
+		),
 	}
-	return introspection.WrapSchema(ec.Schema()), nil
-}
-
-func (ec *executionContext) introspectType(name string) (*introspection.Type, error) {
-	if ec.DisableIntrospection {
-		return nil, errors.New("introspection disabled")
-	}
-	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
 //go:embed "schema.graphqls"
@@ -502,7 +464,7 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Issue_blockedBy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐIssueFilter)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐIssueFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -513,7 +475,7 @@ func (ec *executionContext) field_Issue_blockedBy_args(ctx context.Context, rawA
 func (ec *executionContext) field_Issue_blocking_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐIssueFilter)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐIssueFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +486,7 @@ func (ec *executionContext) field_Issue_blocking_args(ctx context.Context, rawAr
 func (ec *executionContext) field_Issue_children_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐIssueFilter)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐIssueFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +497,7 @@ func (ec *executionContext) field_Issue_children_args(ctx context.Context, rawAr
 func (ec *executionContext) field_Mutation_createIssue_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateIssueInput2githubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐCreateIssueInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateIssueInput2githubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐCreateIssueInput)
 	if err != nil {
 		return nil, err
 	}
@@ -609,7 +571,7 @@ func (ec *executionContext) field_Mutation_updateIssue_args(ctx context.Context,
 		return nil, err
 	}
 	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateIssueInput2githubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐUpdateIssueInput)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateIssueInput2githubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐUpdateIssueInput)
 	if err != nil {
 		return nil, err
 	}
@@ -642,7 +604,7 @@ func (ec *executionContext) field_Query_issue_args(ctx context.Context, rawArgs 
 func (ec *executionContext) field_Query_issues_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐIssueFilter)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐIssueFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -999,7 +961,7 @@ func (ec *executionContext) _Issue_due(ctx context.Context, field graphql.Collec
 		field,
 		ec.fieldContext_Issue_due,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Issue().Due(ctx, obj)
+			return ec.Resolvers.Issue().Due(ctx, obj)
 		},
 		nil,
 		ec.marshalOString2ᚖstring,
@@ -1086,10 +1048,10 @@ func (ec *executionContext) _Issue_sync(ctx context.Context, field graphql.Colle
 		field,
 		ec.fieldContext_Issue_sync,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Issue().Sync(ctx, obj)
+			return ec.Resolvers.Issue().Sync(ctx, obj)
 		},
 		nil,
-		ec.marshalNSyncEntry2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐSyncEntryᚄ,
+		ec.marshalNSyncEntry2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐSyncEntryᚄ,
 		true,
 		true,
 	)
@@ -1121,7 +1083,7 @@ func (ec *executionContext) _Issue_parentId(ctx context.Context, field graphql.C
 		field,
 		ec.fieldContext_Issue_parentId,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Issue().ParentID(ctx, obj)
+			return ec.Resolvers.Issue().ParentID(ctx, obj)
 		},
 		nil,
 		ec.marshalOString2ᚖstring,
@@ -1150,7 +1112,7 @@ func (ec *executionContext) _Issue_blockingIds(ctx context.Context, field graphq
 		field,
 		ec.fieldContext_Issue_blockingIds,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Issue().BlockingIds(ctx, obj)
+			return ec.Resolvers.Issue().BlockingIds(ctx, obj)
 		},
 		nil,
 		ec.marshalNString2ᚕstringᚄ,
@@ -1179,7 +1141,7 @@ func (ec *executionContext) _Issue_blockedByIds(ctx context.Context, field graph
 		field,
 		ec.fieldContext_Issue_blockedByIds,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Issue().BlockedByIds(ctx, obj)
+			return ec.Resolvers.Issue().BlockedByIds(ctx, obj)
 		},
 		nil,
 		ec.marshalNString2ᚕstringᚄ,
@@ -1209,10 +1171,10 @@ func (ec *executionContext) _Issue_blockedBy(ctx context.Context, field graphql.
 		ec.fieldContext_Issue_blockedBy,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Issue().BlockedBy(ctx, obj, fc.Args["filter"].(*model.IssueFilter))
+			return ec.Resolvers.Issue().BlockedBy(ctx, obj, fc.Args["filter"].(*model.IssueFilter))
 		},
 		nil,
-		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssueᚄ,
+		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssueᚄ,
 		true,
 		true,
 	)
@@ -1294,10 +1256,10 @@ func (ec *executionContext) _Issue_blocking(ctx context.Context, field graphql.C
 		ec.fieldContext_Issue_blocking,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Issue().Blocking(ctx, obj, fc.Args["filter"].(*model.IssueFilter))
+			return ec.Resolvers.Issue().Blocking(ctx, obj, fc.Args["filter"].(*model.IssueFilter))
 		},
 		nil,
-		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssueᚄ,
+		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssueᚄ,
 		true,
 		true,
 	)
@@ -1378,10 +1340,10 @@ func (ec *executionContext) _Issue_parent(ctx context.Context, field graphql.Col
 		field,
 		ec.fieldContext_Issue_parent,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Issue().Parent(ctx, obj)
+			return ec.Resolvers.Issue().Parent(ctx, obj)
 		},
 		nil,
-		ec.marshalOIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
+		ec.marshalOIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue,
 		true,
 		false,
 	)
@@ -1452,10 +1414,10 @@ func (ec *executionContext) _Issue_children(ctx context.Context, field graphql.C
 		ec.fieldContext_Issue_children,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Issue().Children(ctx, obj, fc.Args["filter"].(*model.IssueFilter))
+			return ec.Resolvers.Issue().Children(ctx, obj, fc.Args["filter"].(*model.IssueFilter))
 		},
 		nil,
-		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssueᚄ,
+		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssueᚄ,
 		true,
 		true,
 	)
@@ -1537,10 +1499,10 @@ func (ec *executionContext) _Mutation_createIssue(ctx context.Context, field gra
 		ec.fieldContext_Mutation_createIssue,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateIssue(ctx, fc.Args["input"].(model.CreateIssueInput))
+			return ec.Resolvers.Mutation().CreateIssue(ctx, fc.Args["input"].(model.CreateIssueInput))
 		},
 		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
+		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue,
 		true,
 		true,
 	)
@@ -1622,10 +1584,10 @@ func (ec *executionContext) _Mutation_updateIssue(ctx context.Context, field gra
 		ec.fieldContext_Mutation_updateIssue,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateIssue(ctx, fc.Args["id"].(string), fc.Args["input"].(model.UpdateIssueInput))
+			return ec.Resolvers.Mutation().UpdateIssue(ctx, fc.Args["id"].(string), fc.Args["input"].(model.UpdateIssueInput))
 		},
 		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
+		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue,
 		true,
 		true,
 	)
@@ -1707,7 +1669,7 @@ func (ec *executionContext) _Mutation_deleteIssue(ctx context.Context, field gra
 		ec.fieldContext_Mutation_deleteIssue,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().DeleteIssue(ctx, fc.Args["id"].(string))
+			return ec.Resolvers.Mutation().DeleteIssue(ctx, fc.Args["id"].(string))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -1748,10 +1710,10 @@ func (ec *executionContext) _Mutation_setSyncData(ctx context.Context, field gra
 		ec.fieldContext_Mutation_setSyncData,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().SetSyncData(ctx, fc.Args["id"].(string), fc.Args["name"].(string), fc.Args["data"].(map[string]any), fc.Args["ifMatch"].(*string))
+			return ec.Resolvers.Mutation().SetSyncData(ctx, fc.Args["id"].(string), fc.Args["name"].(string), fc.Args["data"].(map[string]any), fc.Args["ifMatch"].(*string))
 		},
 		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
+		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue,
 		true,
 		true,
 	)
@@ -1833,10 +1795,10 @@ func (ec *executionContext) _Mutation_removeSyncData(ctx context.Context, field 
 		ec.fieldContext_Mutation_removeSyncData,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().RemoveSyncData(ctx, fc.Args["id"].(string), fc.Args["name"].(string), fc.Args["ifMatch"].(*string))
+			return ec.Resolvers.Mutation().RemoveSyncData(ctx, fc.Args["id"].(string), fc.Args["name"].(string), fc.Args["ifMatch"].(*string))
 		},
 		nil,
-		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
+		ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue,
 		true,
 		true,
 	)
@@ -1918,10 +1880,10 @@ func (ec *executionContext) _Query_issue(ctx context.Context, field graphql.Coll
 		ec.fieldContext_Query_issue,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Issue(ctx, fc.Args["id"].(string))
+			return ec.Resolvers.Query().Issue(ctx, fc.Args["id"].(string))
 		},
 		nil,
-		ec.marshalOIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue,
+		ec.marshalOIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue,
 		true,
 		false,
 	)
@@ -2003,10 +1965,10 @@ func (ec *executionContext) _Query_issues(ctx context.Context, field graphql.Col
 		ec.fieldContext_Query_issues,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Issues(ctx, fc.Args["filter"].(*model.IssueFilter))
+			return ec.Resolvers.Query().Issues(ctx, fc.Args["filter"].(*model.IssueFilter))
 		},
 		nil,
-		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssueᚄ,
+		ec.marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssueᚄ,
 		true,
 		true,
 	)
@@ -2088,7 +2050,7 @@ func (ec *executionContext) _Query___type(ctx context.Context, field graphql.Col
 		ec.fieldContext_Query___type,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.introspectType(fc.Args["name"].(string))
+			return ec.IntrospectType(fc.Args["name"].(string))
 		},
 		nil,
 		ec.marshalO__Type2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType,
@@ -2152,7 +2114,7 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 		field,
 		ec.fieldContext_Query___schema,
 		func(ctx context.Context) (any, error) {
-			return ec.introspectSchema()
+			return ec.IntrospectSchema()
 		},
 		nil,
 		ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema,
@@ -3699,7 +3661,7 @@ func (ec *executionContext) unmarshalInputBodyModification(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"replace", "append"}
+	fieldsInOrder := [...]string{"replace", "check", "uncheck", "append"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -3708,11 +3670,25 @@ func (ec *executionContext) unmarshalInputBodyModification(ctx context.Context, 
 		switch k {
 		case "replace":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("replace"))
-			data, err := ec.unmarshalOReplaceOperation2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐReplaceOperationᚄ(ctx, v)
+			data, err := ec.unmarshalOReplaceOperation2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐReplaceOperationᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Replace = data
+		case "check":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("check"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Check = data
+		case "uncheck":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uncheck"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Uncheck = data
 		case "append":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("append"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -3722,7 +3698,6 @@ func (ec *executionContext) unmarshalInputBodyModification(ctx context.Context, 
 			it.Append = data
 		}
 	}
-
 	return it, nil
 }
 
@@ -3812,7 +3787,6 @@ func (ec *executionContext) unmarshalInputCreateIssueInput(ctx context.Context, 
 			it.BlockedBy = data
 		}
 	}
-
 	return it, nil
 }
 
@@ -3993,7 +3967,6 @@ func (ec *executionContext) unmarshalInputIssueFilter(ctx context.Context, obj a
 			it.ChangedSince = data
 		}
 	}
-
 	return it, nil
 }
 
@@ -4027,7 +4000,6 @@ func (ec *executionContext) unmarshalInputReplaceOperation(ctx context.Context, 
 			it.New = data
 		}
 	}
-
 	return it, nil
 }
 
@@ -4103,7 +4075,7 @@ func (ec *executionContext) unmarshalInputUpdateIssueInput(ctx context.Context, 
 			it.Body = data
 		case "bodyMod":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bodyMod"))
-			data, err := ec.unmarshalOBodyModification2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐBodyModification(ctx, v)
+			data, err := ec.unmarshalOBodyModification2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐBodyModification(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4159,7 +4131,6 @@ func (ec *executionContext) unmarshalInputUpdateIssueInput(ctx context.Context, 
 			it.IfMatch = data
 		}
 	}
-
 	return it, nil
 }
 
@@ -4563,10 +4534,10 @@ func (ec *executionContext) _Issue(ctx context.Context, sel ast.SelectionSet, ob
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4640,10 +4611,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4731,10 +4702,10 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4775,10 +4746,10 @@ func (ec *executionContext) _SyncEntry(ctx context.Context, sel ast.SelectionSet
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4831,10 +4802,10 @@ func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionS
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4879,10 +4850,10 @@ func (ec *executionContext) ___EnumValue(ctx context.Context, sel ast.SelectionS
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4937,10 +4908,10 @@ func (ec *executionContext) ___Field(ctx context.Context, sel ast.SelectionSet, 
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4992,10 +4963,10 @@ func (ec *executionContext) ___InputValue(ctx context.Context, sel ast.Selection
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5047,10 +5018,10 @@ func (ec *executionContext) ___Schema(ctx context.Context, sel ast.SelectionSet,
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5106,10 +5077,10 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5140,7 +5111,7 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalNCreateIssueInput2githubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐCreateIssueInput(ctx context.Context, v any) (model.CreateIssueInput, error) {
+func (ec *executionContext) unmarshalNCreateIssueInput2githubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐCreateIssueInput(ctx context.Context, v any) (model.CreateIssueInput, error) {
 	res, err := ec.unmarshalInputCreateIssueInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -5161,44 +5132,16 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) marshalNIssue2githubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue(ctx context.Context, sel ast.SelectionSet, v issue.Issue) graphql.Marshaler {
+func (ec *executionContext) marshalNIssue2githubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue(ctx context.Context, sel ast.SelectionSet, v issue.Issue) graphql.Marshaler {
 	return ec._Issue(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssueᚄ(ctx context.Context, sel ast.SelectionSet, v []*issue.Issue) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+func (ec *executionContext) marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssueᚄ(ctx context.Context, sel ast.SelectionSet, v []*issue.Issue) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5209,7 +5152,7 @@ func (ec *executionContext) marshalNIssue2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋint
 	return ret
 }
 
-func (ec *executionContext) marshalNIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue(ctx context.Context, sel ast.SelectionSet, v *issue.Issue) graphql.Marshaler {
+func (ec *executionContext) marshalNIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue(ctx context.Context, sel ast.SelectionSet, v *issue.Issue) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -5241,7 +5184,7 @@ func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) unmarshalNReplaceOperation2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐReplaceOperation(ctx context.Context, v any) (*model.ReplaceOperation, error) {
+func (ec *executionContext) unmarshalNReplaceOperation2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐReplaceOperation(ctx context.Context, v any) (*model.ReplaceOperation, error) {
 	res, err := ec.unmarshalInputReplaceOperation(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -5292,40 +5235,12 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
-func (ec *executionContext) marshalNSyncEntry2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐSyncEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SyncEntry) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNSyncEntry2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐSyncEntry(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+func (ec *executionContext) marshalNSyncEntry2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐSyncEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SyncEntry) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSyncEntry2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐSyncEntry(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5336,7 +5251,7 @@ func (ec *executionContext) marshalNSyncEntry2ᚕᚖgithubᚗcomᚋtobaᚋtodo�
 	return ret
 }
 
-func (ec *executionContext) marshalNSyncEntry2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐSyncEntry(ctx context.Context, sel ast.SelectionSet, v *model.SyncEntry) graphql.Marshaler {
+func (ec *executionContext) marshalNSyncEntry2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐSyncEntry(ctx context.Context, sel ast.SelectionSet, v *model.SyncEntry) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -5368,7 +5283,7 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 	return res
 }
 
-func (ec *executionContext) unmarshalNUpdateIssueInput2githubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐUpdateIssueInput(ctx context.Context, v any) (model.UpdateIssueInput, error) {
+func (ec *executionContext) unmarshalNUpdateIssueInput2githubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐUpdateIssueInput(ctx context.Context, v any) (model.UpdateIssueInput, error) {
 	res, err := ec.unmarshalInputUpdateIssueInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -5378,39 +5293,11 @@ func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlge
 }
 
 func (ec *executionContext) marshalN__Directive2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirectiveᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.Directive) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5453,39 +5340,11 @@ func (ec *executionContext) unmarshalN__DirectiveLocation2ᚕstringᚄ(ctx conte
 }
 
 func (ec *executionContext) marshalN__DirectiveLocation2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__DirectiveLocation2string(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__DirectiveLocation2string(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5509,39 +5368,11 @@ func (ec *executionContext) marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlg
 }
 
 func (ec *executionContext) marshalN__InputValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.InputValue) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5557,39 +5388,11 @@ func (ec *executionContext) marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋg
 }
 
 func (ec *executionContext) marshalN__Type2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.Type) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5626,7 +5429,7 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) unmarshalOBodyModification2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐBodyModification(ctx context.Context, v any) (*model.BodyModification, error) {
+func (ec *executionContext) unmarshalOBodyModification2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐBodyModification(ctx context.Context, v any) (*model.BodyModification, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -5664,14 +5467,14 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) marshalOIssue2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋissueᚐIssue(ctx context.Context, sel ast.SelectionSet, v *issue.Issue) graphql.Marshaler {
+func (ec *executionContext) marshalOIssue2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋissueᚐIssue(ctx context.Context, sel ast.SelectionSet, v *issue.Issue) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Issue(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐIssueFilter(ctx context.Context, v any) (*model.IssueFilter, error) {
+func (ec *executionContext) unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐIssueFilter(ctx context.Context, v any) (*model.IssueFilter, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -5679,7 +5482,7 @@ func (ec *executionContext) unmarshalOIssueFilter2ᚖgithubᚗcomᚋtobaᚋtodo�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOReplaceOperation2ᚕᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐReplaceOperationᚄ(ctx context.Context, v any) ([]*model.ReplaceOperation, error) {
+func (ec *executionContext) unmarshalOReplaceOperation2ᚕᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐReplaceOperationᚄ(ctx context.Context, v any) ([]*model.ReplaceOperation, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -5689,7 +5492,7 @@ func (ec *executionContext) unmarshalOReplaceOperation2ᚕᚖgithubᚗcomᚋtoba
 	res := make([]*model.ReplaceOperation, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNReplaceOperation2ᚖgithubᚗcomᚋtobaᚋtodoᚋinternalᚋgraphᚋmodelᚐReplaceOperation(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNReplaceOperation2ᚖgithubᚗcomᚋtobaᚋjigᚋinternalᚋtodoᚋgraphᚋmodelᚐReplaceOperation(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -5785,39 +5588,11 @@ func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgq
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__EnumValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValue(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__EnumValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValue(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5832,39 +5607,11 @@ func (ec *executionContext) marshalO__Field2ᚕgithubᚗcomᚋ99designsᚋgqlgen
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Field2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐField(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Field2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐField(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5879,39 +5626,11 @@ func (ec *executionContext) marshalO__InputValue2ᚕgithubᚗcomᚋ99designsᚋg
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5933,39 +5652,11 @@ func (ec *executionContext) marshalO__Type2ᚕgithubᚗcomᚋ99designsᚋgqlgen�
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {

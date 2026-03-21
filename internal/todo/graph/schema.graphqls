@@ -120,6 +120,18 @@ input BodyModification {
   """
   replace: [ReplaceOperation!]
   """
+  Check checkbox items by substring match (case-insensitive).
+  Each substring must match exactly one unchecked (- [ ]) item.
+  Applied after replacements, before append.
+  """
+  check: [String!]
+  """
+  Uncheck checkbox items by substring match (case-insensitive).
+  Each substring must match exactly one checked (- [x]) item.
+  Applied after check, before append.
+  """
+  uncheck: [String!]
+  """
   Text to append after all replacements.
   Appended with blank line separator.
   """

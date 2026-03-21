@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -125,6 +126,170 @@ func TestReplaceOnce(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("ReplaceOnce() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCheckItem(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		substr  string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "check by exact label",
+			text:   "- [ ] Task 1\n- [ ] Task 2",
+			substr: "Task 1",
+			want:   "- [x] Task 1\n- [ ] Task 2",
+		},
+		{
+			name:   "check by partial substring",
+			text:   "- [ ] Investigate fuzzy matching\n- [ ] Add tests",
+			substr: "fuzzy",
+			want:   "- [x] Investigate fuzzy matching\n- [ ] Add tests",
+		},
+		{
+			name:   "check item with backticks",
+			text:   "- [ ] Add `debug_detach` call\n- [ ] Fix other thing",
+			substr: "debug_detach",
+			want:   "- [x] Add `debug_detach` call\n- [ ] Fix other thing",
+		},
+		{
+			name:   "check last item",
+			text:   "- [x] Done\n- [ ] Still todo",
+			substr: "Still todo",
+			want:   "- [x] Done\n- [x] Still todo",
+		},
+		{
+			name:   "case insensitive match",
+			text:   "- [ ] Fix The Bug",
+			substr: "fix the bug",
+			want:   "- [x] Fix The Bug",
+		},
+		{
+			name:    "no matching checkbox",
+			text:    "- [ ] Task 1\n- [ ] Task 2",
+			substr:  "nonexistent",
+			wantErr: "no unchecked item matching",
+		},
+		{
+			name:    "multiple matches",
+			text:    "- [ ] Fix bug in parser\n- [ ] Fix bug in lexer",
+			substr:  "Fix bug",
+			wantErr: "2 unchecked items match",
+		},
+		{
+			name:    "already checked",
+			text:    "- [x] Task 1\n- [ ] Task 2",
+			substr:  "Task 1",
+			wantErr: "no unchecked item matching",
+		},
+		{
+			name:    "empty substring",
+			text:    "- [ ] Task 1",
+			substr:  "",
+			wantErr: "search text cannot be empty",
+		},
+		{
+			name:   "with surrounding non-checkbox content",
+			text:   "## Tasks\n\n- [ ] Do the thing\n\nSome notes",
+			substr: "Do the thing",
+			want:   "## Tasks\n\n- [x] Do the thing\n\nSome notes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := CheckItem(tt.text, tt.substr)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Errorf("CheckItem() error = nil, wantErr containing %q", tt.wantErr)
+					return
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("CheckItem() error = %q, want containing %q", err.Error(), tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("CheckItem() unexpected error = %v", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("CheckItem() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUncheckItem(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		substr  string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "uncheck by exact label",
+			text:   "- [x] Task 1\n- [x] Task 2",
+			substr: "Task 1",
+			want:   "- [ ] Task 1\n- [x] Task 2",
+		},
+		{
+			name:   "uncheck by partial substring",
+			text:   "- [x] Investigate fuzzy matching\n- [x] Add tests",
+			substr: "fuzzy",
+			want:   "- [ ] Investigate fuzzy matching\n- [x] Add tests",
+		},
+		{
+			name:    "not checked",
+			text:    "- [ ] Task 1\n- [x] Task 2",
+			substr:  "Task 1",
+			wantErr: "no checked item matching",
+		},
+		{
+			name:    "no match",
+			text:    "- [x] Task 1",
+			substr:  "nonexistent",
+			wantErr: "no checked item matching",
+		},
+		{
+			name:    "multiple matches",
+			text:    "- [x] Fix bug A\n- [x] Fix bug B",
+			substr:  "Fix bug",
+			wantErr: "2 checked items match",
+		},
+		{
+			name:    "empty substring",
+			text:    "- [x] Task 1",
+			substr:  "",
+			wantErr: "search text cannot be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := UncheckItem(tt.text, tt.substr)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Errorf("UncheckItem() error = nil, wantErr containing %q", tt.wantErr)
+					return
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("UncheckItem() error = %q, want containing %q", err.Error(), tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("UncheckItem() unexpected error = %v", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("UncheckItem() = %q, want %q", got, tt.want)
 			}
 		})
 	}

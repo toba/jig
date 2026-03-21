@@ -1749,6 +1749,132 @@ func TestUpdateIssueWithBodyMod(t *testing.T) {
 			t.Errorf("Issue body was modified despite error. Got %q, want %q", updated.Body, originalBody)
 		}
 	})
+
+	t.Run("bodyMod check item by substring", func(t *testing.T) {
+		b := &issue.Issue{
+			ID:     "bodymod-test-check-1",
+			Title:  "Test",
+			Status: "todo",
+			Body:   "- [ ] Add `debug_detach` call\n- [ ] Fix other thing",
+		}
+		c.Create(b)
+
+		input := model.UpdateIssueInput{
+			BodyMod: &model.BodyModification{
+				Check: []string{"debug_detach"},
+			},
+		}
+
+		got, err := resolver.Mutation().UpdateIssue(ctx, "bodymod-test-check-1", input)
+		if err != nil {
+			t.Fatalf("UpdateIssue() error = %v", err)
+		}
+		want := "- [x] Add `debug_detach` call\n- [ ] Fix other thing"
+		if got.Body != want {
+			t.Errorf("UpdateIssue().Body = %q, want %q", got.Body, want)
+		}
+	})
+
+	t.Run("bodyMod uncheck item by substring", func(t *testing.T) {
+		b := &issue.Issue{
+			ID:     "bodymod-test-uncheck-1",
+			Title:  "Test",
+			Status: "todo",
+			Body:   "- [x] Task A\n- [x] Task B",
+		}
+		c.Create(b)
+
+		input := model.UpdateIssueInput{
+			BodyMod: &model.BodyModification{
+				Uncheck: []string{"Task A"},
+			},
+		}
+
+		got, err := resolver.Mutation().UpdateIssue(ctx, "bodymod-test-uncheck-1", input)
+		if err != nil {
+			t.Fatalf("UpdateIssue() error = %v", err)
+		}
+		want := "- [ ] Task A\n- [x] Task B"
+		if got.Body != want {
+			t.Errorf("UpdateIssue().Body = %q, want %q", got.Body, want)
+		}
+	})
+
+	t.Run("bodyMod check multiple items", func(t *testing.T) {
+		b := &issue.Issue{
+			ID:     "bodymod-test-check-multi",
+			Title:  "Test",
+			Status: "todo",
+			Body:   "- [ ] First task\n- [ ] Second task\n- [ ] Third task",
+		}
+		c.Create(b)
+
+		input := model.UpdateIssueInput{
+			BodyMod: &model.BodyModification{
+				Check: []string{"First", "Third"},
+			},
+		}
+
+		got, err := resolver.Mutation().UpdateIssue(ctx, "bodymod-test-check-multi", input)
+		if err != nil {
+			t.Fatalf("UpdateIssue() error = %v", err)
+		}
+		want := "- [x] First task\n- [ ] Second task\n- [x] Third task"
+		if got.Body != want {
+			t.Errorf("UpdateIssue().Body = %q, want %q", got.Body, want)
+		}
+	})
+
+	t.Run("bodyMod check with replace and append", func(t *testing.T) {
+		b := &issue.Issue{
+			ID:     "bodymod-test-check-combo",
+			Title:  "Test",
+			Status: "todo",
+			Body:   "## Tasks\n- [ ] Do thing\n- [ ] Other thing",
+		}
+		c.Create(b)
+
+		appendText := "## Done"
+		input := model.UpdateIssueInput{
+			BodyMod: &model.BodyModification{
+				Check:  []string{"Do thing"},
+				Append: &appendText,
+			},
+		}
+
+		got, err := resolver.Mutation().UpdateIssue(ctx, "bodymod-test-check-combo", input)
+		if err != nil {
+			t.Fatalf("UpdateIssue() error = %v", err)
+		}
+		want := "## Tasks\n- [x] Do thing\n- [ ] Other thing\n\n## Done"
+		if got.Body != want {
+			t.Errorf("UpdateIssue().Body = %q, want %q", got.Body, want)
+		}
+	})
+
+	t.Run("bodyMod check ambiguous match fails", func(t *testing.T) {
+		b := &issue.Issue{
+			ID:     "bodymod-test-check-ambig",
+			Title:  "Test",
+			Status: "todo",
+			Body:   "- [ ] Fix bug in parser\n- [ ] Fix bug in lexer",
+		}
+		c.Create(b)
+
+		input := model.UpdateIssueInput{
+			BodyMod: &model.BodyModification{
+				Check: []string{"Fix bug"},
+			},
+		}
+
+		_, err := resolver.Mutation().UpdateIssue(ctx, "bodymod-test-check-ambig", input)
+		if err == nil {
+			t.Error("UpdateIssue() expected error for ambiguous match")
+		}
+		if !strings.Contains(err.Error(), "2 unchecked items match") {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 }
 
 func TestSyncResolver(t *testing.T) {

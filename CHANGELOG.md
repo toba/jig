@@ -8,6 +8,10 @@
 - Consolidate `scoop init` to push manifests to shared `owner/scoop-bucket` repo; manifests at repo root matching charmbracelet model
 - Replace `companions` config with `packages: [brew, scoop]` list and top-level `zed_extension` key
 
+### 🐛 Fixes
+
+- Add `--body-check`/`--body-uncheck` flags; toggle checkboxes by substring match instead of fragile exact-text replacement
+
 ## Week of Mar 8 – Mar 14, 2026
 
 ### ✨ Features

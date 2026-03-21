@@ -1072,6 +1072,7 @@ func TestUpdateCmdFlags(t *testing.T) {
 	flags := []string{
 		"status", "type", "priority", "title", "due",
 		"body", "body-file", "body-replace-old", "body-replace-new", "body-append",
+		"body-check", "body-uncheck",
 		"parent", "remove-parent",
 		"blocking", "remove-blocking",
 		"blocked-by", "remove-blocked-by",

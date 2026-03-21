@@ -25,6 +25,8 @@ var (
 	updateBodyReplaceOld  string
 	updateBodyReplaceNew  string
 	updateBodyAppend      string
+	updateBodyCheck       []string
+	updateBodyUncheck     []string
 	updateDue             string
 	updateParent          string
 	updateRemoveParent    bool
@@ -157,7 +159,7 @@ func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIss
 		}
 		input.Body = &body
 		changes = append(changes, "body")
-	} else if cmd.Flags().Changed("body-replace-old") || cmd.Flags().Changed("body-append") {
+	} else if cmd.Flags().Changed("body-replace-old") || cmd.Flags().Changed("body-append") || len(updateBodyCheck) > 0 || len(updateBodyUncheck) > 0 {
 		bodyMod := &model.BodyModification{}
 
 		if cmd.Flags().Changed("body-replace-old") {
@@ -167,6 +169,13 @@ func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIss
 					New: updateBodyReplaceNew,
 				},
 			}
+		}
+
+		if len(updateBodyCheck) > 0 {
+			bodyMod.Check = updateBodyCheck
+		}
+		if len(updateBodyUncheck) > 0 {
+			bodyMod.Uncheck = updateBodyUncheck
 		}
 
 		if cmd.Flags().Changed("body-append") {
@@ -256,6 +265,8 @@ func init() {
 	todoUpdateCmd.Flags().StringVar(&updateBodyReplaceOld, "body-replace-old", "", "Text to find and replace (requires --body-replace-new)")
 	todoUpdateCmd.Flags().StringVar(&updateBodyReplaceNew, "body-replace-new", "", "Replacement text (requires --body-replace-old)")
 	todoUpdateCmd.Flags().StringVar(&updateBodyAppend, "body-append", "", "Text to append to body (use '-' for stdin)")
+	todoUpdateCmd.Flags().StringArrayVar(&updateBodyCheck, "body-check", nil, "Check a checkbox item by substring match (can be repeated)")
+	todoUpdateCmd.Flags().StringArrayVar(&updateBodyUncheck, "body-uncheck", nil, "Uncheck a checkbox item by substring match (can be repeated)")
 	todoUpdateCmd.Flags().StringVar(&updateParent, "parent", "", "Set parent issue ID")
 	todoUpdateCmd.Flags().BoolVar(&updateRemoveParent, "remove-parent", false, "Remove parent")
 	todoUpdateCmd.Flags().StringArrayVar(&updateBlocking, "blocking", nil, "ID of issue this blocks (can be repeated)")
