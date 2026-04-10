@@ -370,6 +370,101 @@ func TestSaveUsesFlowStylePaths(t *testing.T) {
 	}
 }
 
+func TestUpdateSource(t *testing.T) {
+	path := writeTempConfig(t, testYAML)
+	doc, cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Update several fields.
+	src := FindSource(cfg, "owner/name")
+	if src == nil {
+		t.Fatal("source not found")
+	}
+
+	src.Branch = "develop"
+	src.Scope = "Updated scope"
+	src.Notes = "Updated notes"
+	src.Track = "releases"
+	src.Paths.High = []string{"**/*.rs"}
+	src.Paths.Medium = []string{"Cargo.toml"}
+
+	if err := Save(doc, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-load and verify all fields persisted.
+	_, cfg2, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := FindSource(cfg2, "owner/name")
+	if updated == nil {
+		t.Fatal("source not found after save")
+	}
+	if updated.Branch != "develop" {
+		t.Errorf("branch = %q, want develop", updated.Branch)
+	}
+	if updated.Scope != "Updated scope" {
+		t.Errorf("scope = %q, want Updated scope", updated.Scope)
+	}
+	if updated.Notes != "Updated notes" {
+		t.Errorf("notes = %q, want Updated notes", updated.Notes)
+	}
+	if updated.Track != "releases" {
+		t.Errorf("track = %q, want releases", updated.Track)
+	}
+	if len(updated.Paths.High) != 1 || updated.Paths.High[0] != "**/*.rs" {
+		t.Errorf("paths.high = %v, want [**/*.rs]", updated.Paths.High)
+	}
+	if len(updated.Paths.Medium) != 1 || updated.Paths.Medium[0] != "Cargo.toml" {
+		t.Errorf("paths.medium = %v, want [Cargo.toml]", updated.Paths.Medium)
+	}
+
+	// Verify other sections preserved.
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "other_tool") {
+		t.Error("other_tool section was lost")
+	}
+	if !strings.Contains(content, "another") {
+		t.Error("another section was lost")
+	}
+}
+
+func TestUpdateSourceRenameRepo(t *testing.T) {
+	path := writeTempConfig(t, testYAML)
+	doc, cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	src := FindSource(cfg, "owner/name")
+	if src == nil {
+		t.Fatal("source not found")
+	}
+	src.Repo = "newowner/newname"
+
+	if err := Save(doc, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	_, cfg2, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if FindSource(cfg2, "newowner/newname") == nil {
+		t.Error("renamed source not found")
+	}
+	if FindSource(cfg2, "owner/name") != nil {
+		t.Error("old source name should not exist")
+	}
+}
+
 func TestFindSource(t *testing.T) {
 	cfg := &Config{
 		{Repo: "owner/name", Branch: "main"},

@@ -13,7 +13,7 @@ var citeCmd = &cobra.Command{
 	Long:  "Commands for checking cited repos, classifying changes by relevance, and tracking what you've reviewed.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// init doesn't need config loaded.
-		if cmd.Name() == "init" || cmd.Name() == "add" || cmd.Name() == "doctor" {
+		if cmd.Name() == "init" || cmd.Name() == "add" || cmd.Name() == "doctor" || cmd.Name() == "update" {
 			return nil
 		}
 		path := configPath()

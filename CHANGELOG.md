@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Apr 5 – Apr 11, 2026
+
+### ✨ Features
+
+- Add `cite update` command for modifying existing citation fields
+
 ## Week of Mar 15 – Mar 21, 2026
 
 ### ✨ Features

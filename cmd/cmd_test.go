@@ -13,6 +13,7 @@ import (
 
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
+	"github.com/toba/jig/internal/config"
 	todoconfig "github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/graph/model"
@@ -435,7 +436,7 @@ func TestCiteSubcommands(t *testing.T) {
 		cmdNames[c.Name()] = true
 	}
 
-	for _, name := range []string{"init", "review", "add"} {
+	for _, name := range []string{"init", "review", "add", "update"} {
 		if !cmdNames[name] {
 			t.Errorf("citeCmd missing %q subcommand", name)
 		}
@@ -455,6 +456,82 @@ func TestReviewCmdAlias(t *testing.T) {
 	if !found {
 		t.Error("reviewCmd missing 'check' alias")
 	}
+}
+
+func TestCiteUpdateCmdFlags(t *testing.T) {
+	flags := []string{
+		"branch", "track", "scope", "notes", "repo",
+		"paths-high", "paths-medium", "paths-low",
+		"clear-track", "clear-scope", "clear-notes",
+		"clear-paths-high", "clear-paths-medium", "clear-paths-low",
+	}
+	for _, name := range flags {
+		f := citeUpdateCmd.Flags().Lookup(name)
+		if f == nil {
+			t.Errorf("citeUpdateCmd missing --%s flag", name)
+		}
+	}
+}
+
+func TestRunCiteUpdate(t *testing.T) {
+	t.Run("updates branch and scope", func(t *testing.T) {
+		path := writeTempConfig(t, `citations:
+  - repo: owner/name
+    branch: main
+    scope: "old scope"
+    paths:
+      high: ["**/*.go"]
+`)
+		old := cfgPath
+		defer func() { cfgPath = old }()
+		cfgPath = path
+
+		citeUpdateCmd.Flags().Set("branch", "develop")
+		citeUpdateCmd.Flags().Set("scope", "new scope")
+		defer func() {
+			citeUpdateCmd.Flags().Set("branch", "")
+			citeUpdateCmd.Flags().Set("scope", "")
+		}()
+
+		if err := runCiteUpdate(citeUpdateCmd, []string{"owner/name"}); err != nil {
+			t.Fatalf("runCiteUpdate() error: %v", err)
+		}
+
+		_, c, err := config.Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		src := config.FindSource(c, "owner/name")
+		if src == nil {
+			t.Fatal("source not found after update")
+		}
+		if src.Branch != "develop" {
+			t.Errorf("branch = %q, want develop", src.Branch)
+		}
+		if src.Scope != "new scope" {
+			t.Errorf("scope = %q, want 'new scope'", src.Scope)
+		}
+	})
+
+	t.Run("source not found", func(t *testing.T) {
+		path := writeTempConfig(t, `citations:
+  - repo: owner/name
+    branch: main
+    paths:
+      high: ["**/*.go"]
+`)
+		old := cfgPath
+		defer func() { cfgPath = old }()
+		cfgPath = path
+
+		err := runCiteUpdate(citeUpdateCmd, []string{"nonexistent"})
+		if err == nil {
+			t.Fatal("expected error for nonexistent source")
+		}
+		if !strings.Contains(err.Error(), "not found") {
+			t.Errorf("error = %q, want 'not found'", err.Error())
+		}
+	})
 }
 
 func TestBrewSubcommands(t *testing.T) {
