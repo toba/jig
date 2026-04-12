@@ -28,6 +28,12 @@ func (c *Core) findChildrenLocked(parentID string) []*issue.Issue {
 //  3. All children review or completed (≥1 review) → review
 //  4. Any child in-progress → in-progress (only if parent is ready or draft)
 func computeParentStatus(parent *issue.Issue, children []*issue.Issue) string {
+	// If the parent has its own incomplete checklist items, it is managing
+	// its own workflow — do not auto-update its status from children.
+	if issue.HasIncompleteChecklist(parent.Body) {
+		return ""
+	}
+
 	if len(children) == 0 {
 		return ""
 	}

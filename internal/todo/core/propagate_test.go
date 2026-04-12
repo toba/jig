@@ -408,6 +408,56 @@ func TestComputeParentStatusUnit(t *testing.T) {
 			},
 			want: config.StatusScrapped,
 		},
+		{
+			name:   "parent with incomplete checklist blocks completed",
+			parent: &issue.Issue{ID: "p", Status: config.StatusInProgress, Body: "- [ ] Deploy\n- [x] Code review"},
+			children: []*issue.Issue{
+				{Status: config.StatusCompleted},
+				{Status: config.StatusCompleted},
+			},
+			want: "",
+		},
+		{
+			name:   "parent with incomplete checklist blocks in-progress",
+			parent: &issue.Issue{ID: "p", Status: config.StatusReady, Body: "- [ ] Setup environment"},
+			children: []*issue.Issue{
+				{Status: config.StatusInProgress},
+			},
+			want: "",
+		},
+		{
+			name:   "parent with incomplete checklist blocks scrapped",
+			parent: &issue.Issue{ID: "p", Status: config.StatusInProgress, Body: "- [ ] Cleanup"},
+			children: []*issue.Issue{
+				{Status: config.StatusScrapped},
+			},
+			want: "",
+		},
+		{
+			name:   "parent with incomplete checklist blocks review",
+			parent: &issue.Issue{ID: "p", Status: config.StatusInProgress, Body: "- [ ] Final review"},
+			children: []*issue.Issue{
+				{Status: config.StatusReview},
+				{Status: config.StatusCompleted},
+			},
+			want: "",
+		},
+		{
+			name:   "parent with all-complete checklist allows propagation",
+			parent: &issue.Issue{ID: "p", Status: config.StatusInProgress, Body: "- [x] Done\n- [x] Also done"},
+			children: []*issue.Issue{
+				{Status: config.StatusCompleted},
+			},
+			want: config.StatusCompleted,
+		},
+		{
+			name:   "parent with body but no checklist allows propagation",
+			parent: &issue.Issue{ID: "p", Status: config.StatusInProgress, Body: "Some description\nwith details"},
+			children: []*issue.Issue{
+				{Status: config.StatusCompleted},
+			},
+			want: config.StatusCompleted,
+		},
 	}
 
 	for _, tt := range tests {
@@ -417,5 +467,58 @@ func TestComputeParentStatusUnit(t *testing.T) {
 				t.Errorf("computeParentStatus() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPropagateBlockedByIncompleteChecklist(t *testing.T) {
+	c, _ := setupTestCore(t)
+	parent := createTestIssue(t, c, "p1", "Parent", config.StatusInProgress)
+	parent.Body = "- [ ] Deploy to prod\n- [x] Write code"
+	if err := c.Update(parent, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	child := createTestIssue(t, c, "c1", "Child", config.StatusReady)
+	child.Parent = parent.ID
+	if err := c.Update(child, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	// Complete the child — parent should NOT change because it has incomplete checklist
+	child.Status = config.StatusCompleted
+	if err := c.Update(child, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	got, _ := c.Get("p1")
+	if got.Status != config.StatusInProgress {
+		t.Errorf("parent status = %q, want %q (should not propagate with incomplete checklist)",
+			got.Status, config.StatusInProgress)
+	}
+}
+
+func TestPropagateAllowedByCompleteChecklist(t *testing.T) {
+	c, _ := setupTestCore(t)
+	parent := createTestIssue(t, c, "p1", "Parent", config.StatusInProgress)
+	parent.Body = "- [x] All done here"
+	if err := c.Update(parent, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	child := createTestIssue(t, c, "c1", "Child", config.StatusReady)
+	child.Parent = parent.ID
+	if err := c.Update(child, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	child.Status = config.StatusCompleted
+	if err := c.Update(child, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	got, _ := c.Get("p1")
+	if got.Status != config.StatusCompleted {
+		t.Errorf("parent status = %q, want %q (should propagate with all-complete checklist)",
+			got.Status, config.StatusCompleted)
 	}
 }

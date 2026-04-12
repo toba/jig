@@ -78,6 +78,18 @@ func toggleCheckbox(text, substr string, uncheck bool) (string, error) {
 	return strings.Join(lines, "\n"), nil
 }
 
+// HasIncompleteChecklist returns true if text contains at least one
+// unchecked checkbox (- [ ]) line. Handles optional leading whitespace.
+func HasIncompleteChecklist(text string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		trimmed := strings.TrimLeft(line, " \t")
+		if strings.HasPrefix(trimmed, "- [ ] ") {
+			return true
+		}
+	}
+	return false
+}
+
 // AppendWithSeparator appends addition to text with a blank line separator.
 // If text is empty, returns addition without separator.
 // If addition is empty, returns text unchanged (no-op).

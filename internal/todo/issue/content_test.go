@@ -295,6 +295,35 @@ func TestUncheckItem(t *testing.T) {
 	}
 }
 
+func TestHasIncompleteChecklist(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{"empty body", "", false},
+		{"no checkboxes", "Some plain text\nMore text", false},
+		{"all checked", "- [x] Done\n- [x] Also done", false},
+		{"one unchecked", "- [ ] Todo", true},
+		{"mixed checked and unchecked", "- [x] Done\n- [ ] Todo", true},
+		{"indented unchecked", "  - [ ] Nested todo", true},
+		{"tab indented unchecked", "\t- [ ] Nested todo", true},
+		{"unchecked with surrounding content", "## Tasks\n\n- [ ] Do thing\n\nSome notes", true},
+		{"all checked with surrounding content", "## Tasks\n\n- [x] Done\n\nNotes", false},
+		{"no trailing space not a checkbox", "- []not a checkbox", false},
+		{"only bracket no space", "- [ ]", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := HasIncompleteChecklist(tt.text)
+			if got != tt.want {
+				t.Errorf("HasIncompleteChecklist() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAppendWithSeparator(t *testing.T) {
 	tests := []struct {
 		name     string

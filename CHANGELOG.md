@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Apr 12 – Apr 18, 2026
+
+### ✨ Features
+
+- Block auto-propagation when parent has incomplete checklist; parent issues with `- [ ]` items manage their own workflow
+
 ## Week of Apr 5 – Apr 11, 2026
 
 ### ✨ Features
