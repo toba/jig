@@ -34,6 +34,9 @@ var ccAddCmd = &cobra.Command{
 		if err := c.Save(); err != nil {
 			return err
 		}
+		if err := cc.SeedClaudeJSON(c, name); err != nil {
+			return err
+		}
 		rep, err := cc.Sync(c, name)
 		if err != nil {
 			return err

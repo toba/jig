@@ -306,6 +306,31 @@ func RemoveAliasDir(c *Config, name string) error {
 	return os.RemoveAll(a.Path)
 }
 
+// SeedClaudeJSON copies .claude.json from the shared source into the alias
+// dir if absent. Claude refuses to launch without this file, and it is in
+// the private list so it is not symlinked.
+func SeedClaudeJSON(c *Config, name string) error {
+	a, ok := c.Aliases[name]
+	if !ok {
+		return fmt.Errorf("unknown alias %q", name)
+	}
+	if a.IsSource {
+		return nil
+	}
+	dst := filepath.Join(a.Path, ".claude.json")
+	if _, err := os.Lstat(dst); err == nil {
+		return nil
+	}
+	src := filepath.Join(c.SharedSource, ".claude.json")
+	if _, err := os.Lstat(src); err != nil {
+		return nil //nolint:nilerr // source absent: nothing to seed, not an error
+	}
+	if err := os.MkdirAll(a.Path, 0o755); err != nil {
+		return err
+	}
+	return copyFile(src, dst)
+}
+
 // EnsureAliasDirs walks the configured alias map and ensures each non-source
 // alias's path directory exists.
 func EnsureAliasDirs(c *Config) error {

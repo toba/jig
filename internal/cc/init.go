@@ -208,6 +208,8 @@ func Init(opts InitOpts) (*InitResult, error) {
 				break
 			}
 		}
+		// Ensure .claude.json exists so claude can launch even before login.
+		_ = SeedClaudeJSON(cfg, name)
 		rep, err := Sync(cfg, name)
 		if err != nil {
 			return res, err

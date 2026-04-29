@@ -6,7 +6,7 @@ import (
 	"github.com/toba/jig/internal/nope"
 )
 
-var ccAuthLoginCmd = &cobra.Command{
+var ccLoginCmd = &cobra.Command{
 	Use:   "login <alias>",
 	Short: "Run `<cli> /login` for the given alias",
 	Args:  cobra.ExactArgs(1),
@@ -15,7 +15,14 @@ var ccAuthLoginCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		code, err := cc.Launch(c, args[0], []string{"/login"})
+		name, _, err := c.Resolve(args[0])
+		if err != nil {
+			return err
+		}
+		if err := cc.SeedClaudeJSON(c, name); err != nil {
+			return err
+		}
+		code, err := cc.Launch(c, name, []string{"/login"})
 		if err != nil {
 			return err
 		}
@@ -27,5 +34,5 @@ var ccAuthLoginCmd = &cobra.Command{
 }
 
 func init() {
-	ccAuthCmd.AddCommand(ccAuthLoginCmd)
+	ccCmd.AddCommand(ccLoginCmd)
 }
