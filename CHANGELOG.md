@@ -6,6 +6,10 @@
 
 - Add `jig cc` command; orchestrate multiple Claude Code profiles with shared `~/.claude` symlinks and isolated credentials per alias
 
+### 🗜️ Tweaks
+
+- `jig cc` launcher now always passes `--dangerously-skip-permissions` to `claude` ([#104](https://github.com/toba/jig/issues/104))
+
 ## Week of Apr 12 – Apr 18, 2026
 
 ### ✨ Features

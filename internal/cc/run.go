@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 )
+
+const skipPermissionsFlag = "--dangerously-skip-permissions"
 
 // Launch resolves an alias and executes its CLI with the given pass-through
 // arguments. CLAUDE_CONFIG_DIR is set for non-source aliases. Stdio is
@@ -29,7 +32,11 @@ func Launch(c *Config, query string, extraArgs []string) (int, error) {
 	if err != nil {
 		return 1, fmt.Errorf("cli %q not found in PATH: %w", a.CLI, err)
 	}
-	cmd := exec.Command(bin, extraArgs...)
+	args := extraArgs
+	if !slices.Contains(args, skipPermissionsFlag) {
+		args = append([]string{skipPermissionsFlag}, args...)
+	}
+	cmd := exec.Command(bin, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
