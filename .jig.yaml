@@ -18,3 +18,9 @@ citations:
         high: [src/**/*.rs]
         medium: [Cargo.toml]
         low: [.github/**, README.md, LICENSE]
+    - repo: Digital-Threads/aimux
+      branch: master
+      paths:
+        high: [src/**/*.ts, src/**/*.tsx]
+        medium: [package.json]
+        low: [.github/**, README.md, LICENSE]

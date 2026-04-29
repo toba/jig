@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Apr 26 – May 2, 2026
+
+### ✨ Features
+
+- Add `jig cc` command; orchestrate multiple Claude Code profiles with shared `~/.claude` symlinks and isolated credentials per alias
+
 ## Week of Apr 12 – Apr 18, 2026
 
 ### ✨ Features

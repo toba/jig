@@ -16,7 +16,7 @@ var (
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Run all doctor checks",
-	Long:  "Runs all doctor checks (nope, brew, scoop, zed, cite, sync), reporting results for each.",
+	Long:  "Runs all doctor checks (nope, brew, scoop, zed, cite, sync, cc), reporting results for each.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		type check struct {
 			name string
@@ -29,6 +29,7 @@ var doctorCmd = &cobra.Command{
 			{"zed", zedDoctorCmd},
 			{"cite", citeDoctorCmd},
 			{"sync", syncDoctorCmd},
+			{"cc", ccDoctorCmd},
 		}
 
 		var failed int
