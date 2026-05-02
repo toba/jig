@@ -14,12 +14,13 @@ var agentPromptTemplate string
 
 // promptData holds all data needed to render the prompt template.
 type promptData struct {
-	Types      []todoconfig.TypeConfig
-	Statuses   []todoconfig.StatusConfig
-	Priorities []todoconfig.PriorityConfig
-	Tags       []todoconfig.TagConfig
-	HasSync    bool
-	SyncNames  []string
+	Types         []todoconfig.TypeConfig
+	Statuses      []todoconfig.StatusConfig
+	Priorities    []todoconfig.PriorityConfig
+	Tags          []todoconfig.TagConfig
+	HasSync       bool
+	SyncNames     []string
+	HasGitHubSync bool
 }
 
 var primeCmd = &cobra.Command{
@@ -63,6 +64,9 @@ var primeCmd = &cobra.Command{
 			data.HasSync = true
 			for name := range primeCfg.Sync {
 				data.SyncNames = append(data.SyncNames, name)
+				if name == "github" {
+					data.HasGitHubSync = true
+				}
 			}
 		}
 

@@ -16,9 +16,10 @@ BEFORE starting any task:
 - Include issue file(s) in commits
 
 AFTER finishing:
-- COMPLETING: add `## Summary of Changes` section
+- COMPLETING: add `## Summary of Changes` section{{if .HasGitHubSync}}
+- This project syncs to GitHub: always set finished work to `completed` (not `review`). GitHub issues only track open/closed, so finished work should close the upstream issue. Use `jig todo update <id> -s completed`.{{else}}
 - REVIEW NEEDED: if the user must take action (deploy, verify on screen, approve, etc.), set status to `review`
-  instead of `completed`: `jig todo update <id> -s review`
+  instead of `completed`: `jig todo update <id> -s review`{{end}}
 - SCRAPPING: add `## Reasons for Scrapping` section
 - Offer to create follow-up issues for deferred work
 
