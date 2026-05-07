@@ -1665,7 +1665,7 @@ func TestFanOutLogsDroppedEvents(t *testing.T) {
 
 	// Fill the subscriber channel (buffered at 16) then overflow
 	dummyEvent := []IssueEvent{{Type: EventUpdated, IssueID: "test"}}
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		core.fanOut(dummyEvent)
 	}
 

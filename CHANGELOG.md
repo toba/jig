@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of May 3 – May 9, 2026
+
+### ✨ Features
+
+- `cite review --json` front-loads commit message bodies and release notes; add `--with-diffs` flag for inline unified diffs (capped at 500 lines / 50 KB per file)
+
 ## Week of Apr 26 – May 2, 2026
 
 ### ✨ Features

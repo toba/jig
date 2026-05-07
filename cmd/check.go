@@ -15,6 +15,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var reviewWithDiffs bool
+
 var reviewCmd = &cobra.Command{
 	Use:     "review [source]",
 	Aliases: []string{"check"},
@@ -25,7 +27,42 @@ var reviewCmd = &cobra.Command{
 }
 
 func init() {
+	reviewCmd.Flags().BoolVar(&reviewWithDiffs, "with-diffs", false,
+		"include unified diff per changed file in JSON output (capped per file)")
 	citeCmd.AddCommand(reviewCmd)
+}
+
+// Per-file diff caps for --with-diffs. Files exceeding either bound are
+// truncated; files larger than diffSizeCap (50 KB) are skipped entirely.
+const (
+	diffLineCap = 500
+	diffSizeCap = 50 * 1024
+)
+
+// capDiff applies the per-file diff caps. Returns the (possibly trimmed)
+// diff and flags indicating truncated/skipped state.
+func capDiff(patch string) (out string, truncated, skipped bool) {
+	if patch == "" {
+		return "", false, false
+	}
+	if len(patch) > diffSizeCap {
+		return "", false, true
+	}
+	lineCount := strings.Count(patch, "\n") + 1
+	if lineCount > diffLineCap {
+		// Keep the first diffLineCap lines.
+		idx := 0
+		for n := 0; n < diffLineCap && idx < len(patch); n++ {
+			next := strings.IndexByte(patch[idx:], '\n')
+			if next < 0 {
+				idx = len(patch)
+				break
+			}
+			idx += next + 1
+		}
+		return patch[:idx], true, false
+	}
+	return patch, false, false
 }
 
 type checkResult struct {
@@ -175,36 +212,12 @@ func checkSource(client github.Client, src config.Source) (*display.SourceResult
 	fileResults := classify.Classify(filePaths, src.Paths)
 
 	// Build file results for JSON output.
+	patches := patchesByFilename(aggregateFiles)
 	for _, fr := range fileResults {
-		result.Files = append(result.Files, display.FileResult{
-			Path:  fr.Path,
-			Level: fr.Level,
-		})
+		result.Files = append(result.Files, buildFileResult(fr.Path, fr.Level, patches))
 	}
 
-	// Classify each commit by its highest-level file.
-	for _, c := range commits {
-		var level classify.Level
-		if len(c.Files) > 0 {
-			cFilePaths := make([]string, 0, len(c.Files))
-			for _, f := range c.Files {
-				cFilePaths = append(cFilePaths, f.Filename)
-			}
-			cResults := classify.Classify(cFilePaths, src.Paths)
-			level = classify.MaxLevel(cResults)
-		} else {
-			// No per-commit files: derive from aggregate classification.
-			level = classify.MaxLevel(fileResults)
-		}
-
-		result.Commits = append(result.Commits, display.CommitResult{
-			SHA:     c.SHA,
-			Message: c.Message,
-			Author:  c.Author,
-			Date:    c.Date.Format(issue.DueDateFormat),
-			Level:   level,
-		})
-	}
+	result.Commits = buildCommitResults(commits, fileResults, src.Paths)
 
 	return result, headSHA, nil
 }
@@ -224,6 +237,7 @@ func checkSourceReleases(client github.Client, src config.Source) (*display.Sour
 	releaseInfo := &display.ReleaseInfo{
 		TagName:     latest.TagName,
 		Name:        latest.Name,
+		Body:        latest.Body,
 		PublishedAt: latest.PublishedAt,
 		URL:         latest.HTMLURL,
 	}
@@ -272,31 +286,12 @@ func checkSourceReleases(client github.Client, src config.Source) (*display.Sour
 		filePaths = append(filePaths, f.Filename)
 	}
 	fileResults := classify.Classify(filePaths, src.Paths)
+	patches := patchesByFilename(cmp.Files)
 	for _, fr := range fileResults {
-		result.Files = append(result.Files, display.FileResult{Path: fr.Path, Level: fr.Level})
+		result.Files = append(result.Files, buildFileResult(fr.Path, fr.Level, patches))
 	}
 
-	// Classify commits.
-	for _, c := range cmp.Commits {
-		var level classify.Level
-		if len(c.Files) > 0 {
-			cFilePaths := make([]string, 0, len(c.Files))
-			for _, f := range c.Files {
-				cFilePaths = append(cFilePaths, f.Filename)
-			}
-			cResults := classify.Classify(cFilePaths, src.Paths)
-			level = classify.MaxLevel(cResults)
-		} else {
-			level = classify.MaxLevel(fileResults)
-		}
-		result.Commits = append(result.Commits, display.CommitResult{
-			SHA:     c.SHA,
-			Message: c.Message,
-			Author:  c.Author,
-			Date:    c.Date.Format(issue.DueDateFormat),
-			Level:   level,
-		})
-	}
+	result.Commits = buildCommitResults(cmp.Commits, fileResults, src.Paths)
 
 	headSHA := ""
 	if len(cmp.Commits) > 0 {
@@ -310,6 +305,66 @@ func checkSourceReleases(client github.Client, src config.Source) (*display.Sour
 
 	result.Release = releaseInfo
 	return result, headSHA, latest.TagName, nil
+}
+
+// buildCommitResults converts github commits into display results, classifying
+// each by its highest-level file. Commits without per-file data fall back to
+// the aggregate-file classification (fileResults).
+func buildCommitResults(commits []github.Commit, fileResults []classify.Result, paths config.PathDefs) []display.CommitResult {
+	out := make([]display.CommitResult, 0, len(commits))
+	for _, c := range commits {
+		var level classify.Level
+		if len(c.Files) > 0 {
+			cFilePaths := make([]string, 0, len(c.Files))
+			for _, f := range c.Files {
+				cFilePaths = append(cFilePaths, f.Filename)
+			}
+			level = classify.MaxLevel(classify.Classify(cFilePaths, paths))
+		} else {
+			level = classify.MaxLevel(fileResults)
+		}
+		out = append(out, display.CommitResult{
+			SHA:     c.SHA,
+			Message: c.Message,
+			Body:    c.Body,
+			Author:  c.Author,
+			Date:    c.Date.Format(issue.DueDateFormat),
+			Level:   level,
+		})
+	}
+	return out
+}
+
+// patchesByFilename indexes file patches (most recent wins on duplicates).
+func patchesByFilename(files []github.File) map[string]string {
+	if !reviewWithDiffs {
+		return nil
+	}
+	m := make(map[string]string, len(files))
+	for _, f := range files {
+		if f.Patch != "" {
+			m[f.Filename] = f.Patch
+		}
+	}
+	return m
+}
+
+// buildFileResult constructs a FileResult, attaching a capped diff when
+// --with-diffs is set and a patch is available.
+func buildFileResult(path string, level classify.Level, patches map[string]string) display.FileResult {
+	fr := display.FileResult{Path: path, Level: level}
+	if patches == nil {
+		return fr
+	}
+	patch, ok := patches[path]
+	if !ok {
+		return fr
+	}
+	diff, truncated, skipped := capDiff(patch)
+	fr.Diff = diff
+	fr.DiffTruncated = truncated
+	fr.DiffSkipped = skipped
+	return fr
 }
 
 // fetchCommitDetails fetches file details for up to limit commits in parallel,

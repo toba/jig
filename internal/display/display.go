@@ -38,6 +38,7 @@ type SourceResult struct {
 type ReleaseInfo struct {
 	TagName     string `json:"tag_name"`
 	Name        string `json:"name,omitempty"`
+	Body        string `json:"body,omitempty"`
 	PublishedAt string `json:"published_at,omitempty"`
 	URL         string `json:"url,omitempty"`
 	PrevTag     string `json:"prev_tag,omitempty"`
@@ -47,15 +48,19 @@ type ReleaseInfo struct {
 type CommitResult struct {
 	SHA     string         `json:"sha"`
 	Message string         `json:"message"`
+	Body    string         `json:"body,omitempty"`
 	Author  string         `json:"author"`
 	Date    string         `json:"date"`
 	Level   classify.Level `json:"level"`
 }
 
-// FileResult holds a file with its classification.
+// FileResult holds a file with its classification and (optionally) its diff.
 type FileResult struct {
-	Path  string         `json:"path"`
-	Level classify.Level `json:"level"`
+	Path          string         `json:"path"`
+	Level         classify.Level `json:"level"`
+	Diff          string         `json:"diff,omitempty"`
+	DiffTruncated bool           `json:"diff_truncated,omitempty"`
+	DiffSkipped   bool           `json:"diff_skipped,omitempty"`
 }
 
 // RenderText writes styled terminal output for check results.

@@ -32,6 +32,9 @@ func TestCommitNormalize(t *testing.T) {
 	if c.Message != "Fix bug" {
 		t.Errorf("message = %q, want %q", c.Message, "Fix bug")
 	}
+	if c.Body != "Detailed description" {
+		t.Errorf("body = %q, want %q", c.Body, "Detailed description")
+	}
 	if c.Author != "testuser" {
 		t.Errorf("author = %q, want %q", c.Author, "testuser")
 	}
@@ -82,6 +85,26 @@ func TestCommitNormalizeEmptyLogin(t *testing.T) {
 	c.Normalize()
 	if c.Author != "Name" {
 		t.Errorf("author = %q, want %q", c.Author, "Name")
+	}
+}
+
+func TestSplitMessage(t *testing.T) {
+	tests := []struct {
+		in, subject, body string
+	}{
+		{"Fix bug\n\nDetailed description", "Fix bug", "Detailed description"},
+		{"Fix bug\nNo blank separator", "Fix bug", "No blank separator"},
+		{"Single line", "Single line", ""},
+		{"", "", ""},
+		{"Subject\n\nLine 1\n\nLine 2\n", "Subject", "Line 1\n\nLine 2"},
+		{"Subject\n\n   trimmed   \n", "Subject", "trimmed"},
+	}
+	for _, tt := range tests {
+		s, b := splitMessage(tt.in)
+		if s != tt.subject || b != tt.body {
+			t.Errorf("splitMessage(%q) = (%q, %q), want (%q, %q)",
+				tt.in, s, b, tt.subject, tt.body)
+		}
 	}
 }
 

@@ -81,7 +81,7 @@ func toggleCheckbox(text, substr string, uncheck bool) (string, error) {
 // HasIncompleteChecklist returns true if text contains at least one
 // unchecked checkbox (- [ ]) line. Handles optional leading whitespace.
 func HasIncompleteChecklist(text string) bool {
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		trimmed := strings.TrimLeft(line, " \t")
 		if strings.HasPrefix(trimmed, "- [ ] ") {
 			return true

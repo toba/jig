@@ -1,11 +1,15 @@
 package github
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Commit represents a commit from the GitHub API.
 type Commit struct {
 	SHA       string     `json:"sha"`
-	Message   string     `json:"-"` // Extracted from commit.message
+	Message   string     `json:"-"` // Subject (first line) of commit.message
+	Body      string     `json:"-"` // Body (lines after subject) of commit.message
 	Author    string     `json:"-"` // Extracted from author.login or commit.author.name
 	Date      time.Time  `json:"-"` // Extracted from commit.author.date
 	RawCommit rawCommit  `json:"commit"`
@@ -29,7 +33,7 @@ type rawAuthor struct {
 
 // Normalize populates the top-level fields from raw API data.
 func (c *Commit) Normalize() {
-	c.Message = firstLine(c.RawCommit.Message)
+	c.Message, c.Body = splitMessage(c.RawCommit.Message)
 	c.Date = c.RawCommit.RawAuthor.Date
 	if c.RawAuthor != nil && c.RawAuthor.Login != "" {
 		c.Author = c.RawAuthor.Login
@@ -51,6 +55,7 @@ type CompareResponse struct {
 type File struct {
 	Filename string `json:"filename"`
 	Status   string `json:"status"`
+	Patch    string `json:"patch,omitempty"`
 }
 
 // RepoInfo represents repository metadata from the GitHub API.
@@ -77,6 +82,7 @@ type TreeEntry struct {
 type Release struct {
 	TagName     string `json:"tag_name"`
 	Name        string `json:"name"`
+	Body        string `json:"body"`
 	Draft       bool   `json:"draft"`
 	Prerelease  bool   `json:"prerelease"`
 	PublishedAt string `json:"published_at"`
@@ -99,4 +105,16 @@ func firstLine(s string) string {
 		}
 	}
 	return s
+}
+
+// splitMessage splits a commit message into subject (first line) and body
+// (remaining lines, with leading blank-line separator stripped and overall
+// trailing whitespace trimmed). If the message is a single line, body is "".
+func splitMessage(s string) (subject, body string) {
+	subject = firstLine(s)
+	if len(s) <= len(subject) {
+		return subject, ""
+	}
+	rest := s[len(subject)+1:] // skip the newline
+	return subject, strings.TrimSpace(rest)
 }
