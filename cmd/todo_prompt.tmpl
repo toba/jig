@@ -176,7 +176,7 @@ jig changelog --commits 50 --json       # time range from last 50 commits
 ## Other jig Tools
 
 `jig cite add <url> -w` — add a citation source (inspects repo, suggests path globs, writes to .jig.yaml)
-`jig cite review [source]` — check cited repos for upstream changes
+`jig cite review [source]` — check cited repos for upstream changes; `--json` returns `commits[]` (with `sha`, `message`, `body`, `author`, `date`, `level`), `files[]` (with `path`, `level`), and `release` (with `body` for release-tracked sources). Add `--with-diffs` to inline unified per-file diffs as `files[].diff` (capped ~500 lines / 50 KB; sets `diff_truncated` or `diff_skipped` when exceeded).
 `jig commit gather` — stage all changes and output commit context for review
 `jig commit apply -m "message" [--push]` — commit staged changes (optionally push)
 `jig todo tags import` — import GitHub labels as project tags (requires GitHub sync config)
