@@ -67,7 +67,16 @@ func Run(jigPath string) error {
 		return fmt.Errorf("todo config migration: %w", err)
 	}
 
-	if len(hits) == 0 && !upMigrated && !commitMigrated && !todoMigrated {
+	// Populate todo.extra_statuses from the configured sync integration.
+	extraMigrated, err := migrateExtraStatuses(jigPath)
+	if err != nil {
+		return fmt.Errorf("extra_statuses migration: %w", err)
+	}
+	if extraMigrated {
+		fmt.Fprintf(os.Stderr, "update: populated todo.extra_statuses in %s\n", jigPath)
+	}
+
+	if len(hits) == 0 && !upMigrated && !commitMigrated && !todoMigrated && !extraMigrated {
 		fmt.Fprintln(os.Stderr, "update: no legacy config files found")
 		return nil
 	}

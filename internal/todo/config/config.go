@@ -37,9 +37,15 @@ const (
 	StatusReview     = "review"
 	StatusReady      = "ready"
 	StatusDraft      = "draft"
+	StatusDeferred   = "deferred"
 	StatusCompleted  = "completed"
 	StatusScrapped   = "scrapped"
 )
+
+// MandatoryStatuses are statuses that cannot be disabled via the
+// `todo.statuses` map in .jig.yaml. Every project must support these
+// because they anchor the open/closed lifecycle.
+var MandatoryStatuses = []string{StatusReady, StatusCompleted}
 
 // Type name constants.
 const (
@@ -72,6 +78,7 @@ var DefaultStatuses = []StatusConfig{
 	{Name: StatusReview, Color: "cyan", Description: "Code complete, awaiting evaluation"},
 	{Name: StatusReady, Color: "green", Description: "Ready to be worked on"},
 	{Name: StatusDraft, Color: "blue", Description: "Needs refinement before it can be worked on"},
+	{Name: StatusDeferred, Color: "orange", Description: "Parked pending further consideration; concerns must be resolved before work can resume"},
 	{Name: StatusCompleted, Color: "gray", Archive: true, Description: "Finished successfully"},
 	{Name: StatusScrapped, Color: "gray", Archive: true, Description: "Will not be done"},
 }
@@ -127,14 +134,20 @@ type TagConfig struct {
 // Note: Statuses are no longer stored in config - they are hardcoded like types.
 type Config struct {
 	// Path is the path to the issues directory (relative to config file location)
-	Path           string                    `yaml:"path,omitempty"`
-	DefaultStatus  string                    `yaml:"default_status,omitempty"`
-	DefaultType    string                    `yaml:"default_type,omitempty"`
-	DefaultSort    string                    `yaml:"default_sort,omitempty"`
-	Editor         string                    `yaml:"editor,omitempty"`
-	RequireIfMatch bool                      `yaml:"require_if_match,omitempty"`
-	Tags           []TagConfig               `yaml:"tags,omitempty"`
-	Sync           map[string]map[string]any `yaml:"sync,omitempty"`
+	Path           string      `yaml:"path,omitempty"`
+	DefaultStatus  string      `yaml:"default_status,omitempty"`
+	DefaultType    string      `yaml:"default_type,omitempty"`
+	DefaultSort    string      `yaml:"default_sort,omitempty"`
+	Editor         string      `yaml:"editor,omitempty"`
+	RequireIfMatch bool        `yaml:"require_if_match,omitempty"`
+	Tags           []TagConfig `yaml:"tags,omitempty"`
+	// ExtraStatuses additively opts non-mandatory statuses into this project.
+	// The map is purely additive: an entry of `true` enables that status; an
+	// entry of `false` or a missing entry leaves the status disabled.
+	// Statuses listed in MandatoryStatuses are always enabled regardless of
+	// what this map says.
+	ExtraStatuses map[string]bool           `yaml:"extra_statuses,omitempty"`
+	Sync          map[string]map[string]any `yaml:"sync,omitempty"`
 
 	// configDir is the directory containing the config file (not serialized)
 	// Used to resolve relative paths
@@ -479,8 +492,46 @@ func typeName(t *TypeConfig) string         { return t.Name }
 func priorityName(p *PriorityConfig) string { return p.Name }
 
 // IsValidStatus returns true if the status is a valid hardcoded status.
+// Note: this does not check whether the status is enabled for the current
+// project — use IsStatusEnabled for that.
 func (c *Config) IsValidStatus(status string) bool {
 	return configIsValid(DefaultStatuses, status, statusName)
+}
+
+// IsMandatoryStatus reports whether a status cannot be disabled via config.
+func IsMandatoryStatus(status string) bool {
+	return slices.Contains(MandatoryStatuses, status)
+}
+
+// IsStatusEnabled reports whether a status is valid AND enabled for this project.
+// Mandatory statuses are always enabled. All other statuses are disabled
+// unless explicitly opted into via `todo.extra_statuses` (with value `true`).
+// The map is purely additive — `false` and missing entries both mean disabled.
+func (c *Config) IsStatusEnabled(status string) bool {
+	if !c.IsValidStatus(status) {
+		return false
+	}
+	if IsMandatoryStatus(status) {
+		return true
+	}
+	return c.ExtraStatuses[status]
+}
+
+// EnabledStatusNames returns the names of statuses enabled for this project,
+// preserving the order of DefaultStatuses.
+func (c *Config) EnabledStatusNames() []string {
+	names := make([]string, 0, len(DefaultStatuses))
+	for _, s := range DefaultStatuses {
+		if c.IsStatusEnabled(s.Name) {
+			names = append(names, s.Name)
+		}
+	}
+	return names
+}
+
+// EnabledStatusList returns a comma-separated list of enabled status names.
+func (c *Config) EnabledStatusList() string {
+	return strings.Join(c.EnabledStatusNames(), ", ")
 }
 
 // StatusList returns a comma-separated list of valid statuses.

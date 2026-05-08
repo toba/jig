@@ -20,8 +20,8 @@ func TestDefault(t *testing.T) {
 	if len(DefaultTypes) != 5 {
 		t.Errorf("len(DefaultTypes) = %d, want 5", len(DefaultTypes))
 	}
-	if len(DefaultStatuses) != 6 {
-		t.Errorf("len(DefaultStatuses) = %d, want 6", len(DefaultStatuses))
+	if len(DefaultStatuses) != 7 {
+		t.Errorf("len(DefaultStatuses) = %d, want 7", len(DefaultStatuses))
 	}
 }
 
@@ -38,6 +38,7 @@ func TestIsValidStatus(t *testing.T) {
 		{"review", true},
 		{"completed", true},
 		{"scrapped", true},
+		{"deferred", true},
 		{"invalid", false},
 		{"", false},
 		{"READY", false}, // case sensitive
@@ -62,7 +63,7 @@ func TestIsValidStatus(t *testing.T) {
 func TestStatusList(t *testing.T) {
 	cfg := Default()
 	got := cfg.StatusList()
-	want := "in-progress, review, ready, draft, completed, scrapped"
+	want := "in-progress, review, ready, draft, deferred, completed, scrapped"
 
 	if got != want {
 		t.Errorf("StatusList() = %q, want %q", got, want)
@@ -73,10 +74,10 @@ func TestStatusNames(t *testing.T) {
 	cfg := Default()
 	got := cfg.StatusNames()
 
-	if len(got) != 6 {
-		t.Fatalf("len(StatusNames()) = %d, want 6", len(got))
+	if len(got) != 7 {
+		t.Fatalf("len(StatusNames()) = %d, want 7", len(got))
 	}
-	expected := []string{"in-progress", "review", "ready", "draft", "completed", "scrapped"}
+	expected := []string{"in-progress", "review", "ready", "draft", "deferred", "completed", "scrapped"}
 	for i, name := range expected {
 		if got[i] != name {
 			t.Errorf("StatusNames()[%d] = %q, want %q", i, got[i], name)
@@ -212,8 +213,8 @@ func TestLoadAndSave(t *testing.T) {
 		t.Errorf("DefaultType = %q, want \"bug\"", loaded.DefaultType)
 	}
 	// Statuses are hardcoded, not stored in config
-	if len(loaded.StatusNames()) != 6 {
-		t.Errorf("len(StatusNames()) = %d, want 6", len(loaded.StatusNames()))
+	if len(loaded.StatusNames()) != 7 {
+		t.Errorf("len(StatusNames()) = %d, want 7", len(loaded.StatusNames()))
 	}
 }
 
@@ -237,8 +238,8 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	}
 
 	// Statuses are hardcoded, always 6
-	if len(cfg.StatusNames()) != 6 {
-		t.Errorf("Hardcoded statuses: got %d, want 6", len(cfg.StatusNames()))
+	if len(cfg.StatusNames()) != 7 {
+		t.Errorf("Hardcoded statuses: got %d, want 7", len(cfg.StatusNames()))
 	}
 	// DefaultStatus is always "ready"
 	if cfg.GetDefaultStatus() != "ready" {
@@ -256,7 +257,7 @@ func TestStatusesAreHardcoded(t *testing.T) {
 	cfg := Default()
 
 	// All hardcoded statuses should be valid
-	hardcodedStatuses := []string{"draft", "ready", "in-progress", "completed", "scrapped"}
+	hardcodedStatuses := []string{"draft", "ready", "in-progress", "deferred", "completed", "scrapped"}
 	for _, status := range hardcodedStatuses {
 		if !cfg.IsValidStatus(status) {
 			t.Errorf("IsValidStatus(%q) = false, want true", status)
@@ -384,8 +385,8 @@ func TestTypesAreHardcoded(t *testing.T) {
 	}
 
 	// Statuses should also be hardcoded
-	if len(loaded.StatusNames()) != 6 {
-		t.Errorf("len(StatusNames()) = %d, want 6", len(loaded.StatusNames()))
+	if len(loaded.StatusNames()) != 7 {
+		t.Errorf("len(StatusNames()) = %d, want 7", len(loaded.StatusNames()))
 	}
 }
 
@@ -453,6 +454,7 @@ func TestStatusDescriptions(t *testing.T) {
 			"draft":       "Needs refinement before it can be worked on",
 			"ready":       "Ready to be worked on",
 			"in-progress": "Currently being worked on",
+			"deferred":    "Parked pending further consideration; concerns must be resolved before work can resume",
 			"completed":   "Finished successfully",
 			"scrapped":    "Will not be done",
 		}
@@ -690,6 +692,117 @@ func TestDefaultHasIssuesPath(t *testing.T) {
 	if cfg.Path != DefaultDataPath {
 		t.Errorf("Default().Path = %q, want %q", cfg.Path, DefaultDataPath)
 	}
+}
+
+func TestStatusToggle(t *testing.T) {
+	t.Run("default config: only mandatory statuses enabled", func(t *testing.T) {
+		cfg := Default()
+		for _, name := range cfg.StatusNames() {
+			want := IsMandatoryStatus(name)
+			if got := cfg.IsStatusEnabled(name); got != want {
+				t.Errorf("IsStatusEnabled(%q) = %v, want %v", name, got, want)
+			}
+		}
+	})
+
+	t.Run("extra_statuses additively enables", func(t *testing.T) {
+		cfg := Default()
+		cfg.ExtraStatuses = map[string]bool{
+			"in-progress": true,
+			"draft":       true,
+			"deferred":    true,
+			"review":      false, // explicit false: still disabled
+		}
+		if !cfg.IsStatusEnabled("in-progress") {
+			t.Error("in-progress should be enabled (extra)")
+		}
+		if !cfg.IsStatusEnabled("draft") {
+			t.Error("draft should be enabled (extra)")
+		}
+		if !cfg.IsStatusEnabled("deferred") {
+			t.Error("deferred should be enabled (extra)")
+		}
+		if cfg.IsStatusEnabled("review") {
+			t.Error("review should be disabled (extra=false)")
+		}
+		if cfg.IsStatusEnabled("scrapped") {
+			t.Error("scrapped should be disabled (not in extra map)")
+		}
+	})
+
+	t.Run("mandatory statuses are always enabled", func(t *testing.T) {
+		cfg := Default()
+		cfg.ExtraStatuses = map[string]bool{
+			"ready":     false, // ignored
+			"completed": false, // ignored
+		}
+		if !cfg.IsStatusEnabled("ready") {
+			t.Error("ready is mandatory")
+		}
+		if !cfg.IsStatusEnabled("completed") {
+			t.Error("completed is mandatory")
+		}
+		if !IsMandatoryStatus("ready") {
+			t.Error("IsMandatoryStatus(\"ready\") = false, want true")
+		}
+		if !IsMandatoryStatus("completed") {
+			t.Error("IsMandatoryStatus(\"completed\") = false, want true")
+		}
+		if IsMandatoryStatus("deferred") {
+			t.Error("IsMandatoryStatus(\"deferred\") = true, want false")
+		}
+	})
+
+	t.Run("EnabledStatusNames lists mandatory + opted-in only", func(t *testing.T) {
+		cfg := Default()
+		cfg.ExtraStatuses = map[string]bool{
+			"in-progress": true,
+			"draft":       true,
+		}
+		got := cfg.EnabledStatusNames()
+		want := []string{"in-progress", "ready", "draft", "completed"}
+		if len(got) != len(want) {
+			t.Fatalf("EnabledStatusNames() = %v, want %v", got, want)
+		}
+		for i, name := range want {
+			if got[i] != name {
+				t.Errorf("EnabledStatusNames()[%d] = %q, want %q", i, got[i], name)
+			}
+		}
+	})
+
+	t.Run("invalid status is never enabled", func(t *testing.T) {
+		cfg := Default()
+		if cfg.IsStatusEnabled("not-a-status") {
+			t.Error("IsStatusEnabled for unknown status should be false")
+		}
+	})
+
+	t.Run("extra_statuses round-trips through YAML", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cfg := &Config{
+			Path: ".issues",
+			ExtraStatuses: map[string]bool{
+				"in-progress": true,
+				"deferred":    true,
+				"review":      false,
+			},
+		}
+		cfg.SetConfigDir(tmpDir)
+		if err := cfg.Save(tmpDir); err != nil {
+			t.Fatalf("Save() error = %v", err)
+		}
+		loaded, err := Load(filepath.Join(tmpDir, ConfigFileName))
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		if loaded.IsStatusEnabled("review") {
+			t.Error("review should be disabled after round-trip")
+		}
+		if !loaded.IsStatusEnabled("deferred") {
+			t.Error("deferred should be enabled after round-trip")
+		}
+	})
 }
 
 func TestIsValidPriority(t *testing.T) {

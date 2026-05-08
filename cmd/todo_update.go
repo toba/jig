@@ -122,6 +122,9 @@ func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIss
 		if !todoCfg.IsValidStatus(updateStatus) {
 			return input, nil, fmt.Errorf("invalid status: %s (must be %s)", updateStatus, todoCfg.StatusList())
 		}
+		if !todoCfg.IsStatusEnabled(updateStatus) {
+			return input, nil, fmt.Errorf("status %q is disabled in this project (enabled: %s)", updateStatus, todoCfg.EnabledStatusList())
+		}
 		input.Status = &updateStatus
 		changes = append(changes, "status")
 	}

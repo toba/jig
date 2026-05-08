@@ -14,13 +14,16 @@ var agentPromptTemplate string
 
 // promptData holds all data needed to render the prompt template.
 type promptData struct {
-	Types         []todoconfig.TypeConfig
-	Statuses      []todoconfig.StatusConfig
-	Priorities    []todoconfig.PriorityConfig
-	Tags          []todoconfig.TagConfig
-	HasSync       bool
-	SyncNames     []string
-	HasGitHubSync bool
+	Types           []todoconfig.TypeConfig
+	Statuses        []todoconfig.StatusConfig
+	Priorities      []todoconfig.PriorityConfig
+	Tags            []todoconfig.TagConfig
+	HasSync         bool
+	SyncNames       []string
+	HasGitHubSync   bool
+	ReviewEnabled   bool
+	DraftEnabled    bool
+	DeferredEnabled bool
 }
 
 var primeCmd = &cobra.Command{
@@ -51,9 +54,26 @@ var primeCmd = &cobra.Command{
 		}
 
 		data := promptData{
-			Types:      todoconfig.DefaultTypes,
-			Statuses:   todoconfig.DefaultStatuses,
-			Priorities: todoconfig.DefaultPriorities,
+			Types:           todoconfig.DefaultTypes,
+			Priorities:      todoconfig.DefaultPriorities,
+			ReviewEnabled:   true,
+			DraftEnabled:    true,
+			DeferredEnabled: true,
+		}
+
+		// Filter the listed statuses to those enabled for this project,
+		// and surface a few flags the template uses for branching.
+		if primeCfg != nil {
+			for _, s := range todoconfig.DefaultStatuses {
+				if primeCfg.IsStatusEnabled(s.Name) {
+					data.Statuses = append(data.Statuses, s)
+				}
+			}
+			data.ReviewEnabled = primeCfg.IsStatusEnabled(todoconfig.StatusReview)
+			data.DraftEnabled = primeCfg.IsStatusEnabled(todoconfig.StatusDraft)
+			data.DeferredEnabled = primeCfg.IsStatusEnabled(todoconfig.StatusDeferred)
+		} else {
+			data.Statuses = todoconfig.DefaultStatuses
 		}
 
 		if primeCfg != nil && len(primeCfg.Tags) > 0 {

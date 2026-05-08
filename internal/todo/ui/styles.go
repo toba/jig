@@ -36,6 +36,7 @@ var NamedColors = map[string]color.Color{
 	"blue":   ColorBlue,
 	"purple": ColorPrimary,
 	"cyan":   ColorCyan,
+	"orange": ColorOrange,
 }
 
 // ResolveColor converts a color name or hex code to a color.Color.
@@ -178,7 +179,7 @@ var Header = lipgloss.NewStyle().
 // RenderStatus returns a styled status badge based on the status string (legacy, uses hardcoded colors)
 func RenderStatus(status string) string {
 	switch status {
-	case config.StatusReady, config.StatusDraft:
+	case config.StatusReady, config.StatusDraft, config.StatusDeferred:
 		return StatusOpen.Render(status)
 	case config.StatusCompleted, config.StatusScrapped:
 		return StatusDone.Render(status)
@@ -192,7 +193,7 @@ func RenderStatus(status string) string {
 // RenderStatusText returns styled status text (for tables, no background) (legacy, uses hardcoded colors)
 func RenderStatusText(status string) string {
 	switch status {
-	case config.StatusReady, config.StatusDraft:
+	case config.StatusReady, config.StatusDraft, config.StatusDeferred:
 		return StatusOpenText.Render(status)
 	case config.StatusCompleted, config.StatusScrapped:
 		return StatusDoneText.Render(status)
@@ -214,6 +215,8 @@ func StatusIcon(status string) string {
 		return "◔"
 	case "review":
 		return "◈"
+	case "deferred":
+		return "⏸"
 	case "completed":
 		return "✔"
 	case "scrapped":

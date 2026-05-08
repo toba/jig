@@ -126,7 +126,7 @@ func TestParseRepo(t *testing.T) {
 
 func TestDefaultStatusMapping(t *testing.T) {
 	// Verify all expected statuses are present
-	expected := []string{"draft", "ready", "in-progress", "completed", "scrapped"}
+	expected := []string{"draft", "ready", "in-progress", "deferred", "completed", "scrapped"}
 	for _, status := range expected {
 		if _, ok := DefaultStatusMapping[status]; !ok {
 			t.Errorf("missing status mapping for %q", status)
@@ -134,7 +134,7 @@ func TestDefaultStatusMapping(t *testing.T) {
 	}
 
 	// Verify open statuses
-	for _, status := range []string{"draft", "ready", "in-progress"} {
+	for _, status := range []string{"draft", "ready", "in-progress", "deferred"} {
 		if DefaultStatusMapping[status] != "open" {
 			t.Errorf("DefaultStatusMapping[%q] = %q, want %q", status, DefaultStatusMapping[status], "open")
 		}

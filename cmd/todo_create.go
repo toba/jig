@@ -39,8 +39,13 @@ var createCmd = &cobra.Command{
 		}
 
 		// Validate inputs
-		if createStatus != "" && !todoCfg.IsValidStatus(createStatus) {
-			return cmdError(createJSON, output.ErrInvalidStatus, "invalid status: %s (must be %s)", createStatus, todoCfg.StatusList())
+		if createStatus != "" {
+			if !todoCfg.IsValidStatus(createStatus) {
+				return cmdError(createJSON, output.ErrInvalidStatus, "invalid status: %s (must be %s)", createStatus, todoCfg.StatusList())
+			}
+			if !todoCfg.IsStatusEnabled(createStatus) {
+				return cmdError(createJSON, output.ErrInvalidStatus, "status %q is disabled in this project (enabled: %s)", createStatus, todoCfg.EnabledStatusList())
+			}
 		}
 		if createType != "" && !todoCfg.IsValidType(createType) {
 			return cmdError(createJSON, output.ErrValidation, "invalid type: %s (must be %s)", createType, todoCfg.TypeList())

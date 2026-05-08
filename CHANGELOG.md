@@ -4,6 +4,7 @@
 
 ### ✨ Features
 
+- Add `deferred` issue status; per-project status opt-in via additive `extra_statuses` map; `jig update` migrates existing sync-configured projects
 - `cite review --json` front-loads commit message bodies and release notes; add `--with-diffs` flag for inline unified diffs (capped at 500 lines / 50 KB per file)
 
 ## Week of Apr 26 – May 2, 2026

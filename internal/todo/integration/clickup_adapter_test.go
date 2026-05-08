@@ -30,6 +30,7 @@ func TestCheckMappingKeys(t *testing.T) {
 					"ready":       "to do",
 					"in-progress": "in progress",
 					"review":      "review",
+					"deferred":    "on hold",
 					"completed":   "complete",
 					"scrapped":    "closed",
 				},

@@ -16,12 +16,15 @@ BEFORE starting any task:
 - Include issue file(s) in commits
 
 AFTER finishing:
-- COMPLETING: add `## Summary of Changes` section{{if .HasGitHubSync}}
-- This project syncs to GitHub: always set finished work to `completed` (not `review`). GitHub issues only track open/closed, so finished work should close the upstream issue. Use `jig todo update <id> -s completed`.{{else}}
+- COMPLETING: add `## Summary of Changes` section{{if .ReviewEnabled}}
 - REVIEW NEEDED: if the user must take action (deploy, verify on screen, approve, etc.), set status to `review`
-  instead of `completed`: `jig todo update <id> -s review`{{end}}
-- SCRAPPING: add `## Reasons for Scrapping` section
+  instead of `completed`: `jig todo update <id> -s review`{{else}}
+- The `review` status is disabled in this project — set finished work directly to `completed`: `jig todo update <id> -s completed`.{{end}}
+- SCRAPPING: add `## Reasons for Scrapping` section{{if .DeferredEnabled}}
+- DEFERRING: if a task surfaces concerns big enough that it shouldn't proceed without further consideration, set status to `deferred` (not `scrapped`) and add a `## Deferral Notes` section explaining what needs to be resolved: `jig todo update <id> -s deferred`{{end}}
 - Offer to create follow-up issues for deferred work
+
+**Statuses are project-configurable** — only the statuses listed in the `## Statuses` section below are enabled in this project. Do not assume `review`, `deferred`, `draft`, `scrapped`, or `in-progress` exist; check the list before picking one. The CLI will reject disabled statuses with `INVALID_STATUS`.
 
 ## CLI Reference
 

@@ -2,6 +2,11 @@ todo:
     path: .issues
     default_status: draft
     default_type: task
+    extra_statuses:
+        in-progress: true
+        draft: true
+        deferred: true
+        scrapped: true
     sync:
         github:
             repo: toba/jig

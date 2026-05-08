@@ -101,7 +101,20 @@ Note: Cycles cannot be auto-fixed and require manual intervention.`,
 			}
 		}
 
-		// 5. Check sync configuration
+		// 5. Check `extra_statuses` is populated for sync-enabled projects.
+		// `extra_statuses` is purely additive — missing or empty means only
+		// `ready` and `completed` work. Projects that sync to ClickUp or
+		// GitHub usually want the full lifecycle. Run `jig update` to populate
+		// the map based on the configured integration.
+		_, hasGithub := todoCfg.Sync["github"]
+		_, hasClickup := todoCfg.Sync["clickup"]
+		if (hasGithub || hasClickup) && len(todoCfg.ExtraStatuses) == 0 {
+			configErrors = append(configErrors, "sync integration configured but `todo.extra_statuses` is missing — only `ready` and `completed` are enabled. Run `jig update` to populate the map (adds the historical default statuses; excludes `review` for github-synced projects).")
+		} else if (hasGithub || hasClickup) && !todoCheckJSON {
+			fmt.Printf("  %s `todo.extra_statuses` populated (%d entries)\n", ui.Success.Render("✓"), len(todoCfg.ExtraStatuses))
+		}
+
+		// 6. Check sync configuration
 		knownIntegrations := map[string]bool{"clickup": true, "github": true}
 		if len(todoCfg.Sync) > 0 {
 			var configuredIntegrations []string
