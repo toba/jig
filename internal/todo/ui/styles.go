@@ -24,6 +24,7 @@ var (
 	ColorCyan      = lipgloss.Color("14")      // Bright Cyan (ANSI)
 	ColorOrange    = lipgloss.Color("#F97316") // Orange
 	ColorYellow    = lipgloss.Color("#EAB308") // Yellow
+	ColorPink      = lipgloss.Color("#D6A2C0") // Muted dusty pink (subtle, non-attention-grabbing)
 )
 
 // NamedColors maps color names to lipgloss colors.
@@ -37,6 +38,7 @@ var NamedColors = map[string]color.Color{
 	"purple": ColorPrimary,
 	"cyan":   ColorCyan,
 	"orange": ColorOrange,
+	"pink":   ColorPink,
 }
 
 // ResolveColor converts a color name or hex code to a color.Color.

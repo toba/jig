@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of May 24 – May 30, 2026
+
+### 🗜️ Tweaks
+
+- Make `deferred` status indicator more subtle; change default color from orange to a muted pink so parked items don't grab attention ([#107](https://github.com/toba/jig/issues/107))
+
 ## Week of May 3 – May 9, 2026
 
 ### ✨ Features
@@ -37,7 +43,7 @@
 - Consolidate `scoop init` to push manifests to shared `owner/scoop-bucket` repo; manifests at repo root matching charmbracelet model
 - Replace `companions` config with `packages: [brew, scoop]` list and top-level `zed_extension` key
 
-### 🐛 Fixes
+### 🐞 Fixes
 
 - Add `--body-check`/`--body-uncheck` flags; toggle checkboxes by substring match instead of fragile exact-text replacement
 - Fix TUI list truncating titles after Bubble Tea v2 migration; `Width(N)` semantics changed to include borders ([#100](https://github.com/toba/jig/issues/100))

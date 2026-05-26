@@ -78,7 +78,7 @@ var DefaultStatuses = []StatusConfig{
 	{Name: StatusReview, Color: "cyan", Description: "Code complete, awaiting evaluation"},
 	{Name: StatusReady, Color: "green", Description: "Ready to be worked on"},
 	{Name: StatusDraft, Color: "blue", Description: "Needs refinement before it can be worked on"},
-	{Name: StatusDeferred, Color: "orange", Description: "Parked pending further consideration; concerns must be resolved before work can resume"},
+	{Name: StatusDeferred, Color: "pink", Description: "Parked pending further consideration; concerns must be resolved before work can resume"},
 	{Name: StatusCompleted, Color: "gray", Archive: true, Description: "Finished successfully"},
 	{Name: StatusScrapped, Color: "gray", Archive: true, Description: "Will not be done"},
 }
