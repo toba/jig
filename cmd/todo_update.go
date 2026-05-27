@@ -23,6 +23,9 @@ var (
 	updateTitle           string
 	updateBody            string
 	updateBodyFile        string
+	updateReplaceBody     string
+	updateReplaceBodyFile string
+	updateAppendBody      string
 	updateBodyReplaceOld  string
 	updateBodyReplaceNew  string
 	updateBodyAppend      string
@@ -95,7 +98,7 @@ var todoUpdateCmd = &cobra.Command{
 
 		if len(changes) == 0 {
 			return cmdError(todoUpdateJSON, output.ErrValidation,
-				"no changes specified (use --status, --type, --priority, --title, --due, --body, --parent, --blocking, --blocked-by, --tag, or their --remove-* variants)")
+				"no changes specified (use --status, --type, --priority, --title, --due, --append-body, --body-replace-old/--body-replace-new, --replace-body, --parent, --blocking, --blocked-by, --tag, or their --remove-* variants)")
 		}
 
 		if todoUpdateJSON {
@@ -161,14 +164,26 @@ func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIss
 		changes = append(changes, "due")
 	}
 
+	// The legacy --body/--body-file flags silently replaced the entire body, which
+	// repeatedly caused accidental loss of existing content. They are retired on
+	// update in favor of the explicit --replace-body/--append-body verbs.
 	if cmd.Flags().Changed("body") || cmd.Flags().Changed("body-file") {
-		body, err := resolveContent(updateBody, updateBodyFile)
+		return input, nil, errors.New(
+			"--body/--body-file were removed from `update` because they replace the entire body. " +
+				"Use --append-body to add content, --body-replace-old/--body-replace-new to edit a section, " +
+				"or --replace-body/--replace-body-file to intentionally overwrite the whole body")
+	}
+
+	appendChanged := cmd.Flags().Changed("append-body") || cmd.Flags().Changed("body-append")
+
+	if cmd.Flags().Changed("replace-body") || cmd.Flags().Changed("replace-body-file") {
+		body, err := resolveContent(updateReplaceBody, updateReplaceBodyFile)
 		if err != nil {
 			return input, nil, err
 		}
 		input.Body = &body
 		changes = append(changes, "body")
-	} else if cmd.Flags().Changed("body-replace-old") || cmd.Flags().Changed("body-append") || len(updateBodyCheck) > 0 || len(updateBodyUncheck) > 0 {
+	} else if cmd.Flags().Changed("body-replace-old") || appendChanged || len(updateBodyCheck) > 0 || len(updateBodyUncheck) > 0 {
 		bodyMod := &model.BodyModification{}
 
 		if cmd.Flags().Changed("body-replace-old") {
@@ -187,8 +202,12 @@ func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIss
 			bodyMod.Uncheck = updateBodyUncheck
 		}
 
-		if cmd.Flags().Changed("body-append") {
-			appendText, err := resolveAppendContent(updateBodyAppend)
+		if appendChanged {
+			raw := updateAppendBody
+			if cmd.Flags().Changed("body-append") {
+				raw = updateBodyAppend
+			}
+			appendText, err := resolveAppendContent(raw)
 			if err != nil {
 				return input, nil, err
 			}
@@ -259,37 +278,57 @@ func mutationError(jsonOutput bool, err error) error {
 	return cmdError(jsonOutput, output.ErrValidation, "%s", err)
 }
 
-func init() {
+// registerUpdateFlags binds all `todo update` flags to the given command. Split
+// out from init() so tests can build an isolated command and exercise
+// buildUpdateInput without polluting the shared todoUpdateCmd flag state.
+func registerUpdateFlags(cmd *cobra.Command) {
 	statusNames := todoconfig.DefaultStatusNames()
 	typeNames := todoconfig.DefaultTypeNames()
 	priorityNames := todoconfig.DefaultPriorityNames()
 
-	todoUpdateCmd.Flags().StringVarP(&updateStatus, "status", "s", "", "New status ("+strings.Join(statusNames, ", ")+")")
-	todoUpdateCmd.Flags().StringVarP(&updateType, "type", "t", "", "New type ("+strings.Join(typeNames, ", ")+")")
-	todoUpdateCmd.Flags().StringVarP(&updatePriority, "priority", "p", "", "New priority ("+strings.Join(priorityNames, ", ")+", or empty to clear)")
-	todoUpdateCmd.Flags().StringVar(&updateTitle, "title", "", "New title")
-	todoUpdateCmd.Flags().StringVar(&updateMilestone, "milestone", "", "Milestone ID to assign (empty to clear)")
-	todoUpdateCmd.Flags().StringVar(&updateDue, "due", "", "Due date (YYYY-MM-DD, empty to clear)")
-	todoUpdateCmd.Flags().StringVarP(&updateBody, "body", "d", "", "New body (use '-' to read from stdin)")
-	todoUpdateCmd.Flags().StringVar(&updateBodyFile, "body-file", "", "Read body from file")
-	todoUpdateCmd.Flags().StringVar(&updateBodyReplaceOld, "body-replace-old", "", "Text to find and replace (requires --body-replace-new)")
-	todoUpdateCmd.Flags().StringVar(&updateBodyReplaceNew, "body-replace-new", "", "Replacement text (requires --body-replace-old)")
-	todoUpdateCmd.Flags().StringVar(&updateBodyAppend, "body-append", "", "Text to append to body (use '-' for stdin)")
-	todoUpdateCmd.Flags().StringArrayVar(&updateBodyCheck, "body-check", nil, "Check a checkbox item by substring match (can be repeated)")
-	todoUpdateCmd.Flags().StringArrayVar(&updateBodyUncheck, "body-uncheck", nil, "Uncheck a checkbox item by substring match (can be repeated)")
-	todoUpdateCmd.Flags().StringVar(&updateParent, "parent", "", "Set parent issue ID")
-	todoUpdateCmd.Flags().BoolVar(&updateRemoveParent, "remove-parent", false, "Remove parent")
-	todoUpdateCmd.Flags().StringArrayVar(&updateBlocking, "blocking", nil, "ID of issue this blocks (can be repeated)")
-	todoUpdateCmd.Flags().StringArrayVar(&updateRemoveBlocking, "remove-blocking", nil, "ID of issue to unblock (can be repeated)")
-	todoUpdateCmd.Flags().StringArrayVar(&updateBlockedBy, "blocked-by", nil, "ID of issue that blocks this one (can be repeated)")
-	todoUpdateCmd.Flags().StringArrayVar(&updateRemoveBlockedBy, "remove-blocked-by", nil, "ID of blocker issue to remove (can be repeated)")
-	todoUpdateCmd.Flags().StringArrayVar(&updateTag, "tag", nil, "Add tag (can be repeated)")
-	todoUpdateCmd.Flags().StringArrayVar(&updateRemoveTag, "remove-tag", nil, "Remove tag (can be repeated)")
-	todoUpdateCmd.Flags().StringVar(&updateIfMatch, "if-match", "", "Only update if etag matches (optimistic locking)")
-	todoUpdateCmd.MarkFlagsMutuallyExclusive("parent", "remove-parent")
-	todoUpdateCmd.Flags().BoolVar(&todoUpdateJSON, "json", false, "Output as JSON")
-	todoUpdateCmd.MarkFlagsMutuallyExclusive("body", "body-file", "body-replace-old")
-	todoUpdateCmd.MarkFlagsMutuallyExclusive("body", "body-file", "body-append")
-	todoUpdateCmd.MarkFlagsRequiredTogether("body-replace-old", "body-replace-new")
+	cmd.Flags().StringVarP(&updateStatus, "status", "s", "", "New status ("+strings.Join(statusNames, ", ")+")")
+	cmd.Flags().StringVarP(&updateType, "type", "t", "", "New type ("+strings.Join(typeNames, ", ")+")")
+	cmd.Flags().StringVarP(&updatePriority, "priority", "p", "", "New priority ("+strings.Join(priorityNames, ", ")+", or empty to clear)")
+	cmd.Flags().StringVar(&updateTitle, "title", "", "New title")
+	cmd.Flags().StringVar(&updateMilestone, "milestone", "", "Milestone ID to assign (empty to clear)")
+	cmd.Flags().StringVar(&updateDue, "due", "", "Due date (YYYY-MM-DD, empty to clear)")
+
+	// Whole-body writes. --replace-body is destructive (overwrites everything);
+	// --append-body is the safe additive verb. The legacy --body/--body-file are
+	// retained (hidden) only so passing them yields a helpful guidance error
+	// instead of an opaque "unknown flag".
+	cmd.Flags().StringVar(&updateReplaceBody, "replace-body", "", "Overwrite the entire body (use '-' to read from stdin)")
+	cmd.Flags().StringVar(&updateReplaceBodyFile, "replace-body-file", "", "Overwrite the entire body from a file")
+	cmd.Flags().StringVar(&updateAppendBody, "append-body", "", "Append text to the body (use '-' for stdin)")
+	cmd.Flags().StringVarP(&updateBody, "body", "d", "", "Removed: use --append-body or --replace-body")
+	cmd.Flags().StringVar(&updateBodyFile, "body-file", "", "Removed: use --append-body or --replace-body-file")
+	cmd.Flags().StringVar(&updateBodyAppend, "body-append", "", "Deprecated alias for --append-body")
+	_ = cmd.Flags().MarkHidden("body")
+	_ = cmd.Flags().MarkHidden("body-file")
+	_ = cmd.Flags().MarkHidden("body-append")
+
+	cmd.Flags().StringVar(&updateBodyReplaceOld, "body-replace-old", "", "Substring to find and replace (requires --body-replace-new)")
+	cmd.Flags().StringVar(&updateBodyReplaceNew, "body-replace-new", "", "Replacement substring (requires --body-replace-old)")
+	cmd.Flags().StringArrayVar(&updateBodyCheck, "body-check", nil, "Check a checkbox item by substring match (can be repeated)")
+	cmd.Flags().StringArrayVar(&updateBodyUncheck, "body-uncheck", nil, "Uncheck a checkbox item by substring match (can be repeated)")
+	cmd.Flags().StringVar(&updateParent, "parent", "", "Set parent issue ID")
+	cmd.Flags().BoolVar(&updateRemoveParent, "remove-parent", false, "Remove parent")
+	cmd.Flags().StringArrayVar(&updateBlocking, "blocking", nil, "ID of issue this blocks (can be repeated)")
+	cmd.Flags().StringArrayVar(&updateRemoveBlocking, "remove-blocking", nil, "ID of issue to unblock (can be repeated)")
+	cmd.Flags().StringArrayVar(&updateBlockedBy, "blocked-by", nil, "ID of issue that blocks this one (can be repeated)")
+	cmd.Flags().StringArrayVar(&updateRemoveBlockedBy, "remove-blocked-by", nil, "ID of blocker issue to remove (can be repeated)")
+	cmd.Flags().StringArrayVar(&updateTag, "tag", nil, "Add tag (can be repeated)")
+	cmd.Flags().StringArrayVar(&updateRemoveTag, "remove-tag", nil, "Remove tag (can be repeated)")
+	cmd.Flags().StringVar(&updateIfMatch, "if-match", "", "Only update if etag matches (optimistic locking)")
+	cmd.Flags().BoolVar(&todoUpdateJSON, "json", false, "Output as JSON")
+
+	cmd.MarkFlagsMutuallyExclusive("parent", "remove-parent")
+	cmd.MarkFlagsMutuallyExclusive("replace-body", "replace-body-file", "body-replace-old")
+	cmd.MarkFlagsMutuallyExclusive("replace-body", "replace-body-file", "append-body")
+	cmd.MarkFlagsRequiredTogether("body-replace-old", "body-replace-new")
+}
+
+func init() {
+	registerUpdateFlags(todoUpdateCmd)
 	todoCmd.AddCommand(todoUpdateCmd)
 }

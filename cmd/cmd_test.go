@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/toba/jig/internal/config"
@@ -1148,6 +1149,7 @@ func TestContainsStatus(t *testing.T) {
 func TestUpdateCmdFlags(t *testing.T) {
 	flags := []string{
 		"status", "type", "priority", "title", "due",
+		"replace-body", "replace-body-file", "append-body",
 		"body", "body-file", "body-replace-old", "body-replace-new", "body-append",
 		"body-check", "body-uncheck",
 		"parent", "remove-parent",
@@ -1162,6 +1164,83 @@ func TestUpdateCmdFlags(t *testing.T) {
 			t.Errorf("todoUpdateCmd missing --%s flag", name)
 		}
 	}
+}
+
+func TestBuildUpdateInputBody(t *testing.T) {
+	newCmd := func() *cobra.Command {
+		c := &cobra.Command{Use: "update"}
+		registerUpdateFlags(c)
+		return c
+	}
+
+	t.Run("replace-body sets full body", func(t *testing.T) {
+		c := newCmd()
+		if err := c.Flags().Set("replace-body", "brand new body"); err != nil {
+			t.Fatal(err)
+		}
+		input, changes, err := buildUpdateInput(c, nil, "old body")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if input.Body == nil || *input.Body != "brand new body" {
+			t.Errorf("Body = %v, want %q", input.Body, "brand new body")
+		}
+		if input.BodyMod != nil {
+			t.Errorf("BodyMod should be nil for a full replace, got %+v", input.BodyMod)
+		}
+		if len(changes) != 1 || changes[0] != "body" {
+			t.Errorf("changes = %v, want [body]", changes)
+		}
+	})
+
+	t.Run("append-body sets BodyMod append", func(t *testing.T) {
+		c := newCmd()
+		if err := c.Flags().Set("append-body", "more text"); err != nil {
+			t.Fatal(err)
+		}
+		input, _, err := buildUpdateInput(c, nil, "old body")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if input.Body != nil {
+			t.Errorf("Body should be nil for append, got %q", *input.Body)
+		}
+		if input.BodyMod == nil || input.BodyMod.Append == nil || *input.BodyMod.Append != "more text" {
+			t.Errorf("BodyMod.Append = %+v, want %q", input.BodyMod, "more text")
+		}
+	})
+
+	for _, flag := range []string{"body", "body-file"} {
+		t.Run(flag+" errors with guidance", func(t *testing.T) {
+			c := newCmd()
+			if err := c.Flags().Set(flag, "wipes everything"); err != nil {
+				t.Fatal(err)
+			}
+			_, _, err := buildUpdateInput(c, nil, "old body")
+			if err == nil {
+				t.Fatalf("expected guidance error for --%s, got nil", flag)
+			}
+			for _, want := range []string{"--append-body", "--replace-body", "--body-replace-old"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q missing mention of %q", err.Error(), want)
+				}
+			}
+		})
+	}
+
+	t.Run("body-append still works as hidden alias", func(t *testing.T) {
+		c := newCmd()
+		if err := c.Flags().Set("body-append", "legacy add"); err != nil {
+			t.Fatal(err)
+		}
+		input, _, err := buildUpdateInput(c, nil, "old body")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if input.BodyMod == nil || input.BodyMod.Append == nil || *input.BodyMod.Append != "legacy add" {
+			t.Errorf("BodyMod.Append = %+v, want %q", input.BodyMod, "legacy add")
+		}
+	})
 }
 
 func TestUpdateCmdAliases(t *testing.T) {

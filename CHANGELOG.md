@@ -16,6 +16,7 @@
 ### 🗜️ Tweaks
 
 - Make `deferred` status indicator more subtle; change default color from orange to a muted pink so parked items don't grab attention ([#107](https://github.com/toba/jig/issues/107))
+- Retire `--body`/`--body-file` on `jig todo update` (they silently replaced the entire body); add explicit `--replace-body`/`--replace-body-file` and `--append-body`, and point agents to the safe verbs
 
 ## Week of May 3 – May 9, 2026
 

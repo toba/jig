@@ -48,8 +48,10 @@ jig todo update --json <id> --parent <id>
 jig todo update --json <id> --blocking <id>
 jig todo update --json <id> --blocked-by <id>
 jig todo update --json <id> --body-replace-old "old" --body-replace-new "new"
-jig todo update --json <id> --body-append "content"
+jig todo update --json <id> --append-body "content"
 jig todo update --json <id> -s completed --body-replace-old "- [ ] Task" --body-replace-new "- [x] Task"
+# NOTE: `update` has no --body flag. It would overwrite the whole body. Use
+# --append-body / --body-replace-old/new to edit, or --replace-body to overwrite on purpose.
 
 # Archive (only when user requests)
 jig todo archive
@@ -64,7 +66,9 @@ Run `jig todo <command> --help` for full options.
 
 ## update flags
 
-`-s/--status`, `-t/--type`, `-p/--priority` (empty to clear), `--title`, `--due` (empty to clear), `--parent`/`--remove-parent`, `--blocking`/`--remove-blocking`, `--blocked-by`/`--remove-blocked-by`, `--tag`/`--remove-tag`, `--if-match <etag>`
+`-s/--status`, `-t/--type`, `-p/--priority` (empty to clear), `--title`, `--due` (empty to clear), `--append-body "content"` (`-` for stdin), `--body-replace-old`/`--body-replace-new` (substring edit), `--replace-body`/`--replace-body-file` (destructive: overwrites the entire body), `--parent`/`--remove-parent`, `--blocking`/`--remove-blocking`, `--blocked-by`/`--remove-blocked-by`, `--tag`/`--remove-tag`, `--if-match <etag>`
+
+There is no `--body` on `update` (it silently replaced everything). Default to `--append-body` or `--body-replace-old/new`; only use `--replace-body` when you deliberately want to discard the existing body.
 
 ## list flags
 
@@ -111,8 +115,9 @@ Use `--tag` when creating or updating issues. Prefer these project tags:
 
 Backticks in JSON output are NOT escaped — what appears as `` \` `` is a rendering artifact. Always use literal backtick characters in `--body-replace-old`/`--body-replace-new` values.
 
-Replace text (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)
-Append: `--body-append "content"` (`-` for stdin)
+Replace substring (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)
+Append: `--append-body "content"` (`-` for stdin)
+Overwrite the whole body (destructive — discards existing content): `--replace-body "..."` or `--replace-body-file <path>`
 Both can combine with metadata flags in a single update.
 
 Multiple replacements via GraphQL (write to a temp file to avoid shell escaping issues with backticks):
