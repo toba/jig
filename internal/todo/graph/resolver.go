@@ -62,6 +62,20 @@ func (r *Resolver) validateAndSetParent(b *issue.Issue, parentID string) error {
 	return nil
 }
 
+// inheritMilestoneFromParent copies the parent's milestone onto the child when
+// the child has no milestone of its own. It is a no-op if the issue has no
+// parent, already has a milestone, or the parent has none. This lets newly
+// parented issues fall into their parent's milestone automatically without
+// clobbering an explicit milestone choice on the child.
+func (r *Resolver) inheritMilestoneFromParent(b *issue.Issue) {
+	if b.Parent == "" || b.Milestone != "" {
+		return
+	}
+	if parent, err := r.Core.Get(b.Parent); err == nil && parent.Milestone != "" {
+		b.Milestone = parent.Milestone
+	}
+}
+
 // validateAndAddBlocking validates and adds blocking relationships.
 func (r *Resolver) validateAndAddBlocking(b *issue.Issue, targetIDs []string) error {
 	for _, targetID := range targetIDs {

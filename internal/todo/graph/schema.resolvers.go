@@ -188,6 +188,8 @@ func (r *mutationResolver) CreateIssue(ctx context.Context, input model.CreateIs
 			return nil, err
 		}
 		b.Parent = parentID
+		// Inherit the parent's milestone when none was given for the child.
+		r.inheritMilestoneFromParent(b)
 	}
 
 	// Handle blocking (with validation)
@@ -361,6 +363,11 @@ func (r *mutationResolver) UpdateIssue(ctx context.Context, id string, input mod
 	if input.Parent != nil {
 		if err := r.validateAndSetParent(b, *input.Parent); err != nil {
 			return nil, err
+		}
+		// Inherit the new parent's milestone unless the milestone is being set
+		// explicitly in this same update.
+		if input.Milestone == nil {
+			r.inheritMilestoneFromParent(b)
 		}
 	}
 

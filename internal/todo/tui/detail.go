@@ -58,9 +58,10 @@ func (i linkItem) FilterValue() string {
 
 // linkDelegate handles rendering of link list items
 type linkDelegate struct {
-	cfg   *config.Config
-	width int
-	cols  ui.ResponsiveColumns
+	cfg             *config.Config
+	width           int
+	cols            ui.ResponsiveColumns
+	milestoneShorts map[string]string // milestone ID -> short name, rendered as a "<short>:" ID prefix
 }
 
 func (d linkDelegate) Height() int                             { return 1 }
@@ -101,18 +102,19 @@ func (d linkDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		link.issue.Type,
 		link.issue.Title,
 		ui.IssueRowConfig{
-			StatusColor:   colors.StatusColor,
-			TypeColor:     colors.TypeColor,
-			PriorityColor: colors.PriorityColor,
-			Priority:      link.issue.Priority,
-			IsArchive:     colors.IsArchive,
-			MaxTitleWidth: maxTitleWidth,
-			ShowCursor:    false,
-			IsSelected:    false,
-			Tags:          link.issue.Tags,
-			ShowTags:      d.cols.ShowTags,
-			TagsColWidth:  d.cols.Tags,
-			MaxTags:       d.cols.MaxTags,
+			StatusColor:    colors.StatusColor,
+			TypeColor:      colors.TypeColor,
+			PriorityColor:  colors.PriorityColor,
+			Priority:       link.issue.Priority,
+			IsArchive:      colors.IsArchive,
+			MaxTitleWidth:  maxTitleWidth,
+			MilestoneShort: d.milestoneShorts[link.issue.Milestone],
+			ShowCursor:     false,
+			IsSelected:     false,
+			Tags:           link.issue.Tags,
+			ShowTags:       d.cols.ShowTags,
+			TagsColWidth:   d.cols.Tags,
+			MaxTags:        d.cols.MaxTags,
 		},
 	)
 
@@ -121,18 +123,30 @@ func (d linkDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 // detailModel displays a single issue's details
 type detailModel struct {
-	viewport      viewport.Model
-	issue         *issue.Issue
-	resolver      *graph.Resolver
-	config        *config.Config
-	width         int
-	height        int
-	ready         bool
-	links         []resolvedLink       // combined outgoing + incoming links
-	linkList      list.Model           // list component for links (supports filtering)
-	linksActive   bool                 // true = links section focused
-	cols          ui.ResponsiveColumns // responsive column widths for links
-	statusMessage string               // Status message to display in footer
+	viewport        viewport.Model
+	issue           *issue.Issue
+	resolver        *graph.Resolver
+	config          *config.Config
+	width           int
+	height          int
+	ready           bool
+	links           []resolvedLink       // combined outgoing + incoming links
+	linkList        list.Model           // list component for links (supports filtering)
+	linksActive     bool                 // true = links section focused
+	cols            ui.ResponsiveColumns // responsive column widths for links
+	statusMessage   string               // Status message to display in footer
+	milestoneShorts map[string]string    // milestone ID -> short name, for the "<short>:" ID prefix
+}
+
+// loadMilestoneShorts builds the milestone ID -> short name lookup from core.
+func (m detailModel) loadMilestoneShorts() map[string]string {
+	shorts := make(map[string]string)
+	if m.resolver != nil && m.resolver.Core != nil {
+		for _, ms := range m.resolver.Core.AllMilestones() {
+			shorts[ms.ID] = ms.Short
+		}
+	}
+	return shorts
 }
 
 func newDetailModel(b *issue.Issue, resolver *graph.Resolver, cfg *config.Config, width, height int) detailModel {
@@ -145,6 +159,8 @@ func newDetailModel(b *issue.Issue, resolver *graph.Resolver, cfg *config.Config
 		ready:       true,
 		linksActive: false,
 	}
+
+	m.milestoneShorts = m.loadMilestoneShorts()
 
 	// Resolve all links
 	m.links = m.resolveAllLinks()
@@ -178,9 +194,10 @@ func newDetailModel(b *issue.Issue, resolver *graph.Resolver, cfg *config.Config
 // createLinkList creates a new list.Model for the links
 func (m detailModel) createLinkList() list.Model {
 	delegate := linkDelegate{
-		cfg:   m.config,
-		width: m.width,
-		cols:  m.cols,
+		cfg:             m.config,
+		width:           m.width,
+		cols:            m.cols,
+		milestoneShorts: m.milestoneShorts,
 	}
 
 	// Convert links to list items
@@ -391,9 +408,10 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 // updateLinkListDelegate updates the link list delegate with current dimensions
 func (m *detailModel) updateLinkListDelegate() {
 	delegate := linkDelegate{
-		cfg:   m.config,
-		width: m.width,
-		cols:  m.cols,
+		cfg:             m.config,
+		width:           m.width,
+		cols:            m.cols,
+		milestoneShorts: m.milestoneShorts,
 	}
 	m.linkList.SetDelegate(delegate)
 }
@@ -562,6 +580,7 @@ func (m detailModel) visibleIssueIDs() map[string]bool {
 // the cursor position or focus state.
 func (m *detailModel) refreshIssue(b *issue.Issue) {
 	m.issue = b
+	m.milestoneShorts = m.loadMilestoneShorts()
 	m.links = m.resolveAllLinks()
 
 	oldIndex := m.linkList.Index()

@@ -150,3 +150,42 @@ func TestSnapshotMtimes(t *testing.T) {
 		t.Fatalf("did not expect %s (non-.md) in snapshot", txt)
 	}
 }
+
+// TestHandleChangesIgnoresMilestoneFiles verifies that a change to a milestone
+// file (which lives in the milestones subdirectory) does not leak the milestone
+// into the issue set. Regression test: the watcher previously loaded milestone
+// files as issues, rendering them as empty-title tasks in the TUI.
+func TestHandleChangesIgnoresMilestoneFiles(t *testing.T) {
+	root := t.TempDir()
+	msDir := filepath.Join(root, "milestones")
+	if err := os.MkdirAll(msDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	msFile := filepath.Join(msDir, "lbv-kd5--b1.md")
+	content := "---\nshort: b1\nname: Beta 1\ndue: \"2026-06-30\"\n---\n"
+	if err := os.WriteFile(msFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := New(root, nil)
+	c.watching = true
+
+	c.handleChanges(map[string]fsnotify.Op{msFile: fsnotify.Write})
+
+	if _, ok := c.issues["lbv-kd5"]; ok {
+		t.Fatalf("milestone file leaked into c.issues")
+	}
+	if _, ok := c.milestones["lbv-kd5"]; !ok {
+		t.Fatalf("milestone change was not applied to c.milestones")
+	}
+
+	// A subsequent removal should drop it from the milestone map, not touch issues.
+	if err := os.Remove(msFile); err != nil {
+		t.Fatal(err)
+	}
+	c.handleChanges(map[string]fsnotify.Op{msFile: fsnotify.Remove})
+	if _, ok := c.milestones["lbv-kd5"]; ok {
+		t.Fatalf("removed milestone still present in c.milestones")
+	}
+}

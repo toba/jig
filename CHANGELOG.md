@@ -6,6 +6,12 @@
 
 - Add first-class milestones; milestone entities stored in `.issues/milestones/`, an `issue.milestone` reference field, `jig todo milestone` commands, GraphQL surface, TUI badge/picker/filter, GitHub milestone sync, and a `migrate` command that retires the legacy `milestone` issue type ([#108](https://github.com/toba/jig/issues/108))
 - Render the milestone short name as a gray `<short>:` prefix glued to the front of the issue ID in TUI rows (including tree view); the ID stays purple ([#109](https://github.com/toba/jig/issues/109))
+- Child issues now inherit their parent's milestone when none is set explicitly; applies on create with `--parent` and on reparent via update or the TUI parent picker
+
+### 🐞 Fixes
+
+- Render the milestone short-name prefix on child and linked issues in the TUI detail view, matching the main list rows
+- Fix the TUI file watcher leaking milestone files into the issue list as empty-title tasks; route milestone-file events to the milestone map instead of `c.issues`
 
 ### 🗜️ Tweaks
 

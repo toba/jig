@@ -2780,3 +2780,88 @@ func TestUpdateIssueWithETag(t *testing.T) {
 		}
 	})
 }
+
+func TestMilestoneInheritedFromParent(t *testing.T) {
+	ctx := context.Background()
+
+	newMilestone := func(t *testing.T, c *core.Core, short, name string) string {
+		t.Helper()
+		ms := &issue.Milestone{Short: short, Name: name}
+		if err := c.CreateMilestone(ms); err != nil {
+			t.Fatalf("CreateMilestone() error = %v", err)
+		}
+		return ms.ID
+	}
+
+	t.Run("create inherits parent milestone when none given", func(t *testing.T) {
+		resolver, c := setupTestResolver(t)
+		msID := newMilestone(t, c, "v1", "Version 1")
+
+		epicType := "epic"
+		parent, err := resolver.Mutation().CreateIssue(ctx, model.CreateIssueInput{
+			Title: "Parent epic", Type: &epicType, Milestone: &msID,
+		})
+		if err != nil {
+			t.Fatalf("create parent error = %v", err)
+		}
+
+		child, err := resolver.Mutation().CreateIssue(ctx, model.CreateIssueInput{
+			Title: "Child task", Parent: &parent.ID,
+		})
+		if err != nil {
+			t.Fatalf("create child error = %v", err)
+		}
+		if child.Milestone != msID {
+			t.Errorf("child Milestone = %q, want inherited %q", child.Milestone, msID)
+		}
+	})
+
+	t.Run("create does not override explicit milestone", func(t *testing.T) {
+		resolver, c := setupTestResolver(t)
+		parentMS := newMilestone(t, c, "v1", "Version 1")
+		childMS := newMilestone(t, c, "v2", "Version 2")
+
+		epicType := "epic"
+		parent, err := resolver.Mutation().CreateIssue(ctx, model.CreateIssueInput{
+			Title: "Parent epic", Type: &epicType, Milestone: &parentMS,
+		})
+		if err != nil {
+			t.Fatalf("create parent error = %v", err)
+		}
+
+		child, err := resolver.Mutation().CreateIssue(ctx, model.CreateIssueInput{
+			Title: "Child task", Parent: &parent.ID, Milestone: &childMS,
+		})
+		if err != nil {
+			t.Fatalf("create child error = %v", err)
+		}
+		if child.Milestone != childMS {
+			t.Errorf("child Milestone = %q, want explicit %q", child.Milestone, childMS)
+		}
+	})
+
+	t.Run("update parent inherits milestone for milestone-less child", func(t *testing.T) {
+		resolver, c := setupTestResolver(t)
+		msID := newMilestone(t, c, "v1", "Version 1")
+
+		epicType := "epic"
+		parent, err := resolver.Mutation().CreateIssue(ctx, model.CreateIssueInput{
+			Title: "Parent epic", Type: &epicType, Milestone: &msID,
+		})
+		if err != nil {
+			t.Fatalf("create parent error = %v", err)
+		}
+		child, err := resolver.Mutation().CreateIssue(ctx, model.CreateIssueInput{Title: "Child task"})
+		if err != nil {
+			t.Fatalf("create child error = %v", err)
+		}
+
+		updated, err := resolver.Mutation().UpdateIssue(ctx, child.ID, model.UpdateIssueInput{Parent: &parent.ID})
+		if err != nil {
+			t.Fatalf("update child error = %v", err)
+		}
+		if updated.Milestone != msID {
+			t.Errorf("child Milestone = %q, want inherited %q", updated.Milestone, msID)
+		}
+	})
+}

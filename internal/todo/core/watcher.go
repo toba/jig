@@ -358,6 +358,24 @@ func (c *Core) handleChanges(changes map[string]fsnotify.Op) {
 		filename := filepath.Base(path)
 		id, _ := issue.ParseFilename(filename)
 
+		// Milestone files live in the milestones subdirectory and are not issues.
+		// Keep the in-memory milestone map fresh, but never insert them into
+		// c.issues (doing so would render them as empty-title tasks in the TUI).
+		if c.isMilestonePath(path) {
+			if op&fsnotify.Remove != 0 || op&fsnotify.Rename != 0 {
+				if !c.fileExists(path) {
+					delete(c.milestones, id)
+				}
+			} else if op&fsnotify.Create != 0 || op&fsnotify.Write != 0 {
+				if m, err := loadMilestoneFile(path, c.root); err == nil {
+					c.milestones[m.ID] = m
+				} else {
+					c.logWarn("failed to load milestone from %s: %v", path, err)
+				}
+			}
+			continue
+		}
+
 		// Handle removes/renames (file is gone)
 		if op&fsnotify.Remove != 0 || op&fsnotify.Rename != 0 {
 			// Check if the file actually exists (rename might be followed by create)
@@ -433,4 +451,10 @@ func (c *Core) handleChanges(changes map[string]fsnotify.Op) {
 func (c *Core) fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// isMilestonePath reports whether path is a file directly inside the milestones
+// subdirectory under the issues root.
+func (c *Core) isMilestonePath(path string) bool {
+	return filepath.Dir(path) == filepath.Join(c.root, issue.MilestonesDir)
 }
