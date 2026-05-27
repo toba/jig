@@ -132,15 +132,14 @@ func issueDueTime(due *issue.DueDate) *time.Time {
 
 // itemDelegate handles rendering of list items
 type itemDelegate struct {
-	cfg               *config.Config
-	hasTags           bool
-	width             int
-	cols              ui.ResponsiveColumns // cached responsive columns
-	idColWidth        int                  // ID column width (accounts for tree prefix)
-	leafColWidth      int                  // leaf count column width (0 when nothing collapsed)
-	milestoneShorts   map[string]string    // milestone ID -> short name, for badge rendering
-	milestoneColWidth int                  // milestone badge column width (0 when no milestones in view)
-	selectedIssues    *map[string]bool     // pointer to marked issues for multi-select
+	cfg             *config.Config
+	hasTags         bool
+	width           int
+	cols            ui.ResponsiveColumns // cached responsive columns
+	idColWidth      int                  // ID column width (accounts for tree prefix + milestone prefix)
+	leafColWidth    int                  // leaf count column width (0 when nothing collapsed)
+	milestoneShorts map[string]string    // milestone ID -> short name, rendered as a "<short>:" ID prefix
+	selectedIssues  *map[string]bool     // pointer to marked issues for multi-select
 }
 
 func (d itemDelegate) Height() int                             { return 1 }
@@ -174,11 +173,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if leafCol > 0 {
 		leafCol += 1 // add spacing when column is visible
 	}
-	milestoneCol := d.milestoneColWidth
-	if milestoneCol > 0 {
-		milestoneCol += 1 // add spacing when column is visible
-	}
-	baseWidth := idWidth + leafCol + milestoneCol + d.cols.Status + d.cols.Type + 4 // 4 for cursor + padding
+	baseWidth := idWidth + leafCol + d.cols.Status + d.cols.Type + 4 // 4 for cursor + padding
 	if d.cols.ShowTags {
 		baseWidth += d.cols.Tags
 	}
@@ -196,27 +191,26 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		item.issue.Type,
 		item.issue.Title,
 		ui.IssueRowConfig{
-			StatusColor:       colors.StatusColor,
-			TypeColor:         colors.TypeColor,
-			PriorityColor:     colors.PriorityColor,
-			Priority:          item.issue.Priority,
-			IsArchive:         colors.IsArchive,
-			MaxTitleWidth:     maxTitleWidth,
-			ShowCursor:        true,
-			IsSelected:        index == m.Index(),
-			IsMarked:          isMarked,
-			Tags:              item.issue.Tags,
-			ShowTags:          d.cols.ShowTags,
-			TagsColWidth:      d.cols.Tags,
-			MaxTags:           d.cols.MaxTags,
-			TreePrefix:        item.treePrefix,
-			Dimmed:            dimmed,
-			IDColWidth:        d.idColWidth,
-			DueDate:           issueDueTime(item.issue.Due),
-			LeafCount:         item.leafCount,
-			LeafColWidth:      d.leafColWidth,
-			MilestoneShort:    d.milestoneShorts[item.issue.Milestone],
-			MilestoneColWidth: d.milestoneColWidth,
+			StatusColor:    colors.StatusColor,
+			TypeColor:      colors.TypeColor,
+			PriorityColor:  colors.PriorityColor,
+			Priority:       item.issue.Priority,
+			IsArchive:      colors.IsArchive,
+			MaxTitleWidth:  maxTitleWidth,
+			ShowCursor:     true,
+			IsSelected:     index == m.Index(),
+			IsMarked:       isMarked,
+			Tags:           item.issue.Tags,
+			ShowTags:       d.cols.ShowTags,
+			TagsColWidth:   d.cols.Tags,
+			MaxTags:        d.cols.MaxTags,
+			TreePrefix:     item.treePrefix,
+			Dimmed:         dimmed,
+			IDColWidth:     d.idColWidth,
+			DueDate:        issueDueTime(item.issue.Due),
+			LeafCount:      item.leafCount,
+			LeafColWidth:   d.leafColWidth,
+			MilestoneShort: d.milestoneShorts[item.issue.Milestone],
 		},
 	)
 
@@ -233,13 +227,12 @@ type listModel struct {
 	err      error
 
 	// Responsive column state
-	hasTags           bool                 // whether any issues have tags
-	cols              ui.ResponsiveColumns // calculated responsive columns
-	idColWidth        int                  // ID column width (accounts for tree depth), recalculated for visible items
-	fullIDColWidth    int                  // full ID column width (for all items including nested)
-	leafColWidth      int                  // leaf count column width (0 when nothing collapsed)
-	milestoneShorts   map[string]string    // milestone ID -> short name
-	milestoneColWidth int                  // milestone badge column width (0 when no milestones in view)
+	hasTags         bool                 // whether any issues have tags
+	cols            ui.ResponsiveColumns // calculated responsive columns
+	idColWidth      int                  // ID column width (accounts for tree depth), recalculated for visible items
+	fullIDColWidth  int                  // full ID column width (for all items including nested)
+	leafColWidth    int                  // leaf count column width (0 when nothing collapsed)
+	milestoneShorts map[string]string    // milestone ID -> short name
 
 	// Active filters
 	tagFilter       string // if set, only show issues with this tag
@@ -468,14 +461,15 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		}
 
 		items := make([]list.Item, len(visible))
-		// Check if any issues have tags, and compute leaf + milestone column widths
+		// Check if any issues have tags, compute the leaf column width, and the
+		// widest "<short>:" milestone prefix so it can be folded into the ID column.
 		m.hasTags = false
 		m.leafColWidth = 0
-		m.milestoneColWidth = 0
+		maxMsPrefix := 0
 		for i, flatItem := range visible {
 			if short := m.milestoneShorts[flatItem.Issue.Milestone]; short != "" {
-				if w := len(short) + 2; w > m.milestoneColWidth { // +2 for [ ]
-					m.milestoneColWidth = w
+				if w := len(short) + 1; w > maxMsPrefix { // +1 for the ":" separator
+					maxMsPrefix = w
 				}
 			}
 			var lc int
@@ -498,13 +492,18 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 			}
 		}
 		cmd = m.list.SetItems(items)
-		m.fullIDColWidth = msg.idColWidth
+		// ID column must fit the tree prefix, the optional "<short>:" milestone
+		// prefix, and the ID itself.
+		m.fullIDColWidth = msg.idColWidth + maxMsPrefix
 		// Recalculate ID column width from visible items
-		visibleIDColWidth := msg.idColWidth
+		visibleIDColWidth := msg.idColWidth + maxMsPrefix
 		if len(m.collapsed) > 0 {
 			maxVis := 0
 			for _, fi := range visible {
 				w := len([]rune(fi.TreePrefix)) + len(fi.Issue.ID)
+				if short := m.milestoneShorts[fi.Issue.Milestone]; short != "" {
+					w += len(short) + 1
+				}
 				if w > maxVis {
 					maxVis = w
 				}
@@ -796,15 +795,14 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 // updateDelegate updates the list delegate with current responsive columns
 func (m *listModel) updateDelegate() {
 	delegate := itemDelegate{
-		cfg:               m.config,
-		hasTags:           m.hasTags,
-		width:             m.width,
-		cols:              m.cols,
-		idColWidth:        m.idColWidth,
-		leafColWidth:      m.leafColWidth,
-		milestoneShorts:   m.milestoneShorts,
-		milestoneColWidth: m.milestoneColWidth,
-		selectedIssues:    &m.selectedIssues,
+		cfg:             m.config,
+		hasTags:         m.hasTags,
+		width:           m.width,
+		cols:            m.cols,
+		idColWidth:      m.idColWidth,
+		leafColWidth:    m.leafColWidth,
+		milestoneShorts: m.milestoneShorts,
+		selectedIssues:  &m.selectedIssues,
 	}
 	m.list.SetDelegate(delegate)
 }

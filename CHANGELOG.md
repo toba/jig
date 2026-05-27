@@ -5,6 +5,7 @@
 ### ✨ Features
 
 - Add first-class milestones; milestone entities stored in `.issues/milestones/`, an `issue.milestone` reference field, `jig todo milestone` commands, GraphQL surface, TUI badge/picker/filter, GitHub milestone sync, and a `migrate` command that retires the legacy `milestone` issue type ([#108](https://github.com/toba/jig/issues/108))
+- Render the milestone short name as a gray `<short>:` prefix glued to the front of the issue ID in TUI rows (including tree view); the ID stays purple ([#109](https://github.com/toba/jig/issues/109))
 
 ### 🗜️ Tweaks
 
