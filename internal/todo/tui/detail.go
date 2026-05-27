@@ -339,6 +339,16 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 				}
 			}
 
+		case "m":
+			// Open milestone picker
+			return m, func() tea.Msg {
+				return openMilestonePickerMsg{
+					issueIDs:         []string{m.issue.ID},
+					issueTitle:       m.issue.Title,
+					currentMilestone: m.issue.Milestone,
+				}
+			}
+
 		case "b":
 			// Open blocking picker
 			return m, func() tea.Msg {
@@ -489,6 +499,14 @@ func (m detailModel) renderHeader() string {
 	headerContent.WriteString(title)
 	headerContent.WriteString("\n")
 	headerContent.WriteString(id + "  " + status)
+
+	// Add milestone badge if assigned
+	if m.issue.Milestone != "" {
+		if ms, err := m.resolver.Core.GetMilestone(m.issue.Milestone); err == nil {
+			headerContent.WriteString("  ")
+			headerContent.WriteString(ui.Secondary.Render("[" + ms.Short + "] " + ms.Name))
+		}
+	}
 
 	// Add tags if present
 	if len(m.issue.Tags) > 0 {

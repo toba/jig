@@ -31,8 +31,11 @@ const (
 	viewTypePicker
 	viewBlockingPicker
 	viewPriorityPicker
+	viewMilestonePicker
 	viewSortPicker
 	viewCreateModal
+	viewCreateChooser
+	viewMilestoneCreateModal
 	viewHelpOverlay
 )
 
@@ -81,25 +84,28 @@ type openParentPickerMsg struct {
 
 // App is the main TUI application model
 type App struct {
-	state          viewState
-	list           listModel
-	detail         detailModel
-	tagPicker      tagPickerModel
-	parentPicker   parentPickerModel
-	statusPicker   statusPickerModel
-	typePicker     typePickerModel
-	blockingPicker blockingPickerModel
-	priorityPicker priorityPickerModel
-	sortPicker     sortPickerModel
-	createModal    createModalModel
-	helpOverlay    helpOverlayModel
-	history        []detailModel // stack of previous detail views for back navigation
-	core           *core.Core
-	resolver       *graph.Resolver
-	config         *config.Config
-	width          int
-	height         int
-	program        *tea.Program // reference to program for sending messages from watcher
+	state           viewState
+	list            listModel
+	detail          detailModel
+	tagPicker       tagPickerModel
+	parentPicker    parentPickerModel
+	statusPicker    statusPickerModel
+	typePicker      typePickerModel
+	blockingPicker  blockingPickerModel
+	priorityPicker  priorityPickerModel
+	milestonePicker milestonePickerModel
+	sortPicker      sortPickerModel
+	createModal     createModalModel
+	createChooser   createChooserModel
+	milestoneCreate milestoneCreateModalModel
+	helpOverlay     helpOverlayModel
+	history         []detailModel // stack of previous detail views for back navigation
+	core            *core.Core
+	resolver        *graph.Resolver
+	config          *config.Config
+	width           int
+	height          int
+	program         *tea.Program // reference to program for sending messages from watcher
 
 	// Key chord state - tracks partial key sequences like "g" waiting for "t"
 	pendingKey string
@@ -160,6 +166,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "t":
 					// "g t" - go to tags
 					return a, func() tea.Msg { return openTagPickerMsg{} }
+				case "m":
+					// "g m" - filter by milestone
+					if len(a.core.AllMilestones()) == 0 {
+						return a, nil
+					}
+					return a, func() tea.Msg {
+						return openMilestonePickerMsg{
+							currentMilestone: a.list.milestoneFilter,
+							filterMode:       true,
+						}
+					}
 				default:
 					// Invalid second key, ignore the chord
 				}
@@ -189,7 +206,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return a, a.helpOverlay.Init()
 			}
 		case "q":
-			if a.state == viewDetail || a.state == viewTagPicker || a.state == viewParentPicker || a.state == viewStatusPicker || a.state == viewTypePicker || a.state == viewBlockingPicker || a.state == viewPriorityPicker || a.state == viewSortPicker || a.state == viewHelpOverlay {
+			if a.state == viewDetail || a.state == viewTagPicker || a.state == viewParentPicker || a.state == viewStatusPicker || a.state == viewTypePicker || a.state == viewBlockingPicker || a.state == viewPriorityPicker || a.state == viewMilestonePicker || a.state == viewSortPicker || a.state == viewHelpOverlay {
 				return a, tea.Quit
 			}
 			// For list, only quit if not filtering
@@ -337,6 +354,35 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a.finishBatchEdit(msg.issueIDs)
 
+	case openMilestonePickerMsg:
+		a.previousState = a.state
+		a.milestonePicker = newMilestonePickerModel(msg.issueIDs, msg.issueTitle, msg.currentMilestone, msg.filterMode, a.core.MilestonesSorted(), a.width, a.height)
+		a.state = viewMilestonePicker
+		return a, a.milestonePicker.Init()
+
+	case closeMilestonePickerMsg:
+		a.state = a.previousState
+		return a, a.list.loadIssues
+
+	case milestoneSelectedMsg:
+		if msg.filterMode {
+			// Set (or clear) the list's milestone filter.
+			a.state = viewList
+			a.list.setMilestoneFilter(msg.milestoneID)
+			return a, a.list.loadIssues
+		}
+		// Assign (or clear) milestone on all selected issues via GraphQL mutations.
+		ms := msg.milestoneID
+		for _, issueID := range msg.issueIDs {
+			_, err := a.resolver.Mutation().UpdateIssue(context.Background(), issueID, model.UpdateIssueInput{
+				Milestone: &ms,
+			})
+			if err != nil {
+				continue
+			}
+		}
+		return a.finishBatchEdit(msg.issueIDs)
+
 	case openSortPickerMsg:
 		a.previousState = a.state
 		a.sortPicker = newSortPickerModel(msg.currentOrder, a.width, a.height)
@@ -422,6 +468,31 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return openEditorMsg{issueID: createdIssue.ID, issuePath: createdIssue.Path}
 			},
 		)
+
+	case openCreateChooserMsg:
+		a.previousState = a.state
+		a.createChooser = newCreateChooserModel(a.width, a.height)
+		a.state = viewCreateChooser
+		return a, a.createChooser.Init()
+
+	case openMilestoneCreateModalMsg:
+		// previousState is preserved from the chooser so cancel returns to the list.
+		a.milestoneCreate = newMilestoneCreateModalModel(a.width, a.height)
+		a.state = viewMilestoneCreateModal
+		return a, a.milestoneCreate.Init()
+
+	case milestoneCreatedMsg:
+		input := model.CreateMilestoneInput{Short: msg.short, Name: msg.name}
+		if msg.due != "" {
+			input.Due = &msg.due
+		}
+		if _, err := a.resolver.Mutation().CreateMilestone(context.Background(), input); err != nil {
+			// Surface the error in the create modal and stay open.
+			a.milestoneCreate.errText = err.Error()
+			return a, nil
+		}
+		a.state = viewList
+		return a, a.list.loadIssues
 
 	case openEditorMsg:
 		// Launch editor for the issue file
@@ -541,12 +612,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.typePicker, cmd = a.typePicker.Update(msg)
 	case viewPriorityPicker:
 		a.priorityPicker, cmd = a.priorityPicker.Update(msg)
+	case viewMilestonePicker:
+		a.milestonePicker, cmd = a.milestonePicker.Update(msg)
 	case viewSortPicker:
 		a.sortPicker, cmd = a.sortPicker.Update(msg)
 	case viewBlockingPicker:
 		a.blockingPicker, cmd = a.blockingPicker.Update(msg)
 	case viewCreateModal:
 		a.createModal, cmd = a.createModal.Update(msg)
+	case viewCreateChooser:
+		a.createChooser, cmd = a.createChooser.Update(msg)
+	case viewMilestoneCreateModal:
+		a.milestoneCreate, cmd = a.milestoneCreate.Update(msg)
 	case viewHelpOverlay:
 		a.helpOverlay, cmd = a.helpOverlay.Update(msg)
 	}
@@ -604,12 +681,18 @@ func (a *App) View() tea.View {
 		content = a.typePicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewPriorityPicker:
 		content = a.priorityPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+	case viewMilestonePicker:
+		content = a.milestonePicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewSortPicker:
 		content = a.sortPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewBlockingPicker:
 		content = a.blockingPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewCreateModal:
 		content = a.createModal.ModalView(a.getBackgroundView(), a.width, a.height)
+	case viewCreateChooser:
+		content = a.createChooser.ModalView(a.getBackgroundView(), a.width, a.height)
+	case viewMilestoneCreateModal:
+		content = a.milestoneCreate.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewHelpOverlay:
 		content = a.helpOverlay.ModalView(a.getBackgroundView(), a.width, a.height)
 	}

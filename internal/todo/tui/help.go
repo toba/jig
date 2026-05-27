@@ -84,8 +84,9 @@ func (m helpOverlayModel) View() string {
 
 	content.WriteString(shortcut("b", "Manage blocking") + "\n")
 	content.WriteString(shortcut("c", "Copy issue ID") + "\n")
-	content.WriteString(shortcut("C", "Create new issue") + "\n")
+	content.WriteString(shortcut("C", "Create issue or milestone") + "\n")
 	content.WriteString(shortcut("e", "Edit in editor") + "\n")
+	content.WriteString(shortcut("m", "Change milestone") + "\n")
 	content.WriteString(shortcut("o", "Sort order") + "\n")
 	content.WriteString(shortcut("p", "Set parent") + "\n")
 	content.WriteString(shortcut("P", "Change priority") + "\n")

@@ -36,6 +36,8 @@ type CreateIssueInput struct {
 	Status *string `json:"status,omitempty"`
 	// Priority level (defaults to 'normal')
 	Priority *string `json:"priority,omitempty"`
+	// Milestone ID this issue is assigned to
+	Milestone *string `json:"milestone,omitempty"`
 	// Tags for categorization
 	Tags []string `json:"tags,omitempty"`
 	// Markdown body content
@@ -48,6 +50,18 @@ type CreateIssueInput struct {
 	Blocking []string `json:"blocking,omitempty"`
 	// Issue IDs that are blocking this issue
 	BlockedBy []string `json:"blockedBy,omitempty"`
+}
+
+// Input for creating a new milestone
+type CreateMilestoneInput struct {
+	// Short name (2-3 chars, required)
+	Short string `json:"short"`
+	// Milestone name (required)
+	Name string `json:"name"`
+	// Due date in YYYY-MM-DD format
+	Due *string `json:"due,omitempty"`
+	// Markdown description
+	Description *string `json:"description,omitempty"`
 }
 
 // Filter options for querying issues
@@ -82,6 +96,10 @@ type IssueFilter struct {
 	Tags []string `json:"tags,omitempty"`
 	// Exclude issues with any of these tags
 	ExcludeTags []string `json:"excludeTags,omitempty"`
+	// Include only issues assigned to any of these milestone IDs (OR logic)
+	Milestone []string `json:"milestone,omitempty"`
+	// Exclude issues assigned to any of these milestone IDs
+	ExcludeMilestone []string `json:"excludeMilestone,omitempty"`
 	// Include only issues with a parent
 	HasParent *bool `json:"hasParent,omitempty"`
 	// Include only issues with this specific parent ID
@@ -144,6 +162,8 @@ type UpdateIssueInput struct {
 	Type *string `json:"type,omitempty"`
 	// New priority
 	Priority *string `json:"priority,omitempty"`
+	// Milestone ID (empty string to clear)
+	Milestone *string `json:"milestone,omitempty"`
 	// Replace all tags (nil preserves existing, mutually exclusive with addTags/removeTags)
 	Tags []string `json:"tags,omitempty"`
 	// Add tags to existing list
@@ -168,4 +188,16 @@ type UpdateIssueInput struct {
 	RemoveBlockedBy []string `json:"removeBlockedBy,omitempty"`
 	// ETag for optimistic concurrency control (optional)
 	IfMatch *string `json:"ifMatch,omitempty"`
+}
+
+// Input for updating an existing milestone (omitted fields are left unchanged)
+type UpdateMilestoneInput struct {
+	// Short name (2-3 chars)
+	Short *string `json:"short,omitempty"`
+	// Milestone name
+	Name *string `json:"name,omitempty"`
+	// Due date in YYYY-MM-DD format (empty string to clear)
+	Due *string `json:"due,omitempty"`
+	// Markdown description
+	Description *string `json:"description,omitempty"`
 }

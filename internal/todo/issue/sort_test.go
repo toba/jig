@@ -486,3 +486,22 @@ func TestSortByDueDate(t *testing.T) {
 		}
 	})
 }
+
+func TestSortByMilestone(t *testing.T) {
+	order := map[string]int{"m1": 0, "m2": 1}
+	issues := []*Issue{
+		{ID: "a", Title: "A", Milestone: "m2"},
+		{ID: "b", Title: "B", Milestone: ""},
+		{ID: "c", Title: "C", Milestone: "m1"},
+		{ID: "d", Title: "D", Milestone: "unknown"},
+	}
+	SortByMilestone(issues, order)
+	got := []string{issues[0].ID, issues[1].ID, issues[2].ID, issues[3].ID}
+	// m1 (rank 0), m2 (rank 1), unknown (rank len), none (rank len+1)
+	want := []string{"c", "a", "d", "b"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+}

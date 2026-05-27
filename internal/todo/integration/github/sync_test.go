@@ -91,15 +91,15 @@ func (m *memorySyncProvider) Flush() error { return nil }
 func newTestSyncer(t *testing.T, client *Client) *Syncer {
 	t.Helper()
 	return &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{},
-		syncStore:              newMemorySyncProvider(),
-		issueToGHNumber:        make(map[string]int),
-		issueToGHID:            make(map[string]int),
-		childrenOf:             make(map[string][]string),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{},
+		syncStore:           newMemorySyncProvider(),
+		issueToGHNumber:     make(map[string]int),
+		issueToGHID:         make(map[string]int),
+		childrenOf:          make(map[string][]string),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 }
 
@@ -315,14 +315,14 @@ func TestSyncIssue_Update(t *testing.T) {
 	store := newMemorySyncProvider()
 	store.SetIssueNumber("test-1", 42)
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{Force: true},
-		syncStore:              store,
-		issueToGHNumber:        make(map[string]int),
-		issueToGHID:            make(map[string]int),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{Force: true},
+		syncStore:           store,
+		issueToGHNumber:     make(map[string]int),
+		issueToGHID:         make(map[string]int),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	now := time.Now()
@@ -382,14 +382,14 @@ func TestSyncIssue_CreateWithLabels(t *testing.T) {
 	}
 
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{},
-		syncStore:              newMemorySyncProvider(),
-		issueToGHNumber:        make(map[string]int),
-		issueToGHID:            make(map[string]int),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{},
+		syncStore:           newMemorySyncProvider(),
+		issueToGHNumber:     make(map[string]int),
+		issueToGHID:         make(map[string]int),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	now := time.Now()
@@ -476,13 +476,13 @@ func TestFilterIssuesNeedingSync_Force(t *testing.T) {
 
 func TestSyncIssue_DryRun_Create(t *testing.T) {
 	syncer := &Syncer{
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{DryRun: true},
-		syncStore:              newMemorySyncProvider(),
-		issueToGHNumber:        make(map[string]int),
-		issueToGHID:            make(map[string]int),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{DryRun: true},
+		syncStore:           newMemorySyncProvider(),
+		issueToGHNumber:     make(map[string]int),
+		issueToGHID:         make(map[string]int),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	b := &issue.Issue{
@@ -779,34 +779,27 @@ func TestSyncMilestone_Create(t *testing.T) {
 
 	syncer := newTestSyncer(t, client)
 
-	now := time.Now()
-	b := &issue.Issue{
-		ID:        "ms-1",
-		Title:     "v1.0 Release",
-		Status:    "ready",
-		Type:      "milestone",
-		Body:      "First major release",
-		CreatedAt: &now,
-		UpdatedAt: &now,
+	m := &issue.Milestone{
+		ID:          "ms-1",
+		Short:       "v1",
+		Name:        "v1.0 Release",
+		Description: "First major release",
 	}
 
-	result := syncer.syncMilestone(context.Background(), b)
+	syncer.syncMilestoneEntity(context.Background(), m)
 
-	if result.Action != "created" {
-		t.Fatalf("expected action 'created', got %q", result.Action)
-	}
-	if result.ExternalID != "milestone:5" {
-		t.Errorf("expected external ID 'milestone:5', got %q", result.ExternalID)
-	}
 	if receivedReq.Title != "v1.0 Release" {
 		t.Errorf("expected title 'v1.0 Release', got %q", receivedReq.Title)
 	}
 	if !strings.Contains(receivedReq.Description, "First major release") {
 		t.Errorf("expected description to contain body, got %q", receivedReq.Description)
 	}
-	// Verify milestone number stored
-	if syncer.issueToMilestoneNumber["ms-1"] != 5 {
-		t.Errorf("expected milestone number 5 in map, got %d", syncer.issueToMilestoneNumber["ms-1"])
+	// Verify milestone number stored in tracking map and on the entity.
+	if syncer.milestoneToGHNumber["ms-1"] != 5 {
+		t.Errorf("expected milestone number 5 in map, got %d", syncer.milestoneToGHNumber["ms-1"])
+	}
+	if got := milestoneGHNumber(m); got != 5 {
+		t.Errorf("expected milestone number 5 persisted on entity, got %d", got)
 	}
 }
 
@@ -847,35 +840,28 @@ func TestSyncMilestone_Update(t *testing.T) {
 		httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}},
 	}
 
-	store := newMemorySyncProvider()
-	store.SetMilestoneNumber("ms-1", 5)
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{Force: true},
-		syncStore:              store,
-		issueToGHNumber:        make(map[string]int),
-		issueToGHID:            make(map[string]int),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{Force: true},
+		syncStore:           newMemorySyncProvider(),
+		issueToGHNumber:     make(map[string]int),
+		issueToGHID:         make(map[string]int),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
-	now := time.Now()
-	b := &issue.Issue{
-		ID:        "ms-1",
-		Title:     "v1.0 Release",
-		Status:    "ready",
-		Type:      "milestone",
-		Body:      "Updated description",
-		CreatedAt: &now,
-		UpdatedAt: &now,
+	// Milestone entity already linked to GitHub milestone #5.
+	m := &issue.Milestone{
+		ID:          "ms-1",
+		Short:       "v1",
+		Name:        "v1.0 Release",
+		Description: "Updated description",
 	}
+	m.SetSync(SyncName, map[string]any{SyncKeyMilestoneNumber: "5"})
 
-	result := syncer.syncMilestone(context.Background(), b)
+	syncer.syncMilestoneEntity(context.Background(), m)
 
-	if result.Action != "updated" {
-		t.Fatalf("expected action 'updated', got %q", result.Action)
-	}
 	if !patchCalled {
 		t.Error("expected PATCH to be called for milestone update")
 	}
@@ -921,11 +907,10 @@ func TestSyncIssue_MilestoneAssignment(t *testing.T) {
 		syncStore:       newMemorySyncProvider(),
 		issueToGHNumber: make(map[string]int),
 		issueToGHID:     make(map[string]int),
-		issueToMilestoneNumber: map[string]int{
-			"ms-1": 5, // Parent milestone has GitHub milestone number 5
+		milestoneToGHNumber: map[string]int{
+			"ms-1": 5, // Assigned milestone has GitHub milestone number 5
 		},
 		issueTypes: map[string]string{
-			"ms-1":   "milestone",
 			"task-1": "task",
 		},
 	}
@@ -936,7 +921,7 @@ func TestSyncIssue_MilestoneAssignment(t *testing.T) {
 		Title:     "Implement feature X",
 		Status:    "ready",
 		Type:      "task",
-		Parent:    "ms-1", // Parent is a milestone
+		Milestone: "ms-1", // Assigned to milestone entity ms-1
 		CreatedAt: &now,
 		UpdatedAt: &now,
 	}
@@ -999,13 +984,13 @@ func TestSyncBlockingRelationships_Add(t *testing.T) {
 	}
 
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{},
-		issueToGHNumber:        map[string]int{"issue-a": 10, "issue-b": 20},
-		issueToGHID:            map[string]int{"issue-a": 100010, "issue-b": 100020},
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{},
+		issueToGHNumber:     map[string]int{"issue-a": 10, "issue-b": 20},
+		issueToGHID:         map[string]int{"issue-a": 100010, "issue-b": 100020},
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	// issue-a is blocked by issue-b
@@ -1073,13 +1058,13 @@ func TestSyncBlockingRelationships_Remove(t *testing.T) {
 	}
 
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{},
-		issueToGHNumber:        map[string]int{"issue-a": 10},
-		issueToGHID:            map[string]int{"issue-a": 100010},
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{},
+		issueToGHNumber:     map[string]int{"issue-a": 10},
+		issueToGHID:         map[string]int{"issue-a": 100010},
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	// issue-a has no blocking relationships (all removed)
@@ -1121,13 +1106,13 @@ func TestSyncBlockingRelationships_NoChange(t *testing.T) {
 	}
 
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{},
-		issueToGHNumber:        map[string]int{"issue-a": 10, "issue-b": 20},
-		issueToGHID:            map[string]int{"issue-a": 100010, "issue-b": 100020},
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{},
+		issueToGHNumber:     map[string]int{"issue-a": 10, "issue-b": 20},
+		issueToGHID:         map[string]int{"issue-a": 100010, "issue-b": 100020},
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	// issue-a is blocked by issue-b (matches current state)
@@ -1185,14 +1170,14 @@ func TestSyncSubIssueLink_AddParent(t *testing.T) {
 	}
 
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{},
-		issueToGHNumber:        map[string]int{"parent-1": 50, "child-1": 10},
-		issueToGHID:            map[string]int{"child-1": 100010},
-		childrenOf:             make(map[string][]string),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             map[string]string{"parent-1": "feature"},
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{},
+		issueToGHNumber:     map[string]int{"parent-1": 50, "child-1": 10},
+		issueToGHID:         map[string]int{"child-1": 100010},
+		childrenOf:          make(map[string][]string),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          map[string]string{"parent-1": "feature"},
 	}
 
 	b := &issue.Issue{ID: "child-1", Parent: "parent-1"}
@@ -1212,11 +1197,11 @@ func TestSyncSubIssueLink_AddParent(t *testing.T) {
 func TestSyncSubIssueLink_SkipsMilestoneParent(t *testing.T) {
 	// If the client is called, it would panic (client is nil)
 	syncer := &Syncer{
-		opts:                   SyncOptions{},
-		issueToGHNumber:        map[string]int{"ms-1": 50, "child-1": 10},
-		issueToGHID:            map[string]int{"child-1": 100010},
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             map[string]string{"ms-1": "milestone"},
+		opts:                SyncOptions{},
+		issueToGHNumber:     map[string]int{"ms-1": 50, "child-1": 10},
+		issueToGHID:         map[string]int{"child-1": 100010},
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          map[string]string{"ms-1": "milestone"},
 	}
 
 	// Child's parent is a milestone — should skip sub-issue linking
@@ -1252,14 +1237,14 @@ func TestSyncSubIssueLink_RemoveParent(t *testing.T) {
 	}
 
 	syncer := &Syncer{
-		client:                 client,
-		config:                 &Config{Owner: "test-owner", Repo: "test-repo"},
-		opts:                   SyncOptions{},
-		issueToGHNumber:        map[string]int{"child-1": 10},
-		issueToGHID:            map[string]int{"child-1": 100010},
-		childrenOf:             make(map[string][]string),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              &Config{Owner: "test-owner", Repo: "test-repo"},
+		opts:                SyncOptions{},
+		issueToGHNumber:     map[string]int{"child-1": 10},
+		issueToGHID:         map[string]int{"child-1": 100010},
+		childrenOf:          make(map[string][]string),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	// Issue with no parent locally (removed)
@@ -1273,11 +1258,11 @@ func TestSyncSubIssueLink_RemoveParent(t *testing.T) {
 
 func TestSyncSubIssueLink_NoRelationships(t *testing.T) {
 	syncer := &Syncer{
-		opts:                   SyncOptions{NoRelationships: true},
-		issueToGHNumber:        map[string]int{"child-1": 10, "parent-1": 50},
-		issueToGHID:            map[string]int{"child-1": 100010},
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		opts:                SyncOptions{NoRelationships: true},
+		issueToGHNumber:     map[string]int{"child-1": 10, "parent-1": 50},
+		issueToGHID:         map[string]int{"child-1": 100010},
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 
 	// Should return immediately without making any API calls

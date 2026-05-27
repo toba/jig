@@ -32,29 +32,29 @@ type Syncer struct {
 	childrenOf      map[string][]string // parent ID -> child IDs (built during sync)
 
 	// Milestone tracking
-	issueToMilestoneNumber map[string]int    // local issue ID -> GitHub milestone number
-	issueTypes             map[string]string // local issue ID -> issue type
+	milestoneToGHNumber map[string]int    // local milestone entity ID -> GitHub milestone number
+	issueTypes          map[string]string // local issue ID -> issue type
 }
 
 // NewSyncer creates a new syncer with the given client and options.
 func NewSyncer(client *Client, cfg *Config, opts SyncOptions, c *core.Core, syncStore SyncStateProvider) *Syncer {
 	return &Syncer{
-		client:                 client,
-		config:                 cfg,
-		opts:                   opts,
-		core:                   c,
-		syncStore:              syncStore,
-		issueToGHNumber:        make(map[string]int),
-		issueToGHID:            make(map[string]int),
-		childrenOf:             make(map[string][]string),
-		issueToMilestoneNumber: make(map[string]int),
-		issueTypes:             make(map[string]string),
+		client:              client,
+		config:              cfg,
+		opts:                opts,
+		core:                c,
+		syncStore:           syncStore,
+		issueToGHNumber:     make(map[string]int),
+		issueToGHID:         make(map[string]int),
+		childrenOf:          make(map[string][]string),
+		milestoneToGHNumber: make(map[string]int),
+		issueTypes:          make(map[string]string),
 	}
 }
 
 // SyncIssues syncs a list of issues to GitHub issues.
 // Uses a multi-pass approach:
-// 0. Create/update milestones for milestone-type issues
+// 0. Create/update GitHub milestones from local milestone entities
 // 1. Create/update parent issues (issues without parents, or parents not in this sync)
 // 2. Create/update child issues with sub-issue relationships
 // 3. Sync native blocking/blocked-by relationships via GitHub dependencies API
@@ -83,9 +83,12 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 		if issueNumber != nil && *issueNumber != 0 {
 			s.issueToGHNumber[b.ID] = *issueNumber
 		}
-		milestoneNumber := s.syncStore.GetMilestoneNumber(b.ID)
-		if milestoneNumber != nil && *milestoneNumber != 0 {
-			s.issueToMilestoneNumber[b.ID] = *milestoneNumber
+	}
+
+	// Pre-populate milestone mapping from already-synced milestone entities.
+	for _, m := range s.core.AllMilestones() {
+		if n := milestoneGHNumber(m); n != 0 {
+			s.milestoneToGHNumber[m.ID] = n
 		}
 	}
 
@@ -100,16 +103,9 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 		}
 	}
 
-	// Separate milestone-type issues from regular issues
-	var milestones []*issue.Issue
-	var regularIssues []*issue.Issue
-	for _, b := range issues {
-		if b.Type == config.TypeMilestone {
-			milestones = append(milestones, b)
-		} else {
-			regularIssues = append(regularIssues, b)
-		}
-	}
+	// Milestones are now first-class entities (not issues). All issues sync as
+	// regular issues; milestone assignment is resolved via issue.Milestone.
+	regularIssues := issues
 
 	// Separate regular issues into layers: parents first, then children
 	var parents, children []*issue.Issue
@@ -158,12 +154,10 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 		reportProgress(result)
 	}
 
-	// Pass 0: Create/update milestones
-	for _, b := range milestones {
-		result := s.syncMilestone(ctx, b)
-		idx := issueIndex[b.ID]
-		results[idx] = result
-		reportProgress(result)
+	// Pass 0: Create/update GitHub milestones from local milestone entities.
+	// These are not issues, so their results are not part of the issue results.
+	for _, m := range s.core.AllMilestones() {
+		s.syncMilestoneEntity(ctx, m)
 	}
 
 	// Pass 1: Create/update parent issues in parallel
@@ -201,60 +195,76 @@ func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncR
 	return results, nil
 }
 
-// syncMilestone syncs a milestone-type issue to a GitHub milestone.
-func (s *Syncer) syncMilestone(ctx context.Context, b *issue.Issue) SyncResult {
-	result := SyncResult{
-		IssueID:    b.ID,
-		IssueTitle: b.Title,
+// milestoneGHNumber reads the stored GitHub milestone number from a milestone
+// entity's sync metadata, or 0 if not yet synced.
+func milestoneGHNumber(m *issue.Milestone) int {
+	if m.Sync == nil {
+		return 0
 	}
+	data, ok := m.Sync[SyncName]
+	if !ok {
+		return 0
+	}
+	switch v := data[SyncKeyMilestoneNumber].(type) {
+	case int:
+		return v
+	case string:
+		n, _ := strconv.Atoi(v)
+		return n
+	case float64:
+		return int(v)
+	}
+	return 0
+}
 
-	state := s.getGitHubState(b.Status)
-	// GitHub milestones use "open"/"closed" just like issues
-	milestoneState := state
+// setMilestoneGHNumber persists the GitHub milestone number on a milestone entity.
+func (s *Syncer) setMilestoneGHNumber(m *issue.Milestone, number int) {
+	data := map[string]any{}
+	if m.Sync != nil {
+		if existing, ok := m.Sync[SyncName]; ok {
+			data = existing
+		}
+	}
+	data[SyncKeyMilestoneNumber] = strconv.Itoa(number)
+	data[SyncKeySyncedAt] = time.Now().UTC().Format(time.RFC3339)
+	m.SetSync(SyncName, data)
+	if s.core != nil {
+		_ = s.core.SaveMilestoneSyncOnly(m)
+	}
+}
+
+// syncMilestoneEntity syncs a local milestone entity to a GitHub milestone.
+func (s *Syncer) syncMilestoneEntity(ctx context.Context, m *issue.Milestone) {
+	// GitHub milestones use "open"/"closed"; entities have no status, so they
+	// remain open (closing is a manual GitHub operation).
+	milestoneState := StateOpen
 
 	var dueOn string
-	if b.Due != nil {
-		dueOn = b.Due.Format(time.RFC3339)
+	if m.Due != nil {
+		dueOn = m.Due.Format(time.RFC3339)
 	}
 
-	// Check if already linked
-	milestoneNumber := s.syncStore.GetMilestoneNumber(b.ID)
-	if milestoneNumber != nil && *milestoneNumber != 0 {
-		result.ExternalID = fmt.Sprintf("milestone:%d", *milestoneNumber)
+	description := s.buildMilestoneDescription(m)
 
-		if !s.opts.Force && !s.needsSync(b) {
-			result.Action = syncutil.ActionSkipped
-			return result
-		}
-
-		// Verify milestone still exists
-		ghMilestone, err := s.client.GetMilestone(ctx, *milestoneNumber)
+	// Already linked?
+	if number := milestoneGHNumber(m); number != 0 {
+		ghMilestone, err := s.client.GetMilestone(ctx, number)
 		if err != nil {
-			if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "Not Found") {
-				s.syncStore.Clear(b.ID)
-				// Fall through to create
-			} else {
-				result.Action = syncutil.ActionError
-				result.Error = fmt.Errorf("fetching milestone #%d: %w", *milestoneNumber, err)
-				return result
+			if !strings.Contains(err.Error(), "404") && !strings.Contains(err.Error(), "Not Found") {
+				return // transient error; try again next sync
 			}
+			// Milestone deleted upstream — fall through to recreate.
 		} else {
-			result.ExternalURL = ghMilestone.HTMLURL
-			s.issueToMilestoneNumber[b.ID] = ghMilestone.Number
-
+			s.milestoneToGHNumber[m.ID] = ghMilestone.Number
 			if s.opts.DryRun {
-				result.Action = syncutil.ActionWouldUpdate
-				return result
+				return
 			}
-
-			// Build update request
 			update := &UpdateMilestoneRequest{}
-			if ghMilestone.Title != b.Title {
-				update.Title = &b.Title
+			if ghMilestone.Title != m.Name {
+				update.Title = &m.Name
 			}
-			body := s.buildMilestoneDescription(b)
-			if ghMilestone.Description != body {
-				update.Description = &body
+			if ghMilestone.Description != description {
+				update.Description = &description
 			}
 			if ghMilestone.State != milestoneState {
 				update.State = &milestoneState
@@ -262,63 +272,37 @@ func (s *Syncer) syncMilestone(ctx context.Context, b *issue.Issue) SyncResult {
 			if dueOn != "" && ghMilestone.DueOn != dueOn {
 				update.DueOn = &dueOn
 			}
-
 			if update.hasChanges() {
-				updated, err := s.client.UpdateMilestone(ctx, *milestoneNumber, update)
-				if err != nil {
-					result.Action = syncutil.ActionError
-					result.Error = fmt.Errorf("updating milestone: %w", err)
-					return result
-				}
-				result.ExternalURL = updated.HTMLURL
-				result.Action = syncutil.ActionUpdated
-			} else {
-				result.Action = syncutil.ActionUnchanged
+				_, _ = s.client.UpdateMilestone(ctx, number, update)
 			}
-
-			s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
-			return result
+			return
 		}
 	}
 
-	// Create new milestone
 	if s.opts.DryRun {
-		result.Action = syncutil.ActionWouldCreate
-		return result
+		return
 	}
 
-	createReq := &CreateMilestoneRequest{
-		Title:       b.Title,
-		Description: s.buildMilestoneDescription(b),
+	ghMilestone, err := s.client.CreateMilestone(ctx, &CreateMilestoneRequest{
+		Title:       m.Name,
+		Description: description,
 		State:       milestoneState,
 		DueOn:       dueOn,
-	}
-
-	ghMilestone, err := s.client.CreateMilestone(ctx, createReq)
+	})
 	if err != nil {
-		result.Action = syncutil.ActionError
-		result.Error = fmt.Errorf("creating milestone: %w", err)
-		return result
+		return
 	}
-
-	result.ExternalID = fmt.Sprintf("milestone:%d", ghMilestone.Number)
-	result.ExternalURL = ghMilestone.HTMLURL
-	s.issueToMilestoneNumber[b.ID] = ghMilestone.Number
-
-	s.syncStore.SetMilestoneNumber(b.ID, ghMilestone.Number)
-	s.syncStore.SetSyncedAt(b.ID, time.Now().UTC())
-
-	result.Action = syncutil.ActionCreated
-	return result
+	s.milestoneToGHNumber[m.ID] = ghMilestone.Number
+	s.setMilestoneGHNumber(m, ghMilestone.Number)
 }
 
-// buildMilestoneDescription builds the GitHub milestone description from a local issue.
-func (s *Syncer) buildMilestoneDescription(b *issue.Issue) string {
+// buildMilestoneDescription builds the GitHub milestone description from a milestone entity.
+func (s *Syncer) buildMilestoneDescription(m *issue.Milestone) string {
 	var parts []string
-	if b.Body != "" {
-		parts = append(parts, b.Body)
+	if m.Description != "" {
+		parts = append(parts, m.Description)
 	}
-	parts = append(parts, fmt.Sprintf(TodoCommentFormat, b.ID))
+	parts = append(parts, fmt.Sprintf(TodoCommentFormat, m.ID))
 	return strings.Join(parts, "\n\n")
 }
 
@@ -529,16 +513,14 @@ func (s *Syncer) getAssignees(ctx context.Context) []string {
 	return []string{user.Login}
 }
 
-// getMilestoneForIssue returns the GitHub milestone number if the issue's parent is a milestone-type issue.
+// getMilestoneForIssue returns the GitHub milestone number for the issue's
+// assigned milestone entity, if it has one and that milestone has been synced.
 func (s *Syncer) getMilestoneForIssue(b *issue.Issue) *int {
-	if b.Parent == "" {
+	if b.Milestone == "" {
 		return nil
 	}
-	// Check if parent is a milestone-type issue
-	if parentType, ok := s.issueTypes[b.Parent]; ok && parentType == config.TypeMilestone {
-		if milestoneNum, ok := s.issueToMilestoneNumber[b.Parent]; ok {
-			return &milestoneNum
-		}
+	if milestoneNum, ok := s.milestoneToGHNumber[b.Milestone]; ok {
+		return &milestoneNum
 	}
 	return nil
 }

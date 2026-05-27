@@ -13,6 +13,16 @@ type Query {
   List issues with optional filtering
   """
   issues(filter: IssueFilter): [Issue!]!
+
+  """
+  Get a single milestone by ID.
+  """
+  milestone(id: ID!): Milestone
+
+  """
+  List all milestones, ordered by due date then name.
+  """
+  milestones: [Milestone!]!
 }
 
 type Mutation {
@@ -40,6 +50,72 @@ type Mutation {
   Remove sync data for a named integration
   """
   removeSyncData(id: ID!, name: String!, ifMatch: String): Issue!
+
+  """
+  Create a new milestone
+  """
+  createMilestone(input: CreateMilestoneInput!): Milestone!
+
+  """
+  Update an existing milestone
+  """
+  updateMilestone(id: ID!, input: UpdateMilestoneInput!): Milestone!
+
+  """
+  Delete a milestone by ID (does not unassign issues that reference it)
+  """
+  deleteMilestone(id: ID!): Boolean!
+}
+
+"""
+A milestone is a lightweight, optional grouping an issue may be assigned to.
+It is NOT an issue and NOT an issue type.
+"""
+type Milestone {
+  "Unique identifier (NanoID)"
+  id: ID!
+  "Human-readable slug from filename"
+  slug: String
+  "Short name (2-3 chars) shown in the TUI grid"
+  short: String!
+  "Milestone name"
+  name: String!
+  "Due date in YYYY-MM-DD format (null if not set)"
+  due: String
+  "Markdown description"
+  description: String!
+  "Creation timestamp"
+  createdAt: Time
+  "Last update timestamp"
+  updatedAt: Time
+}
+
+"""
+Input for creating a new milestone
+"""
+input CreateMilestoneInput {
+  "Short name (2-3 chars, required)"
+  short: String!
+  "Milestone name (required)"
+  name: String!
+  "Due date in YYYY-MM-DD format"
+  due: String
+  "Markdown description"
+  description: String
+}
+
+"""
+Input for updating an existing milestone (omitted fields are left unchanged)
+"""
+input UpdateMilestoneInput {
+  "Short name (2-3 chars)"
+  short: String
+  "Milestone name"
+  name: String
+  "Due date in YYYY-MM-DD format (empty string to clear)"
+  due: String
+  "Markdown description"
+  description: String
 }
 
 """
@@ -54,6 +130,8 @@ input CreateIssueInput {
   status: String
   "Priority level (defaults to 'normal')"
   priority: String
+  "Milestone ID this issue is assigned to"
+  milestone: String
   "Tags for categorization"
   tags: [String!]
   "Markdown body content"
@@ -80,6 +158,8 @@ input UpdateIssueInput {
   type: String
   "New priority"
   priority: String
+  "Milestone ID (empty string to clear)"
+  milestone: String
   "Replace all tags (nil preserves existing, mutually exclusive with addTags/removeTags)"
   tags: [String!]
   "Add tags to existing list"
@@ -174,6 +254,8 @@ type Issue {
   updatedAt: Time!
   "Due date in YYYY-MM-DD format (null if not set)"
   due: String
+  "Milestone ID this issue is assigned to (null if not set)"
+  milestone: String
   "Markdown body content"
   body: String!
   "Content hash for optimistic concurrency control"
@@ -247,6 +329,10 @@ input IssueFilter {
   tags: [String!]
   "Exclude issues with any of these tags"
   excludeTags: [String!]
+  "Include only issues assigned to any of these milestone IDs (OR logic)"
+  milestone: [String!]
+  "Exclude issues assigned to any of these milestone IDs"
+  excludeMilestone: [String!]
   "Include only issues with a parent"
   hasParent: Boolean
   "Include only issues with this specific parent ID"

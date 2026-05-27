@@ -154,6 +154,27 @@ func SortByPriority(issues []*Issue, priorityNames []string) {
 	})
 }
 
+// SortByMilestone sorts issues by milestone order, then by created date (newest first).
+// milestoneOrder maps a milestone ID to its sort rank (e.g. derived from due date).
+// Issues with no milestone, or a milestone absent from the map, sort last.
+func SortByMilestone(issues []*Issue, milestoneOrder map[string]int) {
+	rank := func(b *Issue) int {
+		if b.Milestone == "" {
+			return len(milestoneOrder) + 1
+		}
+		if r, ok := milestoneOrder[b.Milestone]; ok {
+			return r
+		}
+		return len(milestoneOrder)
+	}
+	slices.SortFunc(issues, func(a, b *Issue) int {
+		if c := cmp.Compare(rank(a), rank(b)); c != 0 {
+			return c
+		}
+		return CompareByCreatedDesc(a, b)
+	})
+}
+
 // ComputeEffectiveDates builds a map of issue ID to effective date for sorting.
 // The effective date for an issue is the maximum of its own date and all descendants' dates.
 // field must be "created_at" or "updated_at".

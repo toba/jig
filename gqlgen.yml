@@ -25,6 +25,9 @@ models:
   # Use existing Issue type from issue package
   Issue:
     model: github.com/toba/jig/internal/todo/issue.Issue
+  # Use existing Milestone type from issue package
+  Milestone:
+    model: github.com/toba/jig/internal/todo/issue.Milestone
   # Map ID scalar to string
   ID:
     model:

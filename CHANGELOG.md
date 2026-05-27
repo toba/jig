@@ -2,6 +2,10 @@
 
 ## Week of May 24 – May 30, 2026
 
+### ✨ Features
+
+- Add first-class milestones; milestone entities stored in `.issues/milestones/`, an `issue.milestone` reference field, `jig todo milestone` commands, GraphQL surface, TUI badge/picker/filter, GitHub milestone sync, and a `migrate` command that retires the legacy `milestone` issue type ([#108](https://github.com/toba/jig/issues/108))
+
 ### 🗜️ Tweaks
 
 - Make `deferred` status indicator more subtle; change default color from orange to a muted pink so parked items don't grab attention ([#107](https://github.com/toba/jig/issues/107))

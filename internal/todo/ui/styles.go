@@ -370,25 +370,27 @@ func RenderPrioritySymbol(priority, color string) string {
 
 // IssueRowConfig holds configuration for rendering an issue row
 type IssueRowConfig struct {
-	StatusColor   string
-	TypeColor     string
-	PriorityColor string
-	Priority      string // Priority value (critical, high, normal, low, deferred)
-	IsArchive     bool
-	MaxTitleWidth int  // 0 means no truncation
-	ShowCursor    bool // Show selection cursor
-	IsSelected    bool
-	IsMarked      bool       // Marked for multi-select batch operations
-	Tags          []string   // Tags to display (optional)
-	ShowTags      bool       // Whether to show tags column
-	TagsColWidth  int        // Width of tags column (0 = default)
-	MaxTags       int        // Max tags to show (0 = default of 1)
-	TreePrefix    string     // Tree prefix (e.g., "├─" or "  └─") to prepend to ID
-	Dimmed        bool       // Render row dimmed (for unmatched ancestor issues in tree)
-	IDColWidth    int        // Width of ID column (0 = default of ColWidthID)
-	DueDate       *time.Time // Due date for urgency-colored hourglass indicator
-	LeafCount     int        // Number of leaf descendants (shown as badge when collapsed)
-	LeafColWidth  int        // Width of leaf count column (0 = hidden)
+	StatusColor       string
+	TypeColor         string
+	PriorityColor     string
+	Priority          string // Priority value (critical, high, normal, low, deferred)
+	IsArchive         bool
+	MaxTitleWidth     int  // 0 means no truncation
+	ShowCursor        bool // Show selection cursor
+	IsSelected        bool
+	IsMarked          bool       // Marked for multi-select batch operations
+	Tags              []string   // Tags to display (optional)
+	ShowTags          bool       // Whether to show tags column
+	TagsColWidth      int        // Width of tags column (0 = default)
+	MaxTags           int        // Max tags to show (0 = default of 1)
+	TreePrefix        string     // Tree prefix (e.g., "├─" or "  └─") to prepend to ID
+	Dimmed            bool       // Render row dimmed (for unmatched ancestor issues in tree)
+	IDColWidth        int        // Width of ID column (0 = default of ColWidthID)
+	DueDate           *time.Time // Due date for urgency-colored hourglass indicator
+	LeafCount         int        // Number of leaf descendants (shown as badge when collapsed)
+	LeafColWidth      int        // Width of leaf count column (0 = hidden)
+	MilestoneShort    string     // Milestone short name (2-3 chars) shown as a badge
+	MilestoneColWidth int        // Width of milestone badge column (0 = hidden)
 }
 
 // Base column widths for issue lists (minimum sizes)
@@ -566,6 +568,25 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 		}
 	}
 
+	// Milestone badge column (between status and priority; zero-width when no milestones in view)
+	var milestoneCol string
+	if cfg.MilestoneColWidth > 0 {
+		if cfg.MilestoneShort != "" {
+			badge := "[" + cfg.MilestoneShort + "]"
+			rpad := ""
+			if cfg.MilestoneColWidth > len(badge) {
+				rpad = strings.Repeat(" ", cfg.MilestoneColWidth-len(badge))
+			}
+			if cfg.Dimmed {
+				milestoneCol = Muted.Render(badge) + rpad + " "
+			} else {
+				milestoneCol = Secondary.Render(badge) + rpad + " "
+			}
+		} else {
+			milestoneCol = strings.Repeat(" ", cfg.MilestoneColWidth) + " "
+		}
+	}
+
 	// Priority symbol (prepended to title)
 	var prioritySymbol string
 	if !cfg.Dimmed {
@@ -635,9 +656,9 @@ func RenderIssueRow(id, status, typeName, title string, cfg IssueRowConfig) stri
 		if titleColWidth > titleLen {
 			padding = strings.Repeat(" ", titleColWidth-titleLen)
 		}
-		return cursor + idCol + leafCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + dueDateSymbol + titleStyled + padding + " " + tagsCol
+		return cursor + idCol + leafCol + " " + typeCol + " " + statusCol + " " + milestoneCol + prioritySymbol + dueDateSymbol + titleStyled + padding + " " + tagsCol
 	}
-	return cursor + idCol + leafCol + " " + typeCol + " " + statusCol + " " + prioritySymbol + dueDateSymbol + titleStyled
+	return cursor + idCol + leafCol + " " + typeCol + " " + statusCol + " " + milestoneCol + prioritySymbol + dueDateSymbol + titleStyled
 }
 
 // dueDateColor returns a color based on how soon the due date is.

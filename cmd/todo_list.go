@@ -27,6 +27,8 @@ var (
 	listNoType      []string
 	listPriority    []string
 	listNoPriority  []string
+	listMilestone   []string
+	listNoMilestone []string
 	listTag         []string
 	listNoTag       []string
 	listHasParent   bool
@@ -58,14 +60,16 @@ Search Syntax (--search/-S):
   user OR login  Either term matches`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filter := &model.IssueFilter{
-			Status:          listStatus,
-			ExcludeStatus:   listNoStatus,
-			Type:            listType,
-			ExcludeType:     listNoType,
-			Priority:        listPriority,
-			ExcludePriority: listNoPriority,
-			Tags:            listTag,
-			ExcludeTags:     listNoTag,
+			Status:           listStatus,
+			ExcludeStatus:    listNoStatus,
+			Type:             listType,
+			ExcludeType:      listNoType,
+			Priority:         listPriority,
+			ExcludePriority:  listNoPriority,
+			Milestone:        listMilestone,
+			ExcludeMilestone: listNoMilestone,
+			Tags:             listTag,
+			ExcludeTags:      listNoTag,
 		}
 
 		if listSearch != "" {
@@ -201,6 +205,8 @@ func sortIssues(issues []*issue.Issue, sortBy string, cfg *todoconfig.Config) {
 		issue.SortByStatus(issues, statusNames)
 	case "priority":
 		issue.SortByPriority(issues, priorityNames)
+	case "milestone":
+		issue.SortByMilestone(issues, todoStore.MilestoneOrder())
 	case "due":
 		issue.SortByDueDate(issues)
 	case "id":
@@ -221,6 +227,8 @@ func init() {
 	listCmd.Flags().StringArrayVar(&listNoType, "no-type", nil, "Exclude by type (can be repeated)")
 	listCmd.Flags().StringArrayVarP(&listPriority, "priority", "p", nil, "Filter by priority (can be repeated)")
 	listCmd.Flags().StringArrayVar(&listNoPriority, "no-priority", nil, "Exclude by priority (can be repeated)")
+	listCmd.Flags().StringArrayVar(&listMilestone, "milestone", nil, "Filter by milestone ID (can be repeated, OR logic)")
+	listCmd.Flags().StringArrayVar(&listNoMilestone, "no-milestone", nil, "Exclude by milestone ID (can be repeated)")
 	listCmd.Flags().StringArrayVar(&listTag, "tag", nil, "Filter by tag (can be repeated, OR logic)")
 	listCmd.Flags().StringArrayVar(&listNoTag, "no-tag", nil, "Exclude issues with tag (can be repeated)")
 	listCmd.Flags().BoolVar(&listHasParent, "has-parent", false, "Filter issues with a parent")
@@ -231,7 +239,7 @@ func init() {
 	listCmd.Flags().BoolVar(&listIsBlocked, "is-blocked", false, "Filter issues that are blocked by others")
 	listCmd.Flags().BoolVar(&listReady, "ready", false, "Filter issues available to start")
 	listCmd.Flags().BoolVarP(&listQuiet, "quiet", "q", false, "Only output IDs (one per line)")
-	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: status, priority, created, updated, due, id")
+	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: status, priority, milestone, created, updated, due, id")
 	listCmd.Flags().BoolVar(&listFull, "full", false, "Include issue body in JSON output")
 	todoCmd.AddCommand(listCmd)
 }

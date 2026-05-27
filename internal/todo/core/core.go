@@ -49,8 +49,9 @@ type Core struct {
 	config *config.Config // project configuration
 
 	// In-memory state
-	mu     sync.RWMutex
-	issues map[string]*issue.Issue // ID -> Issue
+	mu         sync.RWMutex
+	issues     map[string]*issue.Issue     // ID -> Issue
+	milestones map[string]*issue.Milestone // ID -> Milestone
 
 	// Search index (optional, lazy-initialized)
 	searchIndex *search.Index
@@ -75,6 +76,7 @@ func New(root string, cfg *config.Config) *Core {
 		root:        root,
 		config:      cfg,
 		issues:      make(map[string]*issue.Issue),
+		milestones:  make(map[string]*issue.Milestone),
 		subscribers: make(map[uint64]*subscription),
 		warnWriter:  os.Stderr,
 	}
@@ -116,6 +118,13 @@ func (c *Core) Load() error {
 func (c *Core) loadFromDisk() error {
 	// Clear existing issues
 	c.issues = make(map[string]*issue.Issue)
+	c.milestones = make(map[string]*issue.Milestone)
+
+	// Load milestones from the milestones subdirectory (best-effort: a missing
+	// directory is not an error).
+	if err := c.loadMilestonesLocked(); err != nil {
+		return err
+	}
 
 	// Walk the entire .issues directory tree, loading all .md files
 	err := filepath.WalkDir(c.root, func(path string, d os.DirEntry, err error) error {
@@ -125,6 +134,11 @@ func (c *Core) loadFromDisk() error {
 
 		// Skip dot-prefixed subdirectories (e.g. .git, .DS_Store dirs)
 		if d.IsDir() && strings.HasPrefix(d.Name(), ".") && path != c.root {
+			return filepath.SkipDir
+		}
+
+		// Skip the milestones directory: milestone files are not issues.
+		if d.IsDir() && d.Name() == issue.MilestonesDir && filepath.Dir(path) == c.root {
 			return filepath.SkipDir
 		}
 

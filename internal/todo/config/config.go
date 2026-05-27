@@ -84,8 +84,11 @@ var DefaultStatuses = []StatusConfig{
 }
 
 // DefaultTypes defines the default type configuration.
+//
+// NOTE: "milestone" is intentionally NOT an issue type. Milestones are first-class
+// entities (see internal/todo/issue.Milestone); the TypeMilestone constant is retained
+// only for backward compatibility with legacy issues and the `milestone migrate` command.
 var DefaultTypes = []TypeConfig{
-	{Name: TypeMilestone, Color: "cyan", Description: "A target release or checkpoint; group work that should ship together"},
 	{Name: TypeEpic, Color: "purple", Description: "A thematic container for related work; should have child issues, not be worked on directly"},
 	{Name: TypeBug, Color: "red", Description: "Something that is broken and needs fixing"},
 	{Name: TypeFeature, Color: "green", Description: "A user-facing capability or enhancement"},
@@ -319,7 +322,7 @@ func Load(configPath string) (*Config, error) {
 	// Apply defaults for missing values
 	cfg.Path = cmp.Or(cfg.Path, DefaultDataPath)
 	cfg.DefaultStatus = cmp.Or(cfg.DefaultStatus, StatusReady)
-	cfg.DefaultType = cmp.Or(cfg.DefaultType, DefaultTypes[0].Name)
+	cfg.DefaultType = cmp.Or(cfg.DefaultType, TypeTask)
 
 	return &cfg, nil
 }

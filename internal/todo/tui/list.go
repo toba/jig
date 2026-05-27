@@ -132,13 +132,15 @@ func issueDueTime(due *issue.DueDate) *time.Time {
 
 // itemDelegate handles rendering of list items
 type itemDelegate struct {
-	cfg            *config.Config
-	hasTags        bool
-	width          int
-	cols           ui.ResponsiveColumns // cached responsive columns
-	idColWidth     int                  // ID column width (accounts for tree prefix)
-	leafColWidth   int                  // leaf count column width (0 when nothing collapsed)
-	selectedIssues *map[string]bool     // pointer to marked issues for multi-select
+	cfg               *config.Config
+	hasTags           bool
+	width             int
+	cols              ui.ResponsiveColumns // cached responsive columns
+	idColWidth        int                  // ID column width (accounts for tree prefix)
+	leafColWidth      int                  // leaf count column width (0 when nothing collapsed)
+	milestoneShorts   map[string]string    // milestone ID -> short name, for badge rendering
+	milestoneColWidth int                  // milestone badge column width (0 when no milestones in view)
+	selectedIssues    *map[string]bool     // pointer to marked issues for multi-select
 }
 
 func (d itemDelegate) Height() int                             { return 1 }
@@ -172,7 +174,11 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if leafCol > 0 {
 		leafCol += 1 // add spacing when column is visible
 	}
-	baseWidth := idWidth + leafCol + d.cols.Status + d.cols.Type + 4 // 4 for cursor + padding
+	milestoneCol := d.milestoneColWidth
+	if milestoneCol > 0 {
+		milestoneCol += 1 // add spacing when column is visible
+	}
+	baseWidth := idWidth + leafCol + milestoneCol + d.cols.Status + d.cols.Type + 4 // 4 for cursor + padding
 	if d.cols.ShowTags {
 		baseWidth += d.cols.Tags
 	}
@@ -190,25 +196,27 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		item.issue.Type,
 		item.issue.Title,
 		ui.IssueRowConfig{
-			StatusColor:   colors.StatusColor,
-			TypeColor:     colors.TypeColor,
-			PriorityColor: colors.PriorityColor,
-			Priority:      item.issue.Priority,
-			IsArchive:     colors.IsArchive,
-			MaxTitleWidth: maxTitleWidth,
-			ShowCursor:    true,
-			IsSelected:    index == m.Index(),
-			IsMarked:      isMarked,
-			Tags:          item.issue.Tags,
-			ShowTags:      d.cols.ShowTags,
-			TagsColWidth:  d.cols.Tags,
-			MaxTags:       d.cols.MaxTags,
-			TreePrefix:    item.treePrefix,
-			Dimmed:        dimmed,
-			IDColWidth:    d.idColWidth,
-			DueDate:       issueDueTime(item.issue.Due),
-			LeafCount:     item.leafCount,
-			LeafColWidth:  d.leafColWidth,
+			StatusColor:       colors.StatusColor,
+			TypeColor:         colors.TypeColor,
+			PriorityColor:     colors.PriorityColor,
+			Priority:          item.issue.Priority,
+			IsArchive:         colors.IsArchive,
+			MaxTitleWidth:     maxTitleWidth,
+			ShowCursor:        true,
+			IsSelected:        index == m.Index(),
+			IsMarked:          isMarked,
+			Tags:              item.issue.Tags,
+			ShowTags:          d.cols.ShowTags,
+			TagsColWidth:      d.cols.Tags,
+			MaxTags:           d.cols.MaxTags,
+			TreePrefix:        item.treePrefix,
+			Dimmed:            dimmed,
+			IDColWidth:        d.idColWidth,
+			DueDate:           issueDueTime(item.issue.Due),
+			LeafCount:         item.leafCount,
+			LeafColWidth:      d.leafColWidth,
+			MilestoneShort:    d.milestoneShorts[item.issue.Milestone],
+			MilestoneColWidth: d.milestoneColWidth,
 		},
 	)
 
@@ -225,14 +233,17 @@ type listModel struct {
 	err      error
 
 	// Responsive column state
-	hasTags        bool                 // whether any issues have tags
-	cols           ui.ResponsiveColumns // calculated responsive columns
-	idColWidth     int                  // ID column width (accounts for tree depth), recalculated for visible items
-	fullIDColWidth int                  // full ID column width (for all items including nested)
-	leafColWidth   int                  // leaf count column width (0 when nothing collapsed)
+	hasTags           bool                 // whether any issues have tags
+	cols              ui.ResponsiveColumns // calculated responsive columns
+	idColWidth        int                  // ID column width (accounts for tree depth), recalculated for visible items
+	fullIDColWidth    int                  // full ID column width (for all items including nested)
+	leafColWidth      int                  // leaf count column width (0 when nothing collapsed)
+	milestoneShorts   map[string]string    // milestone ID -> short name
+	milestoneColWidth int                  // milestone badge column width (0 when no milestones in view)
 
 	// Active filters
-	tagFilter string // if set, only show issues with this tag
+	tagFilter       string // if set, only show issues with this tag
+	milestoneFilter string // if set, only show issues assigned to this milestone ID
 
 	// Sort order
 	sortOrder sortOrder // current sort mode
@@ -309,10 +320,16 @@ func (m listModel) Init() tea.Cmd {
 }
 
 func (m listModel) loadIssues() tea.Msg {
-	// Build filter if tag filter is set
+	// Build filter if a tag or milestone filter is set
 	var filter *model.IssueFilter
-	if m.tagFilter != "" {
-		filter = &model.IssueFilter{Tags: []string{m.tagFilter}}
+	if m.tagFilter != "" || m.milestoneFilter != "" {
+		filter = &model.IssueFilter{}
+		if m.tagFilter != "" {
+			filter.Tags = []string{m.tagFilter}
+		}
+		if m.milestoneFilter != "" {
+			filter.Milestone = []string{m.milestoneFilter}
+		}
 	}
 
 	// Query filtered issues
@@ -380,19 +397,27 @@ func (m listModel) loadIssues() tea.Msg {
 	return issuesLoadedMsg{items: items, idColWidth: idColWidth, leafCounts: leafCounts}
 }
 
-// setTagFilter sets the tag filter
+// setTagFilter sets the tag filter (and clears any milestone filter)
 func (m *listModel) setTagFilter(tag string) {
 	m.tagFilter = tag
+	m.milestoneFilter = ""
+}
+
+// setMilestoneFilter sets the milestone filter (and clears any tag filter)
+func (m *listModel) setMilestoneFilter(milestoneID string) {
+	m.milestoneFilter = milestoneID
+	m.tagFilter = ""
 }
 
 // clearFilter clears all active filters
 func (m *listModel) clearFilter() {
 	m.tagFilter = ""
+	m.milestoneFilter = ""
 }
 
 // hasActiveFilter returns true if any filter is active
 func (m *listModel) hasActiveFilter() bool {
-	return m.tagFilter != ""
+	return m.tagFilter != "" || m.milestoneFilter != ""
 }
 
 func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
@@ -434,11 +459,25 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 			return m, nil
 		}
 
+		// Refresh milestone short-name lookup from core.
+		m.milestoneShorts = make(map[string]string)
+		if m.resolver != nil && m.resolver.Core != nil {
+			for _, ms := range m.resolver.Core.AllMilestones() {
+				m.milestoneShorts[ms.ID] = ms.Short
+			}
+		}
+
 		items := make([]list.Item, len(visible))
-		// Check if any issues have tags, and compute leaf column width
+		// Check if any issues have tags, and compute leaf + milestone column widths
 		m.hasTags = false
 		m.leafColWidth = 0
+		m.milestoneColWidth = 0
 		for i, flatItem := range visible {
+			if short := m.milestoneShorts[flatItem.Issue.Milestone]; short != "" {
+				if w := len(short) + 2; w > m.milestoneColWidth { // +2 for [ ]
+					m.milestoneColWidth = w
+				}
+			}
 			var lc int
 			if flatItem.Depth == 0 && m.collapsed[flatItem.RootID] {
 				lc = m.leafCounts[flatItem.RootID]
@@ -619,6 +658,28 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 						}
 					}
 				}
+			case "m":
+				// Open milestone picker for selected issue(s)
+				if len(m.selectedIssues) > 0 {
+					ids := make([]string, 0, len(m.selectedIssues))
+					for id := range m.selectedIssues {
+						ids = append(ids, id)
+					}
+					return m, func() tea.Msg {
+						return openMilestonePickerMsg{
+							issueIDs:   ids,
+							issueTitle: fmt.Sprintf("%d selected issues", len(ids)),
+						}
+					}
+				} else if item, ok := m.list.SelectedItem().(issueItem); ok {
+					return m, func() tea.Msg {
+						return openMilestonePickerMsg{
+							issueIDs:         []string{item.issue.ID},
+							issueTitle:       item.issue.Title,
+							currentMilestone: item.issue.Milestone,
+						}
+					}
+				}
 			case "b":
 				// Open blocking picker for selected issue
 				if item, ok := m.list.SelectedItem().(issueItem); ok {
@@ -636,9 +697,9 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 					return openSortPickerMsg{currentOrder: m.sortOrder}
 				}
 			case "C":
-				// Open create modal
+				// Open the create chooser (issue or milestone)
 				return m, func() tea.Msg {
-					return openCreateModalMsg{}
+					return openCreateChooserMsg{}
 				}
 			case "e":
 				// Open editor for selected issue
@@ -735,13 +796,15 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 // updateDelegate updates the list delegate with current responsive columns
 func (m *listModel) updateDelegate() {
 	delegate := itemDelegate{
-		cfg:            m.config,
-		hasTags:        m.hasTags,
-		width:          m.width,
-		cols:           m.cols,
-		idColWidth:     m.idColWidth,
-		leafColWidth:   m.leafColWidth,
-		selectedIssues: &m.selectedIssues,
+		cfg:               m.config,
+		hasTags:           m.hasTags,
+		width:             m.width,
+		cols:              m.cols,
+		idColWidth:        m.idColWidth,
+		leafColWidth:      m.leafColWidth,
+		milestoneShorts:   m.milestoneShorts,
+		milestoneColWidth: m.milestoneColWidth,
+		selectedIssues:    &m.selectedIssues,
 	}
 	m.list.SetDelegate(delegate)
 }
@@ -813,9 +876,16 @@ func (m listModel) View() string {
 	}
 
 	// Update title based on active filter
-	if m.tagFilter != "" {
+	switch {
+	case m.tagFilter != "":
 		m.list.Title = fmt.Sprintf("Issues [tag: %s]", m.tagFilter)
-	} else {
+	case m.milestoneFilter != "":
+		label := m.milestoneFilter
+		if short := m.milestoneShorts[m.milestoneFilter]; short != "" {
+			label = short
+		}
+		m.list.Title = fmt.Sprintf("Issues [milestone: %s]", label)
+	default:
 		m.list.Title = "Issues"
 	}
 
@@ -842,6 +912,7 @@ func (m listModel) View() string {
 		// When issues are selected, show esc to clear selection
 		help = helpKeyStyle.Render("space") + " " + helpStyle.Render("toggle") + "  " +
 			helpKeyStyle.Render("o") + " " + helpStyle.Render("sort") + "  " +
+			helpKeyStyle.Render("m") + " " + helpStyle.Render("milestone") + "  " +
 			helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
@@ -876,9 +947,10 @@ func (m listModel) View() string {
 			helpKeyStyle.Render("P") + " " + helpStyle.Render("priority") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
+			helpKeyStyle.Render("m") + " " + helpStyle.Render("milestone") + "  " +
 			helpKeyStyle.Render("z") + " " + helpStyle.Render("collapse") + "  " +
 			helpKeyStyle.Render("/") + " " + helpStyle.Render("filter") + "  " +
-			helpKeyStyle.Render("//") + " " + helpStyle.Render("search") + "  " +
+			helpKeyStyle.Render("g m") + " " + helpStyle.Render("filter milestone") + "  " +
 			helpKeyStyle.Render("?") + " " + helpStyle.Render("help") + "  " +
 			helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
 	}

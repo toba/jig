@@ -203,6 +203,7 @@ type Issue struct {
 	Status    string     `yaml:"status" json:"status"`
 	Type      string     `yaml:"type,omitempty" json:"type,omitempty"`
 	Priority  string     `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Milestone string     `yaml:"milestone,omitempty" json:"milestone,omitempty"` // milestone id
 	Tags      []string   `yaml:"tags,omitempty" json:"tags,omitempty"`
 	CreatedAt *time.Time `yaml:"created_at,omitempty" json:"created_at,omitempty"`
 	UpdatedAt *time.Time `yaml:"updated_at,omitempty" json:"updated_at,omitempty"`
@@ -230,6 +231,7 @@ type frontMatter struct {
 	Status    string                    `yaml:"status"`
 	Type      string                    `yaml:"type,omitempty"`
 	Priority  string                    `yaml:"priority,omitempty"`
+	Milestone string                    `yaml:"milestone,omitempty"`
 	Tags      []string                  `yaml:"tags,omitempty"`
 	CreatedAt *time.Time                `yaml:"created_at,omitempty"`
 	UpdatedAt *time.Time                `yaml:"updated_at,omitempty"`
@@ -256,6 +258,7 @@ func Parse(r io.Reader) (*Issue, error) {
 		Status:    fm.Status,
 		Type:      fm.Type,
 		Priority:  fm.Priority,
+		Milestone: fm.Milestone,
 		Tags:      fm.Tags,
 		CreatedAt: fm.CreatedAt,
 		UpdatedAt: fm.UpdatedAt,
@@ -274,6 +277,7 @@ type renderFrontMatter struct {
 	Status    string                    `yaml:"status"`
 	Type      string                    `yaml:"type,omitempty"`
 	Priority  string                    `yaml:"priority,omitempty"`
+	Milestone string                    `yaml:"milestone,omitempty"`
 	Tags      []string                  `yaml:"tags,omitempty"`
 	CreatedAt *time.Time                `yaml:"created_at,omitempty"`
 	UpdatedAt *time.Time                `yaml:"updated_at,omitempty"`
@@ -291,6 +295,7 @@ func (b *Issue) Render() ([]byte, error) {
 		Status:    b.Status,
 		Type:      b.Type,
 		Priority:  b.Priority,
+		Milestone: b.Milestone,
 		Tags:      b.Tags,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,

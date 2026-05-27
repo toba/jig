@@ -53,6 +53,14 @@ func ApplyFilter(issues []*issue.Issue, filter *model.IssueFilter, core *core.Co
 		result = excludeByTags(result, filter.ExcludeTags)
 	}
 
+	// Milestone filters
+	if len(filter.Milestone) > 0 {
+		result = filterByField(result, filter.Milestone, func(b *issue.Issue) string { return b.Milestone })
+	}
+	if len(filter.ExcludeMilestone) > 0 {
+		result = excludeByField(result, filter.ExcludeMilestone, func(b *issue.Issue) string { return b.Milestone })
+	}
+
 	// Parent filters
 	if filter.HasParent != nil && *filter.HasParent {
 		result = filterByHasParent(result)

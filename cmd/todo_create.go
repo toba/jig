@@ -17,6 +17,7 @@ var (
 	createStatus    string
 	createType      string
 	createPriority  string
+	createMilestone string
 	createBody      string
 	createBodyFile  string
 	createTag       []string
@@ -76,6 +77,9 @@ var createCmd = &cobra.Command{
 		if createPriority != "" {
 			input.Priority = &createPriority
 		}
+		if createMilestone != "" {
+			input.Milestone = &createMilestone
+		}
 		if body != "" {
 			input.Body = &body
 		}
@@ -119,6 +123,7 @@ func init() {
 	createCmd.Flags().StringVarP(&createStatus, "status", "s", "", "Initial status ("+strings.Join(statusNames, ", ")+")")
 	createCmd.Flags().StringVarP(&createType, "type", "t", "", "issue type ("+strings.Join(typeNames, ", ")+")")
 	createCmd.Flags().StringVarP(&createPriority, "priority", "p", "", "Priority level ("+strings.Join(priorityNames, ", ")+")")
+	createCmd.Flags().StringVar(&createMilestone, "milestone", "", "Milestone ID to assign this issue to")
 	createCmd.Flags().StringVarP(&createBody, "body", "d", "", "Body content (use '-' to read from stdin)")
 	createCmd.Flags().StringVar(&createBodyFile, "body-file", "", "Read body from file")
 	createCmd.Flags().StringArrayVar(&createTag, "tag", nil, "Add tag (can be repeated)")

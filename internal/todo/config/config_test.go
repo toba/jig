@@ -17,8 +17,8 @@ func TestDefault(t *testing.T) {
 		t.Errorf("DefaultType = %q, want \"task\"", cfg.DefaultType)
 	}
 	// Both types and statuses are hardcoded
-	if len(DefaultTypes) != 5 {
-		t.Errorf("len(DefaultTypes) = %d, want 5", len(DefaultTypes))
+	if len(DefaultTypes) != 4 {
+		t.Errorf("len(DefaultTypes) = %d, want 4", len(DefaultTypes))
 	}
 	if len(DefaultStatuses) != 7 {
 		t.Errorf("len(DefaultStatuses) = %d, want 7", len(DefaultStatuses))
@@ -245,9 +245,9 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.GetDefaultStatus() != "ready" {
 		t.Errorf("DefaultStatus: got %q, want \"ready\"", cfg.GetDefaultStatus())
 	}
-	// DefaultType should be first type name when not specified
-	if cfg.DefaultType != "milestone" {
-		t.Errorf("DefaultType default not applied: got %q, want \"milestone\"", cfg.DefaultType)
+	// DefaultType should default to task when not specified
+	if cfg.DefaultType != "task" {
+		t.Errorf("DefaultType default not applied: got %q, want \"task\"", cfg.DefaultType)
 	}
 }
 
@@ -284,7 +284,7 @@ func TestIsValidType(t *testing.T) {
 		want     bool
 	}{
 		{"epic", true},
-		{"milestone", true},
+		{"milestone", false}, // milestone is no longer an issue type
 		{"feature", true},
 		{"bug", true},
 		{"task", true},
@@ -306,7 +306,7 @@ func TestIsValidType(t *testing.T) {
 func TestTypeList(t *testing.T) {
 	cfg := Default()
 	got := cfg.TypeList()
-	want := "milestone, epic, bug, feature, task"
+	want := "epic, bug, feature, task"
 
 	if got != want {
 		t.Errorf("TypeList() = %q, want %q", got, want)
@@ -338,7 +338,7 @@ func TestGetType(t *testing.T) {
 	})
 
 	t.Run("all hardcoded types exist", func(t *testing.T) {
-		expectedTypes := []string{"milestone", "epic", "bug", "feature", "task"}
+		expectedTypes := []string{"epic", "bug", "feature", "task"}
 		for _, typeName := range expectedTypes {
 			typ := cfg.GetType(typeName)
 			if typ == nil {
@@ -373,12 +373,12 @@ func TestTypesAreHardcoded(t *testing.T) {
 	}
 
 	// Types should always come from DefaultTypes, not config
-	if len(loaded.TypeNames()) != 5 {
-		t.Errorf("len(TypeNames()) = %d, want 5", len(loaded.TypeNames()))
+	if len(loaded.TypeNames()) != 4 {
+		t.Errorf("len(TypeNames()) = %d, want 4", len(loaded.TypeNames()))
 	}
 
 	// All default types should be accessible
-	for _, typeName := range []string{"milestone", "epic", "bug", "feature", "task"} {
+	for _, typeName := range []string{"epic", "bug", "feature", "task"} {
 		if !loaded.IsValidType(typeName) {
 			t.Errorf("IsValidType(%q) = false, want true", typeName)
 		}
@@ -395,11 +395,10 @@ func TestTypeDescriptions(t *testing.T) {
 		cfg := Default()
 
 		expectedDescriptions := map[string]string{
-			"epic":      "A thematic container for related work; should have child issues, not be worked on directly",
-			"milestone": "A target release or checkpoint; group work that should ship together",
-			"feature":   "A user-facing capability or enhancement",
-			"bug":       "Something that is broken and needs fixing",
-			"task":      "A concrete piece of work to complete (eg. a chore, or a sub-task for a feature)",
+			"epic":    "A thematic container for related work; should have child issues, not be worked on directly",
+			"feature": "A user-facing capability or enhancement",
+			"bug":     "Something that is broken and needs fixing",
+			"task":    "A concrete piece of work to complete (eg. a chore, or a sub-task for a feature)",
 		}
 
 		for typeName, expectedDesc := range expectedDescriptions {

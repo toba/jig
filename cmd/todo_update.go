@@ -19,6 +19,7 @@ var (
 	updateStatus          string
 	updateType            string
 	updatePriority        string
+	updateMilestone       string
 	updateTitle           string
 	updateBody            string
 	updateBodyFile        string
@@ -145,6 +146,11 @@ func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIss
 		changes = append(changes, "priority")
 	}
 
+	if cmd.Flags().Changed("milestone") {
+		input.Milestone = &updateMilestone
+		changes = append(changes, "milestone")
+	}
+
 	if cmd.Flags().Changed("title") {
 		input.Title = &updateTitle
 		changes = append(changes, "title")
@@ -233,7 +239,7 @@ func buildUpdateInput(cmd *cobra.Command, _ []string, _ string) (model.UpdateIss
 }
 
 func hasFieldUpdates(input model.UpdateIssueInput) bool {
-	return input.Status != nil || input.Type != nil || input.Priority != nil ||
+	return input.Status != nil || input.Type != nil || input.Priority != nil || input.Milestone != nil ||
 		input.Title != nil || input.Due != nil || input.Body != nil || input.BodyMod != nil || input.Tags != nil ||
 		input.AddTags != nil || input.RemoveTags != nil ||
 		input.Parent != nil || input.AddBlocking != nil || input.RemoveBlocking != nil ||
@@ -262,6 +268,7 @@ func init() {
 	todoUpdateCmd.Flags().StringVarP(&updateType, "type", "t", "", "New type ("+strings.Join(typeNames, ", ")+")")
 	todoUpdateCmd.Flags().StringVarP(&updatePriority, "priority", "p", "", "New priority ("+strings.Join(priorityNames, ", ")+", or empty to clear)")
 	todoUpdateCmd.Flags().StringVar(&updateTitle, "title", "", "New title")
+	todoUpdateCmd.Flags().StringVar(&updateMilestone, "milestone", "", "Milestone ID to assign (empty to clear)")
 	todoUpdateCmd.Flags().StringVar(&updateDue, "due", "", "Due date (YYYY-MM-DD, empty to clear)")
 	todoUpdateCmd.Flags().StringVarP(&updateBody, "body", "d", "", "New body (use '-' to read from stdin)")
 	todoUpdateCmd.Flags().StringVar(&updateBodyFile, "body-file", "", "Read body from file")

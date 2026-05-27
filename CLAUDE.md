@@ -20,7 +20,7 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
 ## Architecture
 
 - `cmd/` — Cobra commands
-  - `todo` parent with `init`, `create`, `list`, `show`, `update`, `delete`, `archive`, `roadmap`, `graphql` (alias `query`), `doctor`, `sync` (with `check`, `link`, `unlink` subcommands), `refry`, `tui` subcommands — issue tracking
+  - `todo` parent with `init`, `create`, `list`, `show`, `update`, `delete`, `archive`, `roadmap`, `graphql` (alias `query`), `doctor`, `sync` (with `check`, `link`, `unlink` subcommands), `milestone` (alias `ms`; with `create`, `list`, `show`, `update`, `delete`, `migrate` subcommands), `refry`, `tui` subcommands — issue tracking
   - `commit` parent with `gather`, `apply` subcommands — two-phase commit workflow
   - `cite` parent with `init`, `review` (alias `check`), `add`, `update` subcommands — citation monitoring
   - `nope` parent with `init`, `doctor`, `help` subcommands — security guard
@@ -76,5 +76,6 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
 - `nope init` writes to `.jig.yaml` and `.claude/settings.json`; migrates old `nogo`/`skill nope`/`ja nope` hooks to `jig nope`
 - `todo` config uses yaml.v3 Node API for `Save()` to avoid clobbering other `.jig.yaml` sections
 - `todo` stores issues as markdown files with YAML frontmatter in `.issues/`
+- `todo` milestones are first-class entities (NOT an issue type), stored as files in `.issues/milestones/` (skipped by the issue loader); an issue references one via its `milestone:` frontmatter field (a milestone ID). The TUI shows the milestone short name as a badge, `m` reassigns, `g m` filters. GitHub sync maps milestone entities ↔ GitHub milestones (number stored on the milestone file's `sync.github`). The legacy `milestone` issue *type* is retired; `jig todo milestone migrate` converts old `type: milestone` issues into entities
 - `todo` supports GraphQL queries/mutations via embedded gqlgen schema
 - `tui` and `sync` have top-level aliases that call `initTodoCore()` in their own PreRunE
