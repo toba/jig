@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jun 7 – Jun 13, 2026
+
+### ✨ Features
+
+- TUI filter matches partial issue IDs; typing `vfj` surfaces issue `vfj-jop`, case-insensitive substring matching across the title and ID (regression test added)
+
 ## Week of May 24 – May 30, 2026
 
 ### ✨ Features

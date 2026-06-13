@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-06-13T15:27:54Z
 updated_at: 2026-06-13T15:34:18Z
+sync:
+    github:
+        issue_number: "114"
+        synced_at: "2026-06-13T15:35:25Z"
 ---
 
 When typing a filter in the TUI, treat the input as a partial issue ID match in addition to the existing text search. For example, typing `vfj` should surface issue `vfj-jop` as a match.
