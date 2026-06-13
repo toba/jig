@@ -629,6 +629,50 @@ func TestTreeAwareFilter(t *testing.T) {
 	}
 }
 
+func TestPartialIssueIDFilter(t *testing.T) {
+	// Typing a partial issue ID (e.g. "vfj" or the 3-letter prefix of "vfj-jop")
+	// in the TUI filter should match that issue.
+	deepSearch := false
+	items := []issueItem{
+		{issue: &issue.Issue{ID: "vfj-jop", Title: "Unrelated title"}, deepSearch: &deepSearch},
+		{issue: &issue.Issue{ID: "abc-xyz", Title: "Some other thing"}, deepSearch: &deepSearch},
+		{issue: &issue.Issue{ID: "ttt-zzz", Title: "Mentions vfj somewhere in title"}, deepSearch: &deepSearch},
+	}
+	targets := make([]string, len(items))
+	for i, it := range items {
+		targets[i] = it.FilterValue()
+	}
+
+	cases := []struct {
+		term    string
+		wantIdx []int
+	}{
+		{"vfj", []int{0, 2}},  // matches ID of items[0] and title of items[2]
+		{"vfj-jop", []int{0}}, // full ID
+		{"VFJ", []int{0, 2}},  // case insensitive
+		{"fj-j", []int{0}},    // middle of ID across the dash
+		{"jop", []int{0}},     // ID suffix
+		{"abc", []int{1}},     // prefix of a different ID
+	}
+	for _, tc := range cases {
+		t.Run(tc.term, func(t *testing.T) {
+			ranks := substringFilter(tc.term, targets)
+			got := make([]int, len(ranks))
+			for i, r := range ranks {
+				got[i] = r.Index
+			}
+			if len(got) != len(tc.wantIdx) {
+				t.Fatalf("term %q: got matches %v, want %v", tc.term, got, tc.wantIdx)
+			}
+			for i, w := range tc.wantIdx {
+				if got[i] != w {
+					t.Errorf("term %q: match %d = %d, want %d (full got %v)", tc.term, i, got[i], w, got)
+				}
+			}
+		})
+	}
+}
+
 func TestTreeAwareFilterDeepHierarchy(t *testing.T) {
 	// Test with deeper hierarchy:
 	// milestone (depth 0)
