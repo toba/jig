@@ -6,6 +6,10 @@
 
 - TUI filter matches partial issue IDs; typing `vfj` surfaces issue `vfj-jop`, case-insensitive substring matching across the title and ID (regression test added)
 
+### 🐞 Fixes
+
+- `jig cite review` no longer re-emits the latest release every run for `track: releases` sources; when `LastCheckedTag` matches `release.tag_name` the release is omitted from output while `last_checked_*` still refreshes
+
 ## Week of May 24 – May 30, 2026
 
 ### ✨ Features

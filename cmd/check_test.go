@@ -5,8 +5,58 @@ import (
 	"testing"
 
 	"github.com/toba/jig/internal/classify"
+	"github.com/toba/jig/internal/config"
 	"github.com/toba/jig/internal/github"
 )
+
+// fakeReleaseClient implements just enough of github.Client to drive
+// checkSourceReleases without shelling out to gh.
+type fakeReleaseClient struct {
+	github.Client
+	release *github.Release
+	headSHA string
+}
+
+func (f *fakeReleaseClient) GetLatestRelease(string) (*github.Release, error) {
+	return f.release, nil
+}
+
+func (f *fakeReleaseClient) GetHeadSHA(string, string) (string, error) {
+	return f.headSHA, nil
+}
+
+func (f *fakeReleaseClient) Compare(string, string, string) (*github.CompareResponse, error) {
+	return &github.CompareResponse{}, nil
+}
+
+// TestCheckSourceReleases_NoNewRelease ensures that when LastCheckedTag
+// already equals the latest release's tag_name, the result does not
+// re-surface the release as a new change.
+func TestCheckSourceReleases_NoNewRelease(t *testing.T) {
+	client := &fakeReleaseClient{
+		release: &github.Release{TagName: "v7.11.0", Name: "GRDB 7.11.0", Body: "notes"},
+		headSHA: "deadbeef",
+	}
+	src := config.Source{
+		Repo:           "groue/GRDB.swift",
+		Track:          "releases",
+		LastCheckedTag: "v7.11.0",
+	}
+
+	result, headSHA, tag, err := checkSourceReleases(client, src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tag != "v7.11.0" || headSHA != "deadbeef" {
+		t.Errorf("tag/headSHA = %q/%q; want v7.11.0/deadbeef", tag, headSHA)
+	}
+	if result.Release != nil {
+		t.Errorf("expected result.Release to be nil when LastCheckedTag == latest.TagName, got %+v", result.Release)
+	}
+	if len(result.Commits) != 0 {
+		t.Errorf("expected no commits, got %d", len(result.Commits))
+	}
+}
 
 func TestCapDiff_Empty(t *testing.T) {
 	out, trunc, skip := capDiff("")

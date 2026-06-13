@@ -243,12 +243,14 @@ func checkSourceReleases(client github.Client, src config.Source) (*display.Sour
 	}
 
 	if src.LastCheckedTag == latest.TagName {
-		// No new release — still update the timestamp.
+		// No new release — refresh the timestamp but don't re-surface
+		// the release: the display layer would otherwise render it as
+		// either a fresh release or a first-run "Tracking releases from"
+		// banner every check.
 		headSHA, err := client.GetHeadSHA(src.Repo, latest.TagName)
 		if err != nil {
 			return nil, "", "", fmt.Errorf("getting tag SHA: %w", err)
 		}
-		result.Release = releaseInfo
 		return result, headSHA, latest.TagName, nil
 	}
 
