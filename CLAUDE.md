@@ -20,7 +20,7 @@ scripts/lint.sh        # golangci-lint with auto-fix, then report remaining issu
 ## Architecture
 
 - `cmd/` — Cobra commands
-  - `todo` parent with `init`, `create`, `list`, `show`, `update`, `delete`, `archive`, `roadmap`, `graphql` (alias `query`), `doctor`, `sync` (with `check`, `link`, `unlink` subcommands), `milestone` (alias `ms`; with `create`, `list`, `show`, `update`, `delete`, `migrate` subcommands), `refry`, `tui` subcommands — issue tracking
+  - `todo` parent with `init`, `create`, `list`, `show`, `update`, `comment`, `delete`, `archive`, `roadmap`, `graphql` (alias `query`), `doctor`, `sync` (with `check`, `link`, `unlink` subcommands), `milestone` (alias `ms`; with `create`, `list`, `show`, `update`, `delete`, `migrate` subcommands), `refry`, `tui` subcommands — issue tracking
   - `commit` parent with `gather`, `apply` subcommands — two-phase commit workflow
   - `cite` parent with `init`, `review` (alias `check`), `add`, `update` subcommands — citation monitoring
   - `nope` parent with `init`, `doctor`, `help` subcommands — security guard

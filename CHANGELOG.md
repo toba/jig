@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jun 14 – Jun 20, 2026
+
+### ✨ Features
+
+- Add `jig todo comment <id> "..."` — a discoverable verb (agents reach for it by analogy with `gh`/`git`) that appends a note to an issue body via the same path as `update --append-body`, so etag checks, the `updated` timestamp, and sync all run. Accepts `-` for stdin and `--json`. The agent guide and docs now steer agents to it and explicitly warn against editing `.issues/*.md` files directly
+
 ## Week of Jun 7 – Jun 13, 2026
 
 ### ✨ Features

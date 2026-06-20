@@ -42,6 +42,13 @@ jig todo show --json <id> [id...]
 # Create (always specify -t)
 jig todo create --json "Title" -t task -d "Body..." -s ready
 
+# Add content to an issue body (NEVER edit the .issues/*.md file directly —
+# that skips etag checks, the updated timestamp, and sync)
+jig todo comment --json <id> "## Summary
+
+Did the thing."
+jig todo comment --json <id> -          # read the note from stdin (best for multi-line/backticks)
+
 # Update
 jig todo update --json <id> -s in-progress
 jig todo update --json <id> --parent <id>
@@ -113,10 +120,13 @@ Use `--tag` when creating or updating issues. Prefer these project tags:
 
 ## Body Modifications
 
+**Never edit an issue's `.issues/*.md` file directly** — it bypasses etag concurrency checks, the `updated` timestamp, and external sync. Always go through the CLI.
+
 Backticks in JSON output are NOT escaped — what appears as `` \` `` is a rendering artifact. Always use literal backtick characters in `--body-replace-old`/`--body-replace-new` values.
 
-Replace substring (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)
+Append a note (the agent-friendly verb): `jig todo comment <id> "..."` (`-` for stdin) — a thin alias for `update --append-body`
 Append: `--append-body "content"` (`-` for stdin)
+Replace substring (exact match, must occur once): `--body-replace-old "old" --body-replace-new "new"` (empty new = delete)
 Overwrite the whole body (destructive — discards existing content): `--replace-body "..."` or `--replace-body-file <path>`
 Both can combine with metadata flags in a single update.
 
