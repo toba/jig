@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-06-20T19:03:47Z
 updated_at: 2026-06-20T19:06:12Z
+sync:
+    github:
+        issue_number: "118"
+        synced_at: "2026-06-20T19:06:48Z"
 ---
 
 Agents instinctively reach for `jig todo comment <id>` (by analogy with gh/git) to add content to an issue, find it doesn't exist, and fall back to editing the .issues/*.md file directly — which bypasses etag concurrency checks, updated timestamps, and sync.

@@ -4,7 +4,7 @@
 
 ### ✨ Features
 
-- Add `jig todo comment <id> "..."` — a discoverable verb (agents reach for it by analogy with `gh`/`git`) that appends a note to an issue body via the same path as `update --append-body`, so etag checks, the `updated` timestamp, and sync all run. Accepts `-` for stdin and `--json`. The agent guide and docs now steer agents to it and explicitly warn against editing `.issues/*.md` files directly
+- Add `jig todo comment <id> "..."`; a discoverable verb (agents reach for it by analogy with `gh`/`git`) that appends a note to an issue body via the same path as `update --append-body`, so etag checks, the `updated` timestamp, and sync all run; accepts `-` for stdin and `--json`; the agent guide and docs now steer agents to it and warn against editing `.issues/*.md` files directly ([#118](https://github.com/toba/jig/issues/118))
 
 ## Week of Jun 7 – Jun 13, 2026
 
