@@ -251,6 +251,15 @@ func (r *mutationResolver) UpdateIssue(ctx context.Context, id string, input mod
 		return nil, errors.New("cannot specify both tags and addTags/removeTags")
 	}
 
+	// Guard parent completion before mutating b so b.Status still reflects the
+	// current status. A parent cannot enter a complete status (completed,
+	// scrapped, deferred) while any child is still active.
+	if input.Status != nil {
+		if err := r.validateParentCompletion(b, *input.Status); err != nil {
+			return nil, err
+		}
+	}
+
 	// Update fields if provided
 	if input.Title != nil {
 		b.Title = *input.Title

@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jun 21 – Jun 27, 2026
+
+### ✨ Features
+
+- Block moving a parent issue into a complete status (`completed`, `scrapped`, `deferred`) while any child is still active; `updateIssue` rejects the transition and names the blocking children, covering the CLI, GraphQL, and TUI ([#119](https://github.com/toba/jig/issues/119))
+
 ## Week of Jun 14 – Jun 20, 2026
 
 ### ✨ Features

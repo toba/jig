@@ -915,6 +915,85 @@ func TestMutationUpdateIssue(t *testing.T) {
 	})
 }
 
+func TestMutationUpdateIssueParentCompletionGuard(t *testing.T) {
+	ctx := context.Background()
+
+	// setup creates a parent with one child in the given child status, then
+	// returns a ready-to-use resolver.
+	setup := func(t *testing.T, childStatus string) *Resolver {
+		t.Helper()
+		resolver, c := setupTestResolver(t)
+		parent := &issue.Issue{ID: "parent-1", Title: "Parent", Status: config.StatusReady, Type: config.TypeEpic}
+		if err := c.Create(parent); err != nil {
+			t.Fatalf("create parent: %v", err)
+		}
+		child := &issue.Issue{ID: "child-1", Title: "Child", Status: childStatus, Type: config.TypeTask, Parent: "parent-1"}
+		if err := c.Create(child); err != nil {
+			t.Fatalf("create child: %v", err)
+		}
+		return resolver
+	}
+
+	// Moving a parent into any complete status while a child is still active
+	// must be rejected.
+	for _, complete := range []string{config.StatusCompleted, config.StatusScrapped, config.StatusDeferred} {
+		t.Run("blocked when child active -> "+complete, func(t *testing.T) {
+			resolver := setup(t, config.StatusInProgress)
+			status := complete
+			_, err := resolver.Mutation().UpdateIssue(ctx, "parent-1", model.UpdateIssueInput{Status: &status})
+			if err == nil {
+				t.Fatalf("expected error setting parent to %q with active child, got nil", complete)
+			}
+			// Parent status must remain unchanged.
+			got, _ := resolver.Core.Get("parent-1")
+			if got.Status != config.StatusReady {
+				t.Errorf("parent status = %q, want unchanged %q", got.Status, config.StatusReady)
+			}
+		})
+	}
+
+	// When the child is already in a complete status, the parent may move to a
+	// complete status.
+	for _, childComplete := range []string{config.StatusCompleted, config.StatusScrapped, config.StatusDeferred} {
+		t.Run("allowed when child "+childComplete, func(t *testing.T) {
+			resolver := setup(t, childComplete)
+			status := config.StatusCompleted
+			if _, err := resolver.Mutation().UpdateIssue(ctx, "parent-1", model.UpdateIssueInput{Status: &status}); err != nil {
+				t.Fatalf("expected parent completion to succeed with %q child, got %v", childComplete, err)
+			}
+		})
+	}
+
+	// A childless issue can be completed freely.
+	t.Run("leaf issue can complete", func(t *testing.T) {
+		resolver, c := setupTestResolver(t)
+		if err := c.Create(&issue.Issue{ID: "leaf-1", Title: "Leaf", Status: config.StatusReady, Type: config.TypeTask}); err != nil {
+			t.Fatalf("create leaf: %v", err)
+		}
+		status := config.StatusCompleted
+		if _, err := resolver.Mutation().UpdateIssue(ctx, "leaf-1", model.UpdateIssueInput{Status: &status}); err != nil {
+			t.Fatalf("leaf completion should succeed, got %v", err)
+		}
+	})
+
+	// Non-status edits to an already-complete parent with a (later) active
+	// child must not be blocked — only transitions into a complete status are
+	// guarded.
+	t.Run("non-status edit on completed parent not blocked", func(t *testing.T) {
+		resolver, c := setupTestResolver(t)
+		if err := c.Create(&issue.Issue{ID: "parent-2", Title: "Parent", Status: config.StatusCompleted, Type: config.TypeEpic}); err != nil {
+			t.Fatalf("create parent: %v", err)
+		}
+		if err := c.Create(&issue.Issue{ID: "child-2", Title: "Child", Status: config.StatusInProgress, Type: config.TypeTask, Parent: "parent-2"}); err != nil {
+			t.Fatalf("create child: %v", err)
+		}
+		newTitle := "Renamed"
+		if _, err := resolver.Mutation().UpdateIssue(ctx, "parent-2", model.UpdateIssueInput{Title: &newTitle}); err != nil {
+			t.Fatalf("title edit on completed parent should succeed, got %v", err)
+		}
+	})
+}
+
 func TestMutationDeleteIssue(t *testing.T) {
 	resolver, c := setupTestResolver(t)
 	ctx := context.Background()

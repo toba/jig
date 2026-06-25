@@ -582,6 +582,18 @@ func (c *Config) IsArchiveStatus(name string) bool {
 	return false
 }
 
+// IsCompleteStatus reports whether a status represents finished or closed work
+// for the purpose of parent-completion gating: completed, scrapped, or deferred.
+// A parent issue may only enter one of these statuses once all of its children
+// are also in a complete status.
+func IsCompleteStatus(name string) bool {
+	switch name {
+	case StatusCompleted, StatusScrapped, StatusDeferred:
+		return true
+	}
+	return false
+}
+
 // GetType returns the TypeConfig for a given type name, or nil if not found.
 func (c *Config) GetType(name string) *TypeConfig {
 	return configFind(DefaultTypes, name, typeName)

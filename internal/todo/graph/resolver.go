@@ -3,7 +3,9 @@ package graph
 import (
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/toba/jig/internal/todo/config"
 	"github.com/toba/jig/internal/todo/core"
 	"github.com/toba/jig/internal/todo/issue"
 )
@@ -35,6 +37,31 @@ func (r *Resolver) validateETag(b *issue.Issue, ifMatch *string) error {
 		}
 	}
 
+	return nil
+}
+
+// validateParentCompletion guards the transition of an issue into a complete
+// status (completed, scrapped, deferred). A parent may only enter such a status
+// once all of its children are themselves in a complete status. It is a no-op
+// when newStatus is not a complete status or the status is not actually changing
+// (so non-status edits to an already-complete issue are never blocked). Callers
+// must pass b before its status field is mutated so b.Status reflects the
+// current value.
+func (r *Resolver) validateParentCompletion(b *issue.Issue, newStatus string) error {
+	if newStatus == b.Status || !config.IsCompleteStatus(newStatus) {
+		return nil
+	}
+
+	var incomplete []string
+	for _, child := range r.Core.Children(b.ID) {
+		if !config.IsCompleteStatus(child.Status) {
+			incomplete = append(incomplete, fmt.Sprintf("%s (%s)", child.ID, child.Status))
+		}
+	}
+	if len(incomplete) > 0 {
+		return fmt.Errorf("cannot set %s to %q: %d child issue(s) not complete: %s",
+			b.ID, newStatus, len(incomplete), strings.Join(incomplete, ", "))
+	}
 	return nil
 }
 

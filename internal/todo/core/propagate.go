@@ -19,6 +19,14 @@ func (c *Core) findChildrenLocked(parentID string) []*issue.Issue {
 	return children
 }
 
+// Children returns all issues whose Parent matches parentID. It is safe to call
+// without holding c.mu.
+func (c *Core) Children(parentID string) []*issue.Issue {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.findChildrenLocked(parentID)
+}
+
 // computeParentStatus determines what the parent's status should be based on
 // its children's statuses. Returns "" if no change is needed.
 //
