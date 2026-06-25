@@ -7,6 +7,35 @@ import (
 	"github.com/toba/jig/internal/todo/issue"
 )
 
+func TestRenderIssuePlainNoANSI(t *testing.T) {
+	b := &issue.Issue{
+		ID:       "vdg-98k",
+		Title:    "DocX import only detects English Heading styles",
+		Status:   "ready",
+		Priority: "normal",
+		Tags:     []string{"converter", "file format"},
+		Body:     "## Description\n\nThe `Heading{n}` styles are missing.\n\n- [ ] one\n- [x] two\n",
+	}
+
+	// Plain mode (piped / non-TTY) must contain no ANSI escape sequences so
+	// agents can read the output without re-fetching the raw markdown file.
+	plain := renderIssue(b, false)
+	if strings.Contains(plain, "\x1b[") {
+		t.Errorf("plain render contains ANSI escape codes:\n%q", plain)
+	}
+	for _, want := range []string{"vdg-98k", "DocX import", "Description", "Heading{n}"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("plain render missing %q\n%s", want, plain)
+		}
+	}
+
+	// Color mode keeps the styled (ANSI) output for interactive terminals.
+	colored := renderIssue(b, true)
+	if !strings.Contains(colored, "\x1b[") {
+		t.Error("color render expected ANSI escape codes, got none")
+	}
+}
+
 func TestFormatRelationships(t *testing.T) {
 	t.Run("blocked by only", func(t *testing.T) {
 		b := &issue.Issue{

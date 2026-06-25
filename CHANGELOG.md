@@ -6,6 +6,10 @@
 
 - Block moving a parent issue into a complete status (`completed`, `scrapped`, `deferred`) while any child is still active; `updateIssue` rejects the transition and names the blocking children, covering the CLI, GraphQL, and TUI ([#119](https://github.com/toba/jig/issues/119))
 
+### 🐞 Fixes
+
+- `jig todo show` no longer emits ANSI escape codes when stdout is piped; output now routes through a color-profile writer that strips color for non-TTY destinations (and honors `NO_COLOR`/`CLICOLOR`), so agents reading via `| cat` get clean text instead of falling back to the raw issue file ([#120](https://github.com/toba/jig/issues/120))
+
 ## Week of Jun 14 – Jun 20, 2026
 
 ### ✨ Features

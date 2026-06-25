@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"charm.land/glamour/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/spf13/cobra"
 	"github.com/toba/jig/internal/todo/graph"
 	"github.com/toba/jig/internal/todo/issue"
@@ -88,20 +92,41 @@ var showCmd = &cobra.Command{
 			return nil
 		}
 
+		// Route styled output through a color-profile writer so it adapts to
+		// the destination: full color on an interactive terminal, and ANSI
+		// stripped when piped (non-TTY) or when NO_COLOR is set. This keeps
+		// `jig todo show <id> | cat` readable for agents without forcing them
+		// to fall back to the raw markdown file.
+		out := colorprofile.NewWriter(os.Stdout, os.Environ())
+		color := out.Profile > colorprofile.ASCII
+
 		for i, b := range issues {
 			if i > 0 {
-				fmt.Println()
-				fmt.Println(ui.Muted.Render(strings.Repeat("═", 60)))
-				fmt.Println()
+				fmt.Fprintln(out)
+				fmt.Fprintln(out, ui.Muted.Render(strings.Repeat("═", 60)))
+				fmt.Fprintln(out)
 			}
-			showStyledIssue(b)
+			writeStyledIssue(out, b, color)
 		}
 
 		return nil
 	},
 }
 
-func showStyledIssue(b *issue.Issue) {
+// renderIssue renders an issue to a string. When color is false, all ANSI
+// escape sequences are stripped so the output is plain text (used for piped /
+// non-TTY destinations and in tests).
+func renderIssue(b *issue.Issue, color bool) string {
+	var buf bytes.Buffer
+	var w io.Writer = &buf
+	if !color {
+		w = &colorprofile.Writer{Forward: &buf, Profile: colorprofile.NoTTY}
+	}
+	writeStyledIssue(w, b, color)
+	return buf.String()
+}
+
+func writeStyledIssue(w io.Writer, b *issue.Issue, color bool) {
 	statusCfg := todoCfg.GetStatus(b.Status)
 	statusColor := "gray"
 	if statusCfg != nil {
@@ -147,25 +172,31 @@ func showStyledIssue(b *issue.Issue) {
 		MarginBottom(1).
 		Render(header.String())
 
-	fmt.Println(headerBox)
+	fmt.Fprintln(w, headerBox)
 
 	if b.Body != "" {
+		// Use the clean "notty" style (no background padding) when color is
+		// disabled, otherwise the terminal's configured style.
+		styleOpt := glamour.WithEnvironmentConfig()
+		if !color {
+			styleOpt = glamour.WithStandardStyle("notty")
+		}
 		renderer, err := glamour.NewTermRenderer(
-			glamour.WithEnvironmentConfig(),
+			styleOpt,
 			glamour.WithWordWrap(80),
 		)
 		if err != nil {
-			fmt.Printf("failed to create renderer: %v\n", err)
+			fmt.Fprintf(w, "failed to create renderer: %v\n", err)
 			return
 		}
 
 		rendered, err := renderer.Render(b.Body)
 		if err != nil {
-			fmt.Printf("failed to render markdown: %v\n", err)
+			fmt.Fprintf(w, "failed to render markdown: %v\n", err)
 			return
 		}
 
-		fmt.Print(rendered)
+		_, _ = fmt.Fprint(w, rendered)
 	}
 }
 

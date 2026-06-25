@@ -1458,25 +1458,13 @@ func TestShowStyledIssue(t *testing.T) {
 		CreatedAt: &now,
 	}
 
-	// Capture stdout — just verify it doesn't panic.
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	showStyledIssue(b)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	out := buf.String()
+	out := renderIssue(b, true)
 
 	if !strings.Contains(out, "test-1") {
-		t.Error("showStyledIssue() output missing issue ID")
+		t.Error("renderIssue() output missing issue ID")
 	}
 	if !strings.Contains(out, "Test Issue") {
-		t.Error("showStyledIssue() output missing issue title")
+		t.Error("renderIssue() output missing issue title")
 	}
 }
 
@@ -1491,14 +1479,8 @@ func TestShowStyledIssueMinimal(t *testing.T) {
 		Status: "todo",
 	}
 
-	old := os.Stdout
-	_, w, _ := os.Pipe()
-	os.Stdout = w
-
-	showStyledIssue(b)
-
-	w.Close()
-	os.Stdout = old
+	// Just verify it doesn't panic.
+	_ = renderIssue(b, false)
 }
 
 // --- renderRoadmapMarkdown test ---
