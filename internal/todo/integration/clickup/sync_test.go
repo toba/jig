@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -779,4 +780,144 @@ func TestSyncIssues_ParentNotInBatch(t *testing.T) {
 	if *capturedParent != "clickup-parent-789" {
 		t.Errorf("parent = %q, want %q", *capturedParent, "clickup-parent-789")
 	}
+}
+
+// prefetchCounts tracks how many times each prefetch endpoint is hit.
+type prefetchCounts struct {
+	user     atomic.Int64
+	listGet  atomic.Int64 // GET /list/{id} (not a task call)
+	spaceTag atomic.Int64 // GET /space/{id}/tag
+}
+
+// newPrefetchCountingServer returns a test server that counts prefetch
+// endpoints and otherwise satisfies the create/update task flow.
+func newPrefetchCountingServer(c *prefetchCounts) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		path := r.URL.Path
+
+		switch {
+		case strings.Contains(path, "/user"):
+			c.user.Add(1)
+			_ = json.NewEncoder(w).Encode(map[string]any{"user": map[string]any{"id": 1}})
+		case r.Method == http.MethodGet && strings.Contains(path, "/space/") && strings.Contains(path, "/tag"):
+			c.spaceTag.Add(1)
+			_ = json.NewEncoder(w).Encode(map[string]any{"tags": []any{}})
+		case r.Method == http.MethodGet && strings.Contains(path, "/list/") && !strings.Contains(path, "/task"):
+			c.listGet.Add(1)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "test-list", "space": map[string]any{"id": "space-1"}})
+		case r.Method == http.MethodGet && strings.Contains(path, "/task/"):
+			_ = json.NewEncoder(w).Encode(taskResponse{
+				ID: "task-123", Name: "Test issue", Status: Status{Status: "to do"},
+				URL: "https://app.clickup.com/t/task-123",
+			})
+		case r.Method == http.MethodPost && strings.Contains(path, "/list/") && strings.Contains(path, "/task"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "new-task-456", "name": "Test issue",
+				"url": "https://app.clickup.com/t/new-task-456", "status": map[string]any{"status": "to do"},
+			})
+		default:
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{}"))
+		}
+	}))
+}
+
+// TestSyncIssues_ConditionalPrefetch verifies that the up-front prefetch calls
+// (authorized user, list/space-tag cache) are only made when the run actually
+// needs them: the user lookup only when creating tasks, and the space tag cache
+// only when an issue carries tags.
+func TestSyncIssues_ConditionalPrefetch(t *testing.T) {
+	now := time.Now()
+
+	newSyncer := func(client *Client, store *memorySyncProvider) *Syncer {
+		return &Syncer{
+			client:        client,
+			config:        &Config{},
+			opts:          SyncOptions{ListID: "test-list", Force: true},
+			syncStore:     store,
+			issueToTaskID: make(map[string]string),
+		}
+	}
+
+	t.Run("update only, no tags: no prefetch", func(t *testing.T) {
+		var counts prefetchCounts
+		server := newPrefetchCountingServer(&counts)
+		defer server.Close()
+		client := &Client{token: "test", httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}}}
+
+		store := newMemorySyncProvider()
+		store.SetTaskID("issue-1", "task-123")
+		b := &issue.Issue{ID: "issue-1", Title: "Test issue", Status: "ready", Type: "task", CreatedAt: &now, UpdatedAt: &now}
+
+		if _, err := newSyncer(client, store).SyncIssues(context.Background(), []*issue.Issue{b}); err != nil {
+			t.Fatalf("SyncIssues: %v", err)
+		}
+		if counts.user.Load() != 0 {
+			t.Errorf("user prefetch = %d, want 0 (no creates)", counts.user.Load())
+		}
+		if counts.listGet.Load() != 0 || counts.spaceTag.Load() != 0 {
+			t.Errorf("tag prefetch = list:%d space:%d, want 0/0 (no tags)", counts.listGet.Load(), counts.spaceTag.Load())
+		}
+	})
+
+	t.Run("create without assignee: fetches user only", func(t *testing.T) {
+		var counts prefetchCounts
+		server := newPrefetchCountingServer(&counts)
+		defer server.Close()
+		client := &Client{token: "test", httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}}}
+
+		store := newMemorySyncProvider() // no task ID => create path
+		b := &issue.Issue{ID: "issue-1", Title: "Test issue", Status: "ready", Type: "task", CreatedAt: &now, UpdatedAt: &now}
+
+		if _, err := newSyncer(client, store).SyncIssues(context.Background(), []*issue.Issue{b}); err != nil {
+			t.Fatalf("SyncIssues: %v", err)
+		}
+		if counts.user.Load() == 0 {
+			t.Errorf("user prefetch = 0, want >=1 (create needs default assignee)")
+		}
+		if counts.listGet.Load() != 0 || counts.spaceTag.Load() != 0 {
+			t.Errorf("tag prefetch = list:%d space:%d, want 0/0 (no tags)", counts.listGet.Load(), counts.spaceTag.Load())
+		}
+	})
+
+	t.Run("issue with tags: fetches space tag cache", func(t *testing.T) {
+		var counts prefetchCounts
+		server := newPrefetchCountingServer(&counts)
+		defer server.Close()
+		client := &Client{token: "test", httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}}}
+
+		store := newMemorySyncProvider()
+		store.SetTaskID("issue-1", "task-123") // linked => no create => no user prefetch
+		b := &issue.Issue{ID: "issue-1", Title: "Test issue", Status: "ready", Type: "task", Tags: []string{"x"}, CreatedAt: &now, UpdatedAt: &now}
+
+		if _, err := newSyncer(client, store).SyncIssues(context.Background(), []*issue.Issue{b}); err != nil {
+			t.Fatalf("SyncIssues: %v", err)
+		}
+		if counts.user.Load() != 0 {
+			t.Errorf("user prefetch = %d, want 0 (no creates)", counts.user.Load())
+		}
+		if counts.listGet.Load() == 0 || counts.spaceTag.Load() == 0 {
+			t.Errorf("tag prefetch = list:%d space:%d, want both >=1 (issue has tags)", counts.listGet.Load(), counts.spaceTag.Load())
+		}
+	})
+
+	t.Run("dry run: no prefetch even with creates and tags", func(t *testing.T) {
+		var counts prefetchCounts
+		server := newPrefetchCountingServer(&counts)
+		defer server.Close()
+		client := &Client{token: "test", httpClient: &http.Client{Transport: &redirectTransport{target: server.URL}}}
+
+		store := newMemorySyncProvider() // create path
+		syncer := newSyncer(client, store)
+		syncer.opts.DryRun = true
+		b := &issue.Issue{ID: "issue-1", Title: "Test issue", Status: "ready", Type: "task", Tags: []string{"x"}, CreatedAt: &now, UpdatedAt: &now}
+
+		if _, err := syncer.SyncIssues(context.Background(), []*issue.Issue{b}); err != nil {
+			t.Fatalf("SyncIssues: %v", err)
+		}
+		if counts.user.Load() != 0 || counts.listGet.Load() != 0 || counts.spaceTag.Load() != 0 {
+			t.Errorf("dry run made prefetch calls user:%d list:%d space:%d, want all 0", counts.user.Load(), counts.listGet.Load(), counts.spaceTag.Load())
+		}
+	})
 }

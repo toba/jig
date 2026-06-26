@@ -69,19 +69,53 @@ func NewSyncer(client *Client, cfg *Config, opts SyncOptions, c *core.Core, sync
 // 2. Create/update child tasks with parent references
 // 3. Sync blocking relationships as dependencies
 func (s *Syncer) SyncIssues(ctx context.Context, issues []*issue.Issue) ([]SyncResult, error) {
-	// Pre-fetch authorized user to avoid per-task API calls
-	if _, err := s.client.GetAuthorizedUser(ctx); err != nil {
-		// Non-fatal - will just create unassigned tasks if this fails
-		_ = err
-	}
-
-	// Pre-fetch list info for space ID, then populate space tag cache
-	if list, err := s.client.GetList(ctx, s.opts.ListID); err == nil && list.SpaceID != "" {
-		s.spaceID = list.SpaceID
-		if err := s.client.PopulateSpaceTagCache(ctx, s.spaceID); err != nil {
-			// Non-fatal - tags will still be added at task level
-			_ = err
+	// Prefetch only what this run actually needs, and do it concurrently so the
+	// independent round-trips overlap. A dry run mutates nothing, so it needs
+	// neither the authorized user (assignees) nor the space tag cache.
+	if !s.opts.DryRun {
+		// Authorized user is only consulted when creating a task (for the
+		// default assignee), and only when no assignee is explicitly configured.
+		needUser := (s.config == nil || s.config.Assignee == nil)
+		// The space ID and tag cache are only used when adding tags to a task.
+		needTags := false
+		if needUser {
+			needUser = false
+			for _, b := range issues {
+				if taskID := s.syncStore.GetTaskID(b.ID); taskID == nil || *taskID == "" {
+					needUser = true
+					break
+				}
+			}
 		}
+		for _, b := range issues {
+			if len(b.Tags) > 0 {
+				needTags = true
+				break
+			}
+		}
+
+		pg := new(errgroup.Group)
+		if needUser {
+			pg.Go(func() error {
+				// Non-fatal - will just create unassigned tasks if this fails.
+				// Prefetching once also avoids a data race on the client's
+				// authorized-user cache across the parallel create passes.
+				_, _ = s.client.GetAuthorizedUser(ctx)
+				return nil
+			})
+		}
+		if needTags {
+			pg.Go(func() error {
+				// Fetch list info for the space ID, then populate the space tag
+				// cache. Non-fatal - tags still get added at the task level.
+				if list, err := s.client.GetList(ctx, s.opts.ListID); err == nil && list.SpaceID != "" {
+					s.spaceID = list.SpaceID
+					_ = s.client.PopulateSpaceTagCache(ctx, s.spaceID)
+				}
+				return nil
+			})
+		}
+		_ = pg.Wait()
 	}
 
 	// Pre-populate mapping with already-synced issues from sync store

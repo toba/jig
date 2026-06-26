@@ -10,6 +10,10 @@
 
 - `jig todo show` no longer emits ANSI escape codes when stdout is piped; output now routes through a color-profile writer that strips color for non-TTY destinations (and honors `NO_COLOR`/`CLICOLOR`), so agents reading via `| cat` get clean text instead of falling back to the raw issue file ([#120](https://github.com/toba/jig/issues/120))
 
+### 🗜️ Tweaks
+
+- ClickUp sync no longer pays a fixed prefetch tax on every run; `SyncIssues` now skips the authorized-user, list, and space-tag prefetches on dry runs, fetches them only when actually needed (creates and tagged issues respectively), and runs the survivors concurrently, collapsing ~3 serial round-trips to ~1; the per-issue cost was already incremental, so this keeps a typical few-issue sync fast regardless of total project size ([#121](https://github.com/toba/jig/issues/121))
+
 ## Week of Jun 14 – Jun 20, 2026
 
 ### ✨ Features
