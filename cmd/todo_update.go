@@ -298,7 +298,7 @@ func registerUpdateFlags(cmd *cobra.Command) {
 	// retained (hidden) only so passing them yields a helpful guidance error
 	// instead of an opaque "unknown flag".
 	cmd.Flags().StringVar(&updateReplaceBody, "replace-body", "", "Overwrite the entire body (use '-' to read from stdin)")
-	cmd.Flags().StringVar(&updateReplaceBodyFile, "replace-body-file", "", "Overwrite the entire body from a file")
+	cmd.Flags().StringVar(&updateReplaceBodyFile, "replace-body-file", "", "Overwrite the entire body from a file (use '-' to read from stdin)")
 	cmd.Flags().StringVar(&updateAppendBody, "append-body", "", "Append text to the body (use '-' for stdin)")
 	cmd.Flags().StringVarP(&updateBody, "body", "d", "", "Removed: use --append-body or --replace-body")
 	cmd.Flags().StringVar(&updateBodyFile, "body-file", "", "Removed: use --append-body or --replace-body-file")

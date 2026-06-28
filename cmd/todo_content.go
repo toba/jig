@@ -12,13 +12,14 @@ import (
 )
 
 // resolveContent returns content from a direct value or file flag.
-// If value is "-", reads from stdin.
+// Either flag may be "-" to read from stdin (the conventional Unix meaning),
+// so `--body -` and `--body-file -` both pipe stdin into the body.
 func resolveContent(value, file string) (string, error) {
 	if value != "" && file != "" {
 		return "", errors.New("cannot use both --body and --body-file")
 	}
 
-	if value == "-" {
+	if value == "-" || file == "-" {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", fmt.Errorf("reading stdin: %w", err)

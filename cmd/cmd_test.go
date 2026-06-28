@@ -347,6 +347,48 @@ func TestResolveContent(t *testing.T) {
 			t.Fatal("resolveContent() expected error for missing file")
 		}
 	})
+
+	t.Run("value dash reads stdin", func(t *testing.T) {
+		got := withStdin(t, "piped via body", func() (string, error) {
+			return resolveContent("-", "")
+		})
+		if got != "piped via body" {
+			t.Errorf("resolveContent(\"-\", \"\") = %q, want %q", got, "piped via body")
+		}
+	})
+
+	t.Run("file dash reads stdin", func(t *testing.T) {
+		got := withStdin(t, "piped via body-file", func() (string, error) {
+			return resolveContent("", "-")
+		})
+		if got != "piped via body-file" {
+			t.Errorf("resolveContent(\"\", \"-\") = %q, want %q", got, "piped via body-file")
+		}
+	})
+}
+
+// withStdin replaces os.Stdin with a pipe carrying input for the duration of fn,
+// failing the test if fn errors.
+func withStdin(t *testing.T, input string, fn func() (string, error)) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = orig }()
+
+	go func() {
+		_, _ = w.WriteString(input)
+		_ = w.Close()
+	}()
+
+	got, err := fn()
+	if err != nil {
+		t.Fatalf("fn() error: %v", err)
+	}
+	return got
 }
 
 // --- command structure tests ---

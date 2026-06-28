@@ -125,7 +125,7 @@ func init() {
 	createCmd.Flags().StringVarP(&createPriority, "priority", "p", "", "Priority level ("+strings.Join(priorityNames, ", ")+")")
 	createCmd.Flags().StringVar(&createMilestone, "milestone", "", "Milestone ID to assign this issue to")
 	createCmd.Flags().StringVarP(&createBody, "body", "d", "", "Body content (use '-' to read from stdin)")
-	createCmd.Flags().StringVar(&createBodyFile, "body-file", "", "Read body from file")
+	createCmd.Flags().StringVar(&createBodyFile, "body-file", "", "Read body from file (use '-' to read from stdin)")
 	createCmd.Flags().StringArrayVar(&createTag, "tag", nil, "Add tag (can be repeated)")
 	createCmd.Flags().StringVar(&createDue, "due", "", "Due date (YYYY-MM-DD)")
 	createCmd.Flags().StringVar(&createParent, "parent", "", "Parent issue ID")
