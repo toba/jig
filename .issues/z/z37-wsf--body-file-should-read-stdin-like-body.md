@@ -3,8 +3,13 @@
 title: body-file - should read stdin like --body -
 status: completed
 type: bug
+priority: normal
 created_at: 2026-06-28T20:25:33Z
 updated_at: 2026-06-28T20:25:33Z
+sync:
+    github:
+        issue_number: "123"
+        synced_at: "2026-06-28T20:26:22Z"
 ---
 
 Agents pass `--body-file -` expecting stdin (the Unix convention) but resolveContent treated `-` as a literal filename, failing with `reading file: open -: no such file or directory`. Only `--body/--append-body/--replace-body -` read stdin.

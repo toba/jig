@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jun 28 – Jul 4, 2026
+
+### 🐞 Fixes
+
+- `--body-file -` and `--replace-body-file -` now read stdin like the inline `--body -` flags do; previously `resolveContent` treated `-` as a literal filename and failed with `reading file: open -: no such file or directory`, which repeatedly tripped up agents piping issue bodies in ([#123](https://github.com/toba/jig/issues/123))
+
 ## Week of Jun 21 – Jun 27, 2026
 
 ### ✨ Features
